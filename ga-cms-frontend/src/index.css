@@ -6,9 +6,10 @@
 
 @layer base {
   body {
-    @apply bg-offwhite text-slate-800 font-sans antialiased;
+    @apply font-sans antialiased;
+    background: #020b18;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply text-navy font-bold tracking-tight;
+    @apply font-bold tracking-tight;
   }
 }
