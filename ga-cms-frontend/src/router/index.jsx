@@ -2,6 +2,8 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import AuthGuard from '../components/auth/AuthGuard';
 import LoginPage from '../components/auth/LoginPage';
+import SignInPage from '../components/auth/SignInPage';
+import SignUpPage from '../components/auth/SignUpPage';
 import UnauthorizedPage from '../components/auth/UnauthorizedPage';
 import AppShell from '../components/layout/AppShell';
 
@@ -14,8 +16,9 @@ import PatientRegistrationForm from '../components/patients/PatientRegistrationF
 const AppRouter = () => {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<LoginPage />} />
+      <Route path="/login" element={<SignInPage />} />
+      <Route path="/signup" element={<SignUpPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
       {/* Protected Routes encapsulated in AppShell */}

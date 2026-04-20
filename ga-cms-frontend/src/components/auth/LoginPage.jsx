@@ -1,152 +1,9 @@
-import React, { useState } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../../store/authStore';
-import { authApi } from '../../api/auth';
-import { ROLE_CONFIG } from '../../utils/roleConfig';
-
-/* ── Modal Shell ── */
-const Modal = ({ onClose, children }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-    style={{ background: 'rgba(2,11,24,0.90)', backdropFilter: 'blur(10px)' }}
-    onClick={onClose}>
-    <div className="w-full max-w-[420px] rounded-3xl overflow-hidden border border-white/10"
-      style={{ background: 'rgba(8,22,52,0.98)', boxShadow: '0 40px 100px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.07)' }}
-      onClick={e => e.stopPropagation()}>
-      <div className="h-[2px]" style={{ background: 'linear-gradient(90deg,#1d4ed8,#0ea5e9,#a78bfa)' }} />
-      {children}
-    </div>
-  </div>
-);
-
-/* ── Sign In Modal ── */
-const SignInModal = ({ onClose, onGoogleSuccess }) => {
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError]       = useState(null);
-
-  return (
-    <Modal onClose={onClose}>
-      <div className="px-8 pt-7 pb-8">
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h2 className="text-white text-2xl font-black">Welcome back</h2>
-            <p className="text-white/40 text-sm mt-1">Sign in to your account</p>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-white/30 hover:text-white hover:bg-white/10 transition-all">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <form onSubmit={e => { e.preventDefault(); setError('Email/password login coming soon. Use Google below.'); }} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-white/40 text-xs font-semibold uppercase tracking-wider">Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@gaclinic.com"
-              className="w-full rounded-xl px-4 py-3.5 text-sm text-white outline-none border border-white/10 focus:border-blue-500/60 transition-colors placeholder-white/20"
-              style={{ background: 'rgba(255,255,255,0.05)' }} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <div className="flex justify-between items-center">
-              <label className="text-white/40 text-xs font-semibold uppercase tracking-wider">Password</label>
-              <button type="button" className="text-xs text-blue-400 hover:text-blue-300">Forgot?</button>
-            </div>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
-              className="w-full rounded-xl px-4 py-3.5 text-sm text-white outline-none border border-white/10 focus:border-blue-500/60 transition-colors placeholder-white/20"
-              style={{ background: 'rgba(255,255,255,0.05)' }} />
-          </div>
-          {error && <p className="text-red-400 text-xs bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2.5">{error}</p>}
-          <button type="submit" className="w-full py-3.5 rounded-xl text-white font-bold text-sm mt-1 hover:opacity-90 active:scale-[0.98] transition-all"
-            style={{ background: 'linear-gradient(135deg,#1d4ed8,#0ea5e9)' }}>Sign In →</button>
-        </form>
-        <div className="flex items-center gap-3 my-5">
-          <div className="flex-1 h-px bg-white/10" />
-          <span className="text-white/25 text-xs">or</span>
-          <div className="flex-1 h-px bg-white/10" />
-        </div>
-        <div className="flex justify-center">
-          <GoogleLogin onSuccess={onGoogleSuccess} onError={() => setError('Google sign-in failed.')}
-            useOneTap={false} shape="rectangular" theme="filled_blue" size="large" text="signin_with" width="320" />
-        </div>
-        <p className="text-center text-white/20 text-xs mt-5">
-          No account?{' '}
-          <button onClick={onClose} className="text-blue-400 hover:text-blue-300 font-semibold">Sign Up</button>
-        </p>
-      </div>
-    </Modal>
-  );
-};
-
-/* ── Sign Up Modal ── */
-const SignUpModal = ({ onClose, onGoogleSuccess }) => {
-  const [error, setError] = useState(null);
-  return (
-    <Modal onClose={onClose}>
-      <div className="px-8 pt-7 pb-8">
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h2 className="text-white text-2xl font-black">Create account</h2>
-            <p className="text-white/40 text-sm mt-1">Join GA Clinic portal</p>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center text-white/30 hover:text-white hover:bg-white/10 transition-all">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <form onSubmit={e => { e.preventDefault(); setError('Self-registration is disabled. Accounts are created by the admin. Use Google sign-in if you already have a clinic account.'); }} className="flex flex-col gap-4">
-          {[['Full Name','text','Dr. John Smith'],['Work Email','email','you@gaclinic.com'],['Password','password','••••••••']].map(([lbl,type,ph]) => (
-            <div key={lbl} className="flex flex-col gap-1.5">
-              <label className="text-white/40 text-xs font-semibold uppercase tracking-wider">{lbl}</label>
-              <input type={type} placeholder={ph}
-                className="w-full rounded-xl px-4 py-3.5 text-sm text-white outline-none border border-white/10 focus:border-blue-500/60 transition-colors placeholder-white/20"
-                style={{ background: 'rgba(255,255,255,0.05)' }} />
-            </div>
-          ))}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-white/40 text-xs font-semibold uppercase tracking-wider">Role</label>
-            <select className="w-full rounded-xl px-4 py-3.5 text-sm text-white/60 outline-none border border-white/10 focus:border-blue-500/60 transition-colors appearance-none"
-              style={{ background: 'rgba(255,255,255,0.05)' }}>
-              <option value="" style={{ background: '#081634' }}>Select role</option>
-              {['Senior Doctor','Doctor','Receptionist','Technician'].map(r => <option key={r} style={{ background: '#081634' }}>{r}</option>)}
-            </select>
-          </div>
-          {error && <p className="text-amber-300 text-xs bg-amber-400/10 border border-amber-400/20 rounded-xl px-3 py-2.5 leading-relaxed">{error}</p>}
-          <button type="submit" className="w-full py-3.5 rounded-xl text-white font-bold text-sm mt-1 hover:opacity-90 active:scale-[0.98] transition-all"
-            style={{ background: 'linear-gradient(135deg,#1d4ed8,#0ea5e9)' }}>Create Account →</button>
-        </form>
-        <div className="flex items-center gap-3 my-5">
-          <div className="flex-1 h-px bg-white/10" />
-          <span className="text-white/25 text-xs">or sign up with</span>
-          <div className="flex-1 h-px bg-white/10" />
-        </div>
-        <div className="flex justify-center">
-          <GoogleLogin onSuccess={onGoogleSuccess} onError={() => {}}
-            useOneTap={false} shape="rectangular" theme="filled_blue" size="large" text="signup_with" width="320" />
-        </div>
-        <p className="text-center text-white/20 text-xs mt-5">
-          Already have an account?{' '}
-          <button onClick={onClose} className="text-blue-400 hover:text-blue-300 font-semibold">Sign In</button>
-        </p>
-      </div>
-    </Modal>
-  );
-};
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 /* ── Main Landing Page ── */
 const LoginPage = () => {
-  const [modal, setModal]   = useState(null);
-  const { setAuth }         = useAuthStore();
-  const navigate            = useNavigate();
-  const location            = useLocation();
-
-  const handleGoogleSuccess = async (cred) => {
-    try {
-      const res  = await authApi.googleLogin(cred.credential);
-      setAuth(res.user, res.access);
-      const cfg  = ROLE_CONFIG[res.user.role];
-      const from = location.state?.from?.pathname || (cfg ? cfg.dashboardRoute : '/login');
-      navigate(from, { replace: true });
-    } catch { /* error shown inside modal */ }
-    finally { setModal(null); }
-  };
-
+  const navigate = useNavigate();
   const services = [
     {
       icon: '🗓️',
@@ -205,11 +62,11 @@ const LoginPage = () => {
 
         {/* Auth buttons */}
         <div className="flex items-center gap-3">
-          <button onClick={() => setModal('signin')}
+          <button onClick={() => navigate('/login')}
             className="px-5 py-2 rounded-full text-white/70 text-sm font-semibold border border-white/15 hover:border-white/35 hover:text-white transition-all bg-white/5">
             Sign In
           </button>
-          <button onClick={() => setModal('signin')}
+          <button onClick={() => navigate('/signup')}
             className="px-5 py-2 rounded-full text-white text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-blue-900/40"
             style={{ background: 'linear-gradient(135deg,#1d4ed8,#0ea5e9)' }}>
             Sign Up
@@ -241,12 +98,12 @@ const LoginPage = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button onClick={() => setModal('signin')}
+            <button onClick={() => navigate('/signup')}
               className="px-8 py-4 rounded-2xl text-white font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all shadow-xl shadow-blue-900/50"
               style={{ background: 'linear-gradient(135deg,#1d4ed8,#0ea5e9)' }}>
               Get Started — It's Free
             </button>
-            <button onClick={() => setModal('signin')}
+            <button onClick={() => navigate('/login')}
               className="px-8 py-4 rounded-2xl text-white/70 font-bold text-base border border-white/15 hover:border-white/30 hover:text-white transition-all bg-white/5">
               Sign In to Dashboard
             </button>
@@ -284,7 +141,7 @@ const LoginPage = () => {
               </div>
               <h3 className="text-white font-black text-xl mb-3">{title}</h3>
               <p className="text-white/45 text-sm leading-relaxed mb-6">{desc}</p>
-              <button onClick={() => setModal('signin')}
+              <button onClick={() => navigate('/signup')}
                 className="text-sm font-bold transition-colors flex items-center gap-1 group-hover:gap-2"
                 style={{ color }}>
                 Get Started <span>→</span>
@@ -323,12 +180,12 @@ const LoginPage = () => {
           <h2 className="text-white font-black text-3xl lg:text-4xl mb-4">Ready to get started?</h2>
           <p className="text-white/50 text-lg mb-8">Join thousands of patients who trust GA Clinic for their healthcare needs.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button onClick={() => setModal('signin')}
+            <button onClick={() => navigate('/signup')}
               className="px-8 py-4 rounded-2xl text-white font-bold hover:opacity-90 active:scale-[0.98] transition-all shadow-xl shadow-blue-900/50"
               style={{ background: 'linear-gradient(135deg,#1d4ed8,#0ea5e9)' }}>
               Create Free Account
             </button>
-            <button onClick={() => setModal('signin')}
+            <button onClick={() => navigate('/login')}
               className="px-8 py-4 rounded-2xl text-white/70 font-bold border border-white/15 hover:border-white/30 hover:text-white transition-all bg-white/5">
               Sign In
             </button>
@@ -357,12 +214,12 @@ const LoginPage = () => {
       </footer>
 
       {/* Modals */}
-      {modal === 'signin' && <SignInModal onClose={() => setModal(null)} onGoogleSuccess={handleGoogleSuccess} />}
-
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };
 
 export default LoginPage;
+
+
 
