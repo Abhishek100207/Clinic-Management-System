@@ -5,6 +5,7 @@ import LoginPage from '../components/auth/LoginPage';
 import UnauthorizedPage from '../components/auth/UnauthorizedPage';
 import AppShell from '../components/layout/AppShell';
 
+import HomepageDashboard from '../components/dashboards/HomepageDashboard';
 import AdminDashboard from '../components/dashboards/AdminDashboard';
 import DoctorDashboard from '../components/dashboards/DoctorDashboard';
 import ReceptionistDashboard from '../components/dashboards/ReceptionistDashboard';
@@ -14,9 +15,10 @@ import PatientRegistrationForm from '../components/patients/PatientRegistrationF
 const AppRouter = () => {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<HomepageDashboard />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
 
       {/* Protected Routes encapsulated in AppShell */}
       <Route element={<AppShell />}>

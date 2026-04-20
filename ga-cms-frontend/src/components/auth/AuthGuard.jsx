@@ -5,7 +5,7 @@ import { authApi } from '../../api/auth';
 import { Spinner } from '../shared/Spinner';
 
 const AuthGuard = ({ children, allowedRoles }) => {
-  const { user, isAuthenticated, setAuth, logout } = useAuthStore();
+  const { user, isAuthenticated, setAuth } = useAuthStore();
   const [isChecking, setIsChecking] = useState(!isAuthenticated);
   const location = useLocation();
 
@@ -16,7 +16,7 @@ const AuthGuard = ({ children, allowedRoles }) => {
           const userData = await authApi.getMe();
           // If we reached here, axios interceptor worked and token is likely valid
           setAuth(userData, useAuthStore.getState().accessToken);
-        } catch (e) {
+        } catch (_e) {
           // Intentionally empty, handled by interceptor logout
         }
       }

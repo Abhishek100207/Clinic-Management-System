@@ -132,16 +132,24 @@ const SignUpModal = ({ onClose, onGoogleSuccess }) => {
 /* ── Main Landing Page ── */
 const LoginPage = () => {
   const [modal, setModal]   = useState(null);
-  const { setAuth }         = useAuthStore();
+  const { isAuthenticated, user, setAuth } = useAuthStore();
   const navigate            = useNavigate();
   const location            = useLocation();
+
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      const cfg = ROLE_CONFIG[user.role];
+      const from = location.state?.from?.pathname || (cfg ? cfg.dashboardRoute : '/');
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, user, navigate, location.state]);
 
   const handleGoogleSuccess = async (cred) => {
     try {
       const res  = await authApi.googleLogin(cred.credential);
       setAuth(res.user, res.access);
       const cfg  = ROLE_CONFIG[res.user.role];
-      const from = location.state?.from?.pathname || (cfg ? cfg.dashboardRoute : '/login');
+      const from = location.state?.from?.pathname || (cfg ? cfg.dashboardRoute : '/');
       navigate(from, { replace: true });
     } catch { /* error shown inside modal */ }
     finally { setModal(null); }
