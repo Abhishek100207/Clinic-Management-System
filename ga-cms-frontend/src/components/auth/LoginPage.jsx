@@ -209,7 +209,7 @@ const LoginPage = () => {
             className="px-5 py-2 rounded-full text-white/70 text-sm font-semibold border border-white/15 hover:border-white/35 hover:text-white transition-all bg-white/5">
             Sign In
           </button>
-          <button onClick={() => setModal('signup')}
+          <button onClick={() => setModal('signin')}
             className="px-5 py-2 rounded-full text-white text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-blue-900/40"
             style={{ background: 'linear-gradient(135deg,#1d4ed8,#0ea5e9)' }}>
             Sign Up
@@ -241,7 +241,7 @@ const LoginPage = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button onClick={() => setModal('signup')}
+            <button onClick={() => setModal('signin')}
               className="px-8 py-4 rounded-2xl text-white font-bold text-base hover:opacity-90 active:scale-[0.98] transition-all shadow-xl shadow-blue-900/50"
               style={{ background: 'linear-gradient(135deg,#1d4ed8,#0ea5e9)' }}>
               Get Started — It's Free
@@ -323,7 +323,7 @@ const LoginPage = () => {
           <h2 className="text-white font-black text-3xl lg:text-4xl mb-4">Ready to get started?</h2>
           <p className="text-white/50 text-lg mb-8">Join thousands of patients who trust GA Clinic for their healthcare needs.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button onClick={() => setModal('signup')}
+            <button onClick={() => setModal('signin')}
               className="px-8 py-4 rounded-2xl text-white font-bold hover:opacity-90 active:scale-[0.98] transition-all shadow-xl shadow-blue-900/50"
               style={{ background: 'linear-gradient(135deg,#1d4ed8,#0ea5e9)' }}>
               Create Free Account
@@ -358,7 +358,6 @@ const LoginPage = () => {
 
       {/* Modals */}
       {modal === 'signin' && <SignInModal onClose={() => setModal(null)} onGoogleSuccess={handleGoogleSuccess} />}
-      {modal === 'signup' && <SignUpModal onClose={() => setModal(null)} onGoogleSuccess={handleGoogleSuccess} />}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
@@ -366,3 +365,4 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+
