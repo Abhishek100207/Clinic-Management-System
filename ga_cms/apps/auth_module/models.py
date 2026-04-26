@@ -7,6 +7,7 @@ class CustomUser(AbstractUser):
         ('doctor', 'Doctor'),
         ('receptionist', 'Receptionist'),
         ('technician', 'Technician'),
+        ('patient', 'Patient'),
     ]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     avatar_url = models.URLField(blank=True, null=True)

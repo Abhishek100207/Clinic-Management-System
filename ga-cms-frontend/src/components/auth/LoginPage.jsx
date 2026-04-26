@@ -1,9 +1,35 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
+import { authApi } from '../../api/auth';
+import { ROLE_CONFIG } from '../../utils/roleConfig';
 
 /* ── Main Landing Page ── */
 const LoginPage = () => {
-  const navigate = useNavigate();
+  const [modal, setModal]   = useState(null);
+  const { isAuthenticated, user, setAuth } = useAuthStore();
+  const navigate            = useNavigate();
+  const location            = useLocation();
+
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      const cfg = ROLE_CONFIG[user.role];
+      const from = location.state?.from?.pathname || (cfg ? cfg.dashboardRoute : '/');
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, user, navigate, location.state]);
+
+  const handleGoogleSuccess = async (cred) => {
+    try {
+      const res  = await authApi.googleLogin(cred.credential);
+      setAuth(res.user, res.access);
+      const cfg  = ROLE_CONFIG[res.user.role];
+      const from = location.state?.from?.pathname || (cfg ? cfg.dashboardRoute : '/');
+      navigate(from, { replace: true });
+    } catch { /* error shown inside modal */ }
+    finally { setModal(null); }
+  };
+
   const services = [
     {
       icon: '🗓️',

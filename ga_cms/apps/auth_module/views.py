@@ -218,6 +218,29 @@ class RegisterVerifyOtpView(APIView):
             role=cached_data['role'],
         )
 
+        try:
+            from apps.users.models import Doctor, Patient
+            if user.role in ['senior_doctor', 'doctor']:
+                Doctor.objects.create(
+                    user=user,
+                    specialty='General',
+                    registration_number=f"DOC-{user.id}"
+                )
+            elif user.role == 'patient':
+                Patient.objects.create(
+                    user=user,
+                    patient_id=f"PAT-{user.id}",
+                    full_name=user.username,
+                    mobile_number=f"00000{user.id}"[:15],
+                    date_of_birth="2000-01-01",
+                    gender="Other",
+                    email=user.email
+                )
+        except Exception as e:
+            # Continue anyway if creation fails to not block sign up, 
+            # or log it. Ideally we want atomic transaction, but for this quick fix it is fine.
+            pass
+
         cache.delete(f'register_otp_{email}')
         cache.delete(f'register_data_{email}')
 

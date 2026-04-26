@@ -127,9 +127,7 @@ const SignUpPage = () => {
                   <div className="grid grid-cols-2 gap-2">
                     {[
                       { value: 'senior_doctor', label: 'Senior Doctor', icon: '👨‍⚕️' },
-                      { value: 'doctor',        label: 'Doctor',        icon: '🩺' },
-                      { value: 'receptionist',  label: 'Receptionist',  icon: '🗂️' },
-                      { value: 'technician',    label: 'Technician',    icon: '🔬' },
+                      { value: 'patient',       label: 'Patient',       icon: '🧑' },
                     ].map(({ value, label, icon }) => (
                       <button key={value} type="button" onClick={() => setRole(value)}
                         className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${

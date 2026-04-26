@@ -28,6 +28,7 @@ class Technician(models.Model):
 
 
 class Patient(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, null=True, blank=True, related_name='patient_profile')
     patient_id = models.CharField(max_length=20, unique=True)   # auto-gen
     full_name = models.CharField(max_length=200)
     date_of_birth = models.DateField()

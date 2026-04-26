@@ -8,8 +8,9 @@ export const ROLE_CONFIG = {
       { name: 'Patient Records', path: '/patients', icon: 'Users' },
       { name: 'Revenue', path: '/revenue', icon: 'IndianRupee' },
       { name: 'Staff Performance', path: '/performance/staff', icon: 'LineChart' },
-      { name: 'Doctors', path: '/doctors', icon: 'Stethoscope' },
-      { name: 'Audit Logs', path: '/logs', icon: 'ClipboardList' },
+      { name: 'Doctors',         path: '/doctors',          icon: 'Stethoscope' },
+      { name: 'Add Staff',       path: '/staff/add',        icon: 'UserPlus' },
+      { name: 'Audit Logs',      path: '/logs',             icon: 'ClipboardList' },
       { name: 'Settings', path: '/settings', icon: 'Settings' },
     ],
     badgeColor: 'bg-purple-100 text-purple-800'
@@ -18,13 +19,14 @@ export const ROLE_CONFIG = {
     displayName: 'Doctor',
     dashboardRoute: '/dashboard/doctor',
     navLinks: [
-      { name: 'Dashboard', path: '/dashboard/doctor', icon: 'LayoutDashboard' },
-      { name: 'My Appointments', path: '/my-appointments', icon: 'CalendarDays' },
-      { name: 'My Patients', path: '/my-patients', icon: 'Users' },
-      { name: 'Prescriptions', path: '/prescriptions', icon: 'FileText' },
-      { name: 'Scan Orders', path: '/scan-orders', icon: 'Activity' },
-      { name: 'Chat', path: '/chat', icon: 'MessageSquare' },
-      { name: 'My Performance', path: '/performance', icon: 'LineChart' },
+      { name: 'Dashboard',       path: '/dashboard/doctor', icon: 'LayoutDashboard' },
+      { name: 'My Appointments', path: '/my-appointments',  icon: 'CalendarDays' },
+      { name: 'My Patients',     path: '/my-patients',      icon: 'Users' },
+      { name: 'Prescriptions',   path: '/prescriptions',    icon: 'FileText' },
+      { name: 'Scan Orders',     path: '/scan-orders',      icon: 'Activity' },
+      { name: 'Add Staff',       path: '/staff/add',        icon: 'UserPlus' },
+      { name: 'Chat',            path: '/chat',             icon: 'MessageSquare' },
+      { name: 'My Performance',  path: '/performance',      icon: 'LineChart' },
     ],
     badgeColor: 'bg-blue-100 text-blue-800'
   },
@@ -48,5 +50,16 @@ export const ROLE_CONFIG = {
       { name: 'Upload Results', path: '/upload-results', icon: 'Upload' },
     ],
     badgeColor: 'bg-amber-100 text-amber-800'
+  },
+  patient: {
+    displayName: 'Patient',
+    dashboardRoute: '/dashboard/patient',
+    navLinks: [
+      { name: 'Dashboard', path: '/dashboard/patient', icon: 'LayoutDashboard' },
+      { name: 'My Appointments', path: '/my-appointments', icon: 'CalendarDays' },
+      { name: 'My Prescriptions', path: '/prescriptions', icon: 'FileText' },
+      { name: 'Test Results', path: '/test-results', icon: 'Activity' },
+    ],
+    badgeColor: 'bg-pink-100 text-pink-800'
   }
 };

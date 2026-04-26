@@ -40,4 +40,20 @@ export const authApi = {
     const res = await apiClient.post('/auth/logout/');
     return res.data;
   },
+
+  changePassword: async (current_password, new_password, confirm_password) => {
+    const res = await apiClient.post('/auth/change-password/', { current_password, new_password, confirm_password });
+    return res.data;
+  },
+
+  // Staff management (doctor / senior_doctor only)
+  addStaff: async (data) => {
+    const res = await apiClient.post('/staff/add/', data);
+    return res.data;
+  },
+
+  listStaff: async () => {
+    const res = await apiClient.get('/staff/');
+    return res.data;
+  },
 };
