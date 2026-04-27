@@ -33,10 +33,9 @@ const SignInPage = () => {
     setLoading(true);
     try {
       const data = await authApi.loginRequestOtp(email, password);
-      // In DEBUG mode backend returns debug_otp — show it so devs can test
-      if (data.debug_otp) setError(`[DEV] OTP: ${data.debug_otp}`);
       setStep('otp');
       startResendTimer();
+      if (data.debug_otp) setError(`🔑 DEV MODE — Your OTP is: ${data.debug_otp}`);
     } catch (err) {
       setError(err.response?.data?.error || 'Something went wrong. Try again.');
     } finally { setLoading(false); }
@@ -211,14 +210,21 @@ const SignInPage = () => {
   );
 };
 
-const ErrorBox = ({ msg }) => (
-  <div className="flex items-start gap-2 rounded-xl px-3 py-2.5 border border-red-400/20" style={{ background: 'rgba(239,68,68,0.08)' }}>
-    <svg className="w-4 h-4 text-red-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
-    </svg>
-    <p className="text-red-400 text-xs leading-relaxed">{msg}</p>
-  </div>
-);
+const ErrorBox = ({ msg }) => {
+  const isDev = msg?.startsWith('🔑 DEV MODE');
+  return (
+    <div className={`flex items-start gap-2 rounded-xl px-3 py-2.5 border ${isDev ? 'border-blue-400/20' : 'border-red-400/20'}`}
+      style={{ background: isDev ? 'rgba(59,130,246,0.1)' : 'rgba(239,68,68,0.08)' }}>
+      {isDev
+        ? <span className="text-lg shrink-0">🔑</span>
+        : <svg className="w-4 h-4 text-red-400 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+          </svg>
+      }
+      <p className={`text-xs leading-relaxed ${isDev ? 'text-blue-300 font-bold' : 'text-red-400'}`}>{msg}</p>
+    </div>
+  );
+};
 
 const Spinner = () => (
   <div className="w-10 h-10 rounded-full border-4 border-white/10 border-t-blue-400" style={{ animation: 'spin 0.8s linear infinite' }} />
