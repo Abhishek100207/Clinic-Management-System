@@ -17,6 +17,7 @@ import AddStaffPage from '../components/staff/AddStaffPage';
 import ChangePasswordPage from '../components/auth/ChangePasswordPage';
 import AuditLogsPage from '../components/admin/AuditLogsPage';
 import ComingSoonPage from '../components/shared/ComingSoonPage';
+import AppointmentBookingPage from '../components/appointments/AppointmentBookingPage';
 
 const AppRouter = () => {
   return (
@@ -45,7 +46,7 @@ const AppRouter = () => {
           element={<AuthGuard allowedRoles={['senior_doctor']}><AuditLogsPage /></AuthGuard>} />
         
         {/* Placeholder Routes */}
-        <Route path="/appointments" element={<ComingSoonPage />} />
+        <Route path="/appointments" element={<AppointmentBookingPage />} />
         <Route path="/patients" element={<ComingSoonPage />} />
         <Route path="/revenue" element={<ComingSoonPage />} />
         <Route path="/performance/staff" element={<ComingSoonPage />} />
