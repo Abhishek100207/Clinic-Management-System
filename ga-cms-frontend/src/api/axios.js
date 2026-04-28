@@ -25,6 +25,12 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Don't intercept auth endpoints to prevent infinite loops
+      const url = originalRequest.url || '';
+      if (url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/register')) {
+        return Promise.reject(error);
+      }
+
       originalRequest._retry = true;
       try {
         const { data } = await axios.post(

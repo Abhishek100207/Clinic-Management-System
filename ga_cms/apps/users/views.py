@@ -26,3 +26,37 @@ class AuditLogListView(APIView):
         logs = AuditLog.objects.all()[:100] # Limit to latest 100 for now
         serializer = AuditLogSerializer(logs, many=True)
         return Response(serializer.data)
+
+from .models import Doctor, Patient
+from apps.auth_module.serializers import UserSerializer
+
+class DoctorSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    class Meta:
+        model = Doctor
+        fields = ['id', 'user', 'specialty', 'registration_number']
+
+class PatientSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    class Meta:
+        model = Patient
+        fields = ['id', 'user', 'patient_id', 'full_name', 'email', 'mobile_number']
+
+class DoctorListView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        doctors = Doctor.objects.filter(is_visible_to_patients=True)
+        serializer = DoctorSerializer(doctors, many=True)
+        return Response(serializer.data)
+
+class PatientListView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        # Admin, Receptionist, Doctor can see all patients.
+        # Patients can only see themselves.
+        if request.user.role == 'patient':
+            patients = Patient.objects.filter(user=request.user)
+        else:
+            patients = Patient.objects.all()
+        serializer = PatientSerializer(patients, many=True)
+        return Response(serializer.data)
