@@ -1,0 +1,6 @@
+2026-04-28 13:37:28,601 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-28 14:12:59,011 - INFO - User: Senior_Doctor | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-04-28 14:13:26,577 - INFO - User: Subhash | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-28 14:13:33,793 - INFO - User: Subhash | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-04-28 14:14:34,779 - INFO - User: Subhash | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-28 14:14:58,170 - INFO - User: Subhash | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out

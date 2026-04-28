@@ -15,6 +15,8 @@ import PatientDashboard from '../components/dashboards/PatientDashboard';
 import PatientRegistrationForm from '../components/patients/PatientRegistrationForm';
 import AddStaffPage from '../components/staff/AddStaffPage';
 import ChangePasswordPage from '../components/auth/ChangePasswordPage';
+import AuditLogsPage from '../components/admin/AuditLogsPage';
+import ComingSoonPage from '../components/shared/ComingSoonPage';
 
 const AppRouter = () => {
   return (
@@ -39,6 +41,27 @@ const AppRouter = () => {
           element={<AuthGuard allowedRoles={['receptionist','doctor','senior_doctor']}><PatientRegistrationForm /></AuthGuard>} />
         <Route path="/staff/add"
           element={<AuthGuard allowedRoles={['doctor','senior_doctor']}><AddStaffPage /></AuthGuard>} />
+        <Route path="/logs"
+          element={<AuthGuard allowedRoles={['senior_doctor']}><AuditLogsPage /></AuthGuard>} />
+        
+        {/* Placeholder Routes */}
+        <Route path="/appointments" element={<ComingSoonPage />} />
+        <Route path="/patients" element={<ComingSoonPage />} />
+        <Route path="/revenue" element={<ComingSoonPage />} />
+        <Route path="/performance/staff" element={<ComingSoonPage />} />
+        <Route path="/doctors" element={<ComingSoonPage />} />
+        <Route path="/settings" element={<ComingSoonPage />} />
+        <Route path="/my-appointments" element={<ComingSoonPage />} />
+        <Route path="/my-patients" element={<ComingSoonPage />} />
+        <Route path="/prescriptions" element={<ComingSoonPage />} />
+        <Route path="/scan-orders" element={<ComingSoonPage />} />
+        <Route path="/chat" element={<ComingSoonPage />} />
+        <Route path="/performance" element={<ComingSoonPage />} />
+        <Route path="/queue" element={<ComingSoonPage />} />
+        <Route path="/billing" element={<ComingSoonPage />} />
+        <Route path="/upload-results" element={<ComingSoonPage />} />
+        <Route path="/test-results" element={<ComingSoonPage />} />
+
         <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Route>

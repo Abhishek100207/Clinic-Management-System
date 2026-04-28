@@ -14,6 +14,7 @@ from decouple import config
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from .serializers import UserSerializer
+from apps.users.services import log_security_event
 
 User = get_user_model()
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
@@ -78,6 +79,7 @@ class GoogleLoginView(APIView):
                 key='refresh_token', value=tokens['refresh'],
                 httponly=True, secure=config('SECURE_COOKIES', default=False, cast=bool), samesite='Strict'
             )
+            log_security_event(user, 'LOGIN', request, 'Logged in via Google OAuth')
             return response
         except ValueError as e:
             return Response({'error': f'Invalid token: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
@@ -143,6 +145,7 @@ class LoginVerifyOtpView(APIView):
             key='refresh_token', value=tokens['refresh'],
             httponly=True, secure=config('SECURE_COOKIES', default=False, cast=bool), samesite='Strict'
         )
+        log_security_event(user, 'LOGIN', request, 'Logged in via OTP')
         return response
 
 
@@ -250,6 +253,7 @@ class RegisterVerifyOtpView(APIView):
             key='refresh_token', value=tokens['refresh'],
             httponly=True, secure=config('SECURE_COOKIES', default=False, cast=bool), samesite='Strict'
         )
+        log_security_event(user, 'SIGNUP', request, f'Registered as {user.role}')
         return response
 
 
@@ -272,6 +276,10 @@ class LogoutView(APIView):
                 RefreshToken(refresh_token).blacklist()
         except Exception:
             pass
+        
+        if request.user.is_authenticated:
+            log_security_event(request.user, 'LOGOUT', request, 'Logged out')
+
         response = Response({'detail': 'Successfully logged out.'})
         response.delete_cookie('refresh_token')
         return response
