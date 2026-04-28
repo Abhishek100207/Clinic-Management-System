@@ -30,7 +30,7 @@ const AppRouter = () => {
         <Route path="/dashboard/admin"
           element={<AuthGuard allowedRoles={['senior_doctor']}><AdminDashboard /></AuthGuard>} />
         <Route path="/dashboard/doctor"
-          element={<AuthGuard allowedRoles={['doctor','senior_doctor']}><DoctorDashboard /></AuthGuard>} />
+          element={<AuthGuard allowedRoles={['doctor', 'senior_doctor']}><DoctorDashboard /></AuthGuard>} />
         <Route path="/dashboard/receptionist"
           element={<AuthGuard allowedRoles={['receptionist']}><ReceptionistDashboard /></AuthGuard>} />
         <Route path="/dashboard/technician"
@@ -38,12 +38,12 @@ const AppRouter = () => {
         <Route path="/dashboard/patient"
           element={<AuthGuard allowedRoles={['patient']}><PatientDashboard /></AuthGuard>} />
         <Route path="/register-patient"
-          element={<AuthGuard allowedRoles={['receptionist','doctor','senior_doctor']}><PatientRegistrationForm /></AuthGuard>} />
+          element={<AuthGuard allowedRoles={['receptionist', 'doctor', 'senior_doctor']}><PatientRegistrationForm /></AuthGuard>} />
         <Route path="/staff/add"
-          element={<AuthGuard allowedRoles={['doctor','senior_doctor']}><AddStaffPage /></AuthGuard>} />
+          element={<AuthGuard allowedRoles={['doctor', 'senior_doctor']}><AddStaffPage /></AuthGuard>} />
         <Route path="/logs"
           element={<AuthGuard allowedRoles={['senior_doctor']}><AuditLogsPage /></AuthGuard>} />
-        
+
         {/* Placeholder Routes */}
         <Route path="/appointments" element={<ComingSoonPage />} />
         <Route path="/patients" element={<ComingSoonPage />} />
