@@ -4,3 +4,7 @@
 2026-04-28 14:13:33,793 - INFO - User: Subhash | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
 2026-04-28 14:14:34,779 - INFO - User: Subhash | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-04-28 14:14:58,170 - INFO - User: Subhash | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-04-28 15:58:02,395 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-28 16:31:57,869 - INFO - User: priya | Action: SIGNUP | IP: 127.0.0.1 | Details: Registered as patient
+2026-04-28 16:32:28,839 - INFO - User: priya | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-04-28 16:33:00,720 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP

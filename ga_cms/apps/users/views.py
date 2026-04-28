@@ -6,6 +6,7 @@ from .models import AuditLog
 
 class AuditLogSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
+    ip_address = serializers.CharField(required=False, allow_null=True)
 
     class Meta:
         model = AuditLog
