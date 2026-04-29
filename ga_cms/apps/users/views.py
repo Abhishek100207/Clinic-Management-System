@@ -40,7 +40,7 @@ class PatientSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     class Meta:
         model = Patient
-        fields = ['id', 'user', 'patient_id', 'full_name', 'email', 'mobile_number']
+        fields = ['id', 'user', 'patient_id', 'full_name', 'email', 'mobile_number', 'blood_group', 'known_allergies', 'chronic_conditions']
 
 class DoctorListView(APIView):
     permission_classes = [IsAuthenticated]

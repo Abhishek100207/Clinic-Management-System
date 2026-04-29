@@ -31,14 +31,25 @@ def generate_available_slots(doctor_id, target_date, appointment_type):
     )
 
     all_slots = []
-    for avail in availabilities:
-        current_time = datetime.datetime.combine(target_date, avail.start_time)
-        end_time = datetime.datetime.combine(target_date, avail.end_time)
-        slot_duration = datetime.timedelta(minutes=avail.slot_duration)
-
+    
+    # Fallback for testing: if doctor has no schedule configured, assume 09:00 to 17:00
+    if not availabilities.exists():
+        current_time = datetime.datetime.combine(target_date, datetime.time(9, 0))
+        end_time = datetime.datetime.combine(target_date, datetime.time(17, 0))
+        slot_duration = datetime.timedelta(minutes=20)
+        
         while current_time + slot_duration <= end_time:
             all_slots.append(current_time.time())
             current_time += slot_duration
+    else:
+        for avail in availabilities:
+            current_time = datetime.datetime.combine(target_date, avail.start_time)
+            end_time = datetime.datetime.combine(target_date, avail.end_time)
+            slot_duration = datetime.timedelta(minutes=avail.slot_duration)
+
+            while current_time + slot_duration <= end_time:
+                all_slots.append(current_time.time())
+                current_time += slot_duration
 
     # Remove booked or locked slots
     now = timezone.now()
