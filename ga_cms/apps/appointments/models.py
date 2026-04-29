@@ -1,8 +1,4 @@
 from django.db import models
-<<<<<<< HEAD
-
-# Create your models here.
-=======
 from apps.users.models import Doctor, Patient
 from apps.auth_module.models import CustomUser
 
@@ -74,4 +70,3 @@ class RescheduleHistory(models.Model):
 
     def __str__(self):
         return f"Reschedule for Appointment ID {self.appointment.id} by {self.rescheduled_by}"
->>>>>>> bdc4add16a8c67780c283c6119ab20ddb44fb68c
