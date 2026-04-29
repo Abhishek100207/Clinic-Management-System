@@ -47,6 +47,7 @@ def send_otp_email(email, otp, purpose='login'):
 # ── Google OAuth ──────────────────────────────────────────────────────────────
 
 class GoogleLoginView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -89,6 +90,7 @@ class GoogleLoginView(APIView):
 
 class LoginRequestOtpView(APIView):
     """Step 1 of sign-in: validate credentials, send OTP to email."""
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -121,6 +123,7 @@ class LoginRequestOtpView(APIView):
 
 class LoginVerifyOtpView(APIView):
     """Step 2 of sign-in: verify OTP, return JWT."""
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -153,6 +156,7 @@ class LoginVerifyOtpView(APIView):
 
 class RegisterRequestOtpView(APIView):
     """Step 1 of sign-up: validate fields, cache data, send OTP."""
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -193,6 +197,7 @@ class RegisterRequestOtpView(APIView):
 
 class RegisterVerifyOtpView(APIView):
     """Step 2 of sign-up: verify OTP, create user, return JWT."""
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -286,6 +291,7 @@ class LogoutView(APIView):
 
 
 class CookieTokenRefreshView(APIView):
+    authentication_classes = []
     permission_classes = [AllowAny]
 
     def post(self, request):

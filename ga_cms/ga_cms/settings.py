@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     # Local apps
     'apps.auth_module',
     'apps.users',
+    'apps.appointments',
 ]
 
 MIDDLEWARE = [
