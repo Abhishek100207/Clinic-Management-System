@@ -15,3 +15,5 @@
 2026-04-29 12:25:04,140 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-04-29 12:26:40,856 - INFO - User: sony | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-04-29 12:31:20,913 - INFO - User: Karthik | Action: SIGNUP | IP: 127.0.0.1 | Details: Registered as senior_doctor
+2026-04-29 13:26:09,761 - INFO - User: Karthik | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-29 13:27:40,875 - INFO - User: aditya | Action: SIGNUP | IP: 127.0.0.1 | Details: Registered as patient
