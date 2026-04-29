@@ -8,3 +8,8 @@
 2026-04-28 16:31:57,869 - INFO - User: priya | Action: SIGNUP | IP: 127.0.0.1 | Details: Registered as patient
 2026-04-28 16:32:28,839 - INFO - User: priya | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
 2026-04-28 16:33:00,720 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-28 19:32:16,731 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-28 19:33:50,963 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-04-28 19:34:16,676 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-28 19:37:17,481 - INFO - User: Senior_Doctor | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-04-28 19:37:32,950 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
