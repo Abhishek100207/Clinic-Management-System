@@ -12,7 +12,8 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().accessToken;
-    if (token) {
+    // Do not attach token for auth endpoints
+    if (token && !config.url.includes('/auth/login') && !config.url.includes('/auth/register') && !config.url.includes('/auth/refresh')) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
@@ -24,6 +25,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    // Do not trigger refresh logic for auth endpoints
+    if (originalRequest.url.includes('/auth/login') || originalRequest.url.includes('/auth/register') || originalRequest.url.includes('/auth/refresh')) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       // Don't intercept auth endpoints to prevent infinite loops
       const url = originalRequest.url || '';
