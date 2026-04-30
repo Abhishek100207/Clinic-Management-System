@@ -25,3 +25,12 @@
 2026-04-29 12:26:40,856 - INFO - User: sony | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-04-29 12:31:20,913 - INFO - User: Karthik | Action: SIGNUP | IP: 127.0.0.1 | Details: Registered as senior_doctor
 2026-04-29 13:21:14,685 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-30 14:36:20,052 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-30 14:48:21,573 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-30 15:14:31,950 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-30 15:16:09,724 - INFO - User: Senior_Doctor | Action: STAFF_CREATED | IP: 127.0.0.1 | Details: Created staff user: Dr. mahesh as doctor
+2026-04-30 15:17:34,297 - INFO - User: Dr. mahesh | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-30 15:44:32,548 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-30 15:45:38,815 - INFO - User: Dr. mahesh | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-30 15:54:37,620 - INFO - User: priya | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-04-30 15:56:46,846 - INFO - User: Dr. mahesh | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP

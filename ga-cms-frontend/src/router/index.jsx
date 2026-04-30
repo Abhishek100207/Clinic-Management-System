@@ -18,6 +18,7 @@ import ChangePasswordPage from '../components/auth/ChangePasswordPage';
 import AuditLogsPage from '../components/admin/AuditLogsPage';
 import ComingSoonPage from '../components/shared/ComingSoonPage';
 import AppointmentBookingPage from '../components/appointments/AppointmentBookingPage';
+import DoctorAppointmentsPage from '../components/appointments/DoctorAppointmentsPage';
 
 const AppRouter = () => {
   return (
@@ -52,7 +53,8 @@ const AppRouter = () => {
         <Route path="/performance/staff" element={<ComingSoonPage />} />
         <Route path="/doctors" element={<ComingSoonPage />} />
         <Route path="/settings" element={<ComingSoonPage />} />
-        <Route path="/my-appointments" element={<ComingSoonPage />} />
+        <Route path="/my-appointments" 
+          element={<AuthGuard allowedRoles={['doctor', 'senior_doctor', 'patient']}><DoctorAppointmentsPage /></AuthGuard>} />
         <Route path="/my-patients" element={<ComingSoonPage />} />
         <Route path="/prescriptions" element={<ComingSoonPage />} />
         <Route path="/scan-orders" element={<ComingSoonPage />} />

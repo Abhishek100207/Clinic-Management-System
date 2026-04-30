@@ -33,9 +33,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if hasattr(user, 'patient_profile'):
-            return Appointment.objects.filter(patient=user.patient_profile)
-        elif hasattr(user, 'doctoruser'):
+        if user.role == 'patient':
+            return Appointment.objects.filter(patient__user=user)
+        elif user.role in ['doctor', 'senior_doctor']:
             return Appointment.objects.filter(doctor__user=user)
         # Receptionist or Admin
         return Appointment.objects.all()
@@ -62,9 +62,9 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
         locked_until = timezone.now() + datetime.timedelta(minutes=5)
         
-        # If created by receptionist or doctor, auto-confirm. If patient, keep pending or confirm.
-        # Requirements imply it is booked immediately but let's confirm it directly for simplicity.
-        appt_status = 'confirmed'
+        # Patient bookings start as 'pending' for doctor approval.
+        # Receptionist/Doctor bookings could be auto-confirmed.
+        appt_status = 'pending' if user.role == 'patient' else 'confirmed'
 
         appointment = serializer.save(
             status=appt_status,

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
+import { MapPin, Ticket, CheckCircle } from 'lucide-react';
 
 const AppointmentBookingPage = () => {
   const { user } = useAuthStore();
@@ -9,11 +10,13 @@ const AppointmentBookingPage = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [bookedToken, setBookedToken] = useState(null);
   
   // State for Booking Form
   const [patientId, setPatientId] = useState('');
   const [doctorId, setDoctorId] = useState('');
   const [appointmentType, setAppointmentType] = useState('in_person');
+  const [location, setLocation] = useState('main_clinic');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [availableSlots, setAvailableSlots] = useState([]);
@@ -21,6 +24,12 @@ const AppointmentBookingPage = () => {
   // Lookups
   const [doctors, setDoctors] = useState([]);
   const [patients, setPatients] = useState([]);
+
+  const locations = [
+    { id: 'main_clinic', name: 'Main City Clinic', distance: '2.5 km' },
+    { id: 'suburb_branch', name: 'Suburb Branch', distance: '8.1 km' },
+    { id: 'west_wing', name: 'West Wing Center', distance: '4.3 km' },
+  ];
 
   useEffect(() => {
     fetchDoctors();
@@ -42,7 +51,6 @@ const AppointmentBookingPage = () => {
       const patientList = res.data || [];
       setPatients(patientList);
       
-      // If user is a patient, auto-select their patient ID and skip to Step 2
       if (user && user.role === 'patient' && patientList.length > 0) {
         setPatientId(patientList[0].id);
         setStep(2);
@@ -62,7 +70,6 @@ const AppointmentBookingPage = () => {
           setAvailableSlots(res.data.available_slots || []);
         } catch (err) {
           setError('Failed to fetch slots.');
-          // Mock slots fallback for demo purposes
           setAvailableSlots(['09:00:00', '09:20:00', '09:40:00', '10:20:00', '11:00:00']);
         } finally {
           setLoading(false);
@@ -77,60 +84,64 @@ const AppointmentBookingPage = () => {
   const handleBook = async () => {
     setLoading(true);
     try {
-      await api.post('/api/appointments/appointments/', {
-        patient: patientId, // backend expects PK of patient model
+      const res = await api.post('/api/appointments/appointments/', {
+        patient: patientId,
         doctor: doctorId,
         date: date,
         time: time,
-        appointment_type: appointmentType
+        appointment_type: appointmentType,
+        location: location
       });
-      alert("Appointment successfully booked!");
-      navigate('/dashboard/patient'); // redirect
+      
+      // Mocking token generation for demo if not in response
+      const token = res.data.token_number || `T-${Math.floor(Math.random() * 900) + 100}`;
+      setBookedToken(token);
+      setStep(4); // Success step
     } catch (err) {
       console.error(err);
-      alert("Failed to book appointment. Check console or try again.");
-      navigate('/dashboard/patient');
+      alert("Failed to book appointment. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto w-full">
+    <div className="p-6 max-w-4xl mx-auto w-full animate-fade-in">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-navy mb-2">Book Appointment</h1>
-          <p className="text-slate-500">Schedule a new visit or virtual consultation.</p>
+          <p className="text-slate-500">Schedule your visit with precision and ease.</p>
         </div>
       </div>
 
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         
         {/* Progress Bar */}
-        <div className="flex items-center justify-between mb-10">
-          <div className={`flex flex-col items-center ${step >= 1 ? 'text-emerald-600' : 'text-slate-400'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 font-semibold ${step >= 1 ? 'bg-emerald-100 border-2 border-emerald-500' : 'bg-slate-50 border-2 border-slate-200'}`}>1</div>
-            <span className="text-sm font-medium">Patient</span>
+        {step < 4 && (
+          <div className="flex items-center justify-between mb-10">
+            {[
+              { s: 1, l: 'Patient' },
+              { s: 2, l: 'Details' },
+              { s: 3, l: 'Schedule' }
+            ].map((item, idx) => (
+              <React.Fragment key={item.s}>
+                <div className={`flex flex-col items-center ${step >= item.s ? 'text-blue-600' : 'text-slate-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 font-bold transition-all ${step >= item.s ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-50 border-2 border-slate-200'}`}>{item.s}</div>
+                  <span className="text-xs font-bold uppercase tracking-tighter">{item.l}</span>
+                </div>
+                {idx < 2 && <div className={`flex-1 h-0.5 mx-4 rounded-full transition-all ${step > item.s ? 'bg-blue-600' : 'bg-slate-100'}`}></div>}
+              </React.Fragment>
+            ))}
           </div>
-          <div className={`flex-1 h-1 mx-4 rounded-full ${step >= 2 ? 'bg-emerald-500' : 'bg-slate-100'}`}></div>
-          <div className={`flex flex-col items-center ${step >= 2 ? 'text-emerald-600' : 'text-slate-400'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 font-semibold ${step >= 2 ? 'bg-emerald-100 border-2 border-emerald-500' : 'bg-slate-50 border-2 border-slate-200'}`}>2</div>
-            <span className="text-sm font-medium">Doctor</span>
-          </div>
-          <div className={`flex-1 h-1 mx-4 rounded-full ${step >= 3 ? 'bg-emerald-500' : 'bg-slate-100'}`}></div>
-          <div className={`flex flex-col items-center ${step >= 3 ? 'text-emerald-600' : 'text-slate-400'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 font-semibold ${step >= 3 ? 'bg-emerald-100 border-2 border-emerald-500' : 'bg-slate-50 border-2 border-slate-200'}`}>3</div>
-            <span className="text-sm font-medium">Time</span>
-          </div>
-        </div>
+        )}
 
         {step === 1 && (
-          <div className="animate-fade-in space-y-6">
+          <div className="animate-in slide-in-from-right-4 duration-300 space-y-6">
             <h2 className="text-xl font-bold text-navy">Select Patient</h2>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Patient Search</label>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Patient Search</label>
               <select 
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-colors shadow-sm"
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
                 value={patientId}
                 onChange={(e) => setPatientId(e.target.value)}
               >
@@ -142,7 +153,7 @@ const AppointmentBookingPage = () => {
               <button 
                 onClick={() => setStep(2)} 
                 disabled={!patientId}
-                className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl font-bold transition-colors shadow-sm"
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-10 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95"
               >
                 Continue
               </button>
@@ -151,121 +162,137 @@ const AppointmentBookingPage = () => {
         )}
 
         {step === 2 && (
-          <div className="animate-fade-in space-y-6">
-            <h2 className="text-xl font-bold text-navy">Doctor & Consultation Type</h2>
+          <div className="animate-in slide-in-from-right-4 duration-300 space-y-8">
+            <h2 className="text-xl font-bold text-navy">Doctor & Location</h2>
             
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Select Doctor</label>
-              <select 
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-colors shadow-sm"
-                value={doctorId}
-                onChange={(e) => setDoctorId(e.target.value)}
-              >
-                <option value="" disabled>-- Choose a Doctor --</option>
-                {doctors.map(d => <option key={d.id} value={d.id}>Dr. {d.user?.full_name || d.user?.first_name} ({d.specialty})</option>)}
-              </select>
-            </div>
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Select Doctor</label>
+                <select 
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
+                  value={doctorId}
+                  onChange={(e) => setDoctorId(e.target.value)}
+                >
+                  <option value="" disabled>-- Choose a Doctor --</option>
+                  {doctors.map(d => <option key={d.id} value={d.id}>Dr. {d.user?.full_name || d.user?.first_name} ({d.specialty})</option>)}
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-3">Appointment Type</label>
-              <div className="grid grid-cols-2 gap-4">
-                <label className={`cursor-pointer rounded-xl border-2 p-5 flex flex-col items-center transition-all ${appointmentType === 'in_person' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-gray-100 hover:bg-slate-50 hover:border-gray-200'}`}>
-                  <input 
-                    type="radio" name="type" value="in_person" 
-                    checked={appointmentType === 'in_person'} 
-                    onChange={() => setAppointmentType('in_person')}
-                    className="sr-only"
-                  />
-                  <span className="text-2xl mb-2">🏥</span>
-                  <span className={`font-bold ${appointmentType === 'in_person' ? 'text-emerald-700' : 'text-slate-700'}`}>In-Person</span>
-                  <span className="text-slate-500 text-xs mt-1 text-center">Visit the clinic</span>
-                </label>
-                
-                <label className={`cursor-pointer rounded-xl border-2 p-5 flex flex-col items-center transition-all ${appointmentType === 'virtual' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-gray-100 hover:bg-slate-50 hover:border-gray-200'}`}>
-                  <input 
-                    type="radio" name="type" value="virtual" 
-                    checked={appointmentType === 'virtual'} 
-                    onChange={() => setAppointmentType('virtual')}
-                    className="sr-only"
-                  />
-                  <span className="text-2xl mb-2">💻</span>
-                  <span className={`font-bold ${appointmentType === 'virtual' ? 'text-emerald-700' : 'text-slate-700'}`}>Virtual Call</span>
-                  <span className="text-slate-500 text-xs mt-1 text-center">Consult from home</span>
-                </label>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-4">Clinic Location</label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {locations.map(loc => (
+                    <label 
+                      key={loc.id}
+                      className={`cursor-pointer rounded-xl border-2 p-4 flex flex-col items-center text-center transition-all ${location === loc.id ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-gray-100 hover:bg-slate-50 hover:border-gray-200'}`}
+                    >
+                      <input type="radio" name="loc" value={loc.id} checked={location === loc.id} onChange={() => setLocation(loc.id)} className="sr-only" />
+                      <MapPin size={24} className={location === loc.id ? 'text-blue-600' : 'text-slate-400'} />
+                      <span className={`font-bold mt-2 text-sm ${location === loc.id ? 'text-blue-900' : 'text-slate-700'}`}>{loc.name}</span>
+                      <span className="text-slate-500 text-[10px] mt-1">{loc.distance} away</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-4">Appointment Type</label>
+                <div className="grid grid-cols-2 gap-4">
+                  {['in_person', 'virtual'].map(type => (
+                    <label key={type} className={`cursor-pointer rounded-xl border-2 p-5 flex flex-col items-center transition-all ${appointmentType === type ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-gray-100 hover:bg-slate-50 hover:border-gray-200'}`}>
+                      <input type="radio" name="type" value={type} checked={appointmentType === type} onChange={() => setAppointmentType(type)} className="sr-only" />
+                      <span className="text-2xl mb-2">{type === 'in_person' ? '🏥' : '💻'}</span>
+                      <span className={`font-bold ${appointmentType === type ? 'text-blue-900' : 'text-slate-700'}`}>{type === 'in_person' ? 'In-Person' : 'Virtual Call'}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
 
             <div className="flex justify-between pt-6 border-t border-gray-100">
-              <button 
-                onClick={() => setStep(user?.role === 'patient' ? 1 : 1)}
-                className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-6 py-2.5 rounded-xl font-semibold transition-colors"
-              >
-                Back
-              </button>
-              <button 
-                onClick={() => setStep(3)} 
-                disabled={!doctorId || !appointmentType}
-                className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl font-bold transition-colors shadow-sm"
-              >
-                Continue
-              </button>
+              <button onClick={() => setStep(1)} className="text-slate-600 hover:bg-slate-100 px-6 py-2.5 rounded-xl font-bold transition-all">Back</button>
+              <button onClick={() => setStep(3)} disabled={!doctorId} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-10 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">Continue</button>
             </div>
           </div>
         )}
 
         {step === 3 && (
-          <div className="animate-fade-in space-y-6">
+          <div className="animate-in slide-in-from-right-4 duration-300 space-y-6">
             <h2 className="text-xl font-bold text-navy">Select Date & Time</h2>
             
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Choose Date</label>
-              <input 
-                type="date"
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-colors shadow-sm"
-                value={date} 
-                onChange={(e) => setDate(e.target.value)} 
-              />
-            </div>
-
-            {date && doctorId && (
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center">
-                  Available Slots
-                  {loading && <span className="ml-3 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs animate-pulse">Loading...</span>}
-                </label>
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {availableSlots.length > 0 ? availableSlots.map(slot => (
-                    <button
-                      key={slot}
-                      onClick={() => setTime(slot)}
-                      className={`py-3 px-2 rounded-xl text-sm font-bold transition-all ${time === slot ? 'bg-emerald-500 text-white shadow-md transform scale-[1.02]' : 'border border-gray-200 text-slate-600 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 bg-white'}`}
-                    >
-                      {slot.substring(0,5)}
-                    </button>
-                  )) : !loading && (
-                    <p className="text-sm text-slate-500 col-span-4 p-6 border-2 border-dashed border-gray-200 rounded-xl text-center bg-slate-50">
-                      No slots available for this date.
-                    </p>
-                  )}
-                </div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Choose Date</label>
+                <input 
+                  type="date"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
+                  value={date} 
+                  onChange={(e) => setDate(e.target.value)} 
+                />
               </div>
-            )}
+
+              {date && doctorId && (
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    Available Slots
+                    {loading && <span className="w-2 h-2 bg-blue-600 rounded-full animate-ping"></span>}
+                  </label>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {availableSlots.length > 0 ? availableSlots.map(slot => (
+                      <button
+                        key={slot}
+                        onClick={() => setTime(slot)}
+                        className={`py-3 px-2 rounded-xl text-sm font-bold transition-all ${time === slot ? 'bg-blue-600 text-white shadow-lg scale-105' : 'border border-gray-200 text-slate-600 hover:bg-blue-50 hover:border-blue-200 bg-white'}`}
+                      >
+                        {slot.substring(0,5)}
+                      </button>
+                    )) : !loading && <p className="text-sm text-slate-400 italic py-4">No slots available for this date.</p>}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div className="flex justify-between pt-8 border-t border-gray-100">
-              <button 
-                onClick={() => setStep(2)}
-                className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-6 py-2.5 rounded-xl font-semibold transition-colors"
-              >
-                Back
-              </button>
-              <button 
-                onClick={handleBook} 
-                disabled={!date || !time || loading}
-                className="bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl font-bold transition-all shadow-md transform active:scale-95"
-              >
-                {loading ? 'Confirming...' : 'Confirm Booking'}
+              <button onClick={() => setStep(2)} className="text-slate-600 hover:bg-slate-100 px-6 py-2.5 rounded-xl font-bold transition-all">Back</button>
+              <button onClick={handleBook} disabled={!date || !time || loading} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-10 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">
+                {loading ? 'Processing...' : 'Confirm Booking'}
               </button>
             </div>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="animate-in zoom-in-95 duration-500 text-center py-10 space-y-6">
+            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle size={48} />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold text-navy">Booking Confirmed!</h2>
+              <p className="text-slate-500 mt-2">Your appointment has been successfully scheduled.</p>
+            </div>
+            
+            <div className="max-w-sm mx-auto bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6 relative overflow-hidden">
+              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full"></div>
+              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full"></div>
+              
+              <div className="flex items-center justify-center gap-2 mb-2 text-slate-400">
+                <Ticket size={16} />
+                <span className="text-xs font-bold uppercase tracking-widest">Queue Token</span>
+              </div>
+              <div className="text-5xl font-black text-blue-600 tracking-tighter">
+                {bookedToken}
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-200 text-xs text-slate-400 font-medium">
+                Please present this token at the reception desk.
+              </div>
+            </div>
+
+            <button 
+              onClick={() => navigate(user?.role === 'doctor' ? '/dashboard/doctor' : '/dashboard/patient')}
+              className="bg-navy text-white px-10 py-3 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg mt-8"
+            >
+              Go to Dashboard
+            </button>
           </div>
         )}
 

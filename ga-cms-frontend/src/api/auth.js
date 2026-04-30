@@ -48,12 +48,12 @@ export const authApi = {
 
   // Staff management (doctor / senior_doctor only)
   addStaff: async (data) => {
-    const res = await apiClient.post('/staff/add/', data);
+    const res = await apiClient.post('/api/users/staff/add/', data);
     return res.data;
   },
 
   listStaff: async () => {
-    const res = await apiClient.get('/staff/');
+    const res = await apiClient.get('/api/users/staff/');
     return res.data;
   },
 };
