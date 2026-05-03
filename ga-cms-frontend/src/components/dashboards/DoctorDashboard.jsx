@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
+import { useNavigate } from 'react-router-dom';
 import { useAppointmentStore } from '../../store/appointmentStore';
 import DoctorStats from './doctor/DoctorStats';
 import AppointmentTable from './doctor/AppointmentTable';
@@ -7,9 +8,10 @@ import AvailabilityCalendar from './doctor/AvailabilityCalendar';
 import EmergencyRescheduler from './doctor/EmergencyRescheduler';
 import RescheduleModal from '../appointments/RescheduleModal';
 import { Badge } from '../shared/Badge';
-import { Bell, Settings, AlertTriangle, CheckCircle, FileText, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Bell, Settings, AlertTriangle, CheckCircle, FileText, ToggleLeft, ToggleRight, Plus } from 'lucide-react';
 
 const DoctorDashboard = () => {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { 
     appointments, 
@@ -114,6 +116,13 @@ const DoctorDashboard = () => {
               {notificationsEnabled ? <ToggleRight size={32} /> : <ToggleLeft size={32} className="text-slate-300" />}
             </button>
           </div>
+          <button 
+            onClick={() => navigate('/appointments')}
+            className="flex items-center gap-2 bg-blue-600 text-white font-bold px-4 py-2 rounded-xl shadow-md hover:bg-blue-700 transition-colors"
+          >
+            <Plus size={18} />
+            Book New
+          </button>
           <button 
             onClick={() => setIsEmergencyModalOpen(true)}
             className="flex items-center gap-2 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold px-4 py-2 rounded-xl border border-rose-100 transition-colors"

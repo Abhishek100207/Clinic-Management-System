@@ -21,10 +21,10 @@ export const ROLE_CONFIG = {
     navLinks: [
       { name: 'Dashboard',       path: '/dashboard/doctor', icon: 'LayoutDashboard' },
       { name: 'My Appointments', path: '/my-appointments',  icon: 'CalendarDays' },
+      { name: 'Book Appointment', path: '/appointments',    icon: 'PlusCircle' },
       { name: 'My Patients',     path: '/my-patients',      icon: 'Users' },
       { name: 'Prescriptions',   path: '/prescriptions',    icon: 'FileText' },
       { name: 'Scan Orders',     path: '/scan-orders',      icon: 'Activity' },
-      { name: 'Add Staff',       path: '/staff/add',        icon: 'UserPlus' },
       { name: 'Chat',            path: '/chat',             icon: 'MessageSquare' },
       { name: 'My Performance',  path: '/performance',      icon: 'LineChart' },
     ],
@@ -57,6 +57,7 @@ export const ROLE_CONFIG = {
     navLinks: [
       { name: 'Dashboard', path: '/dashboard/patient', icon: 'LayoutDashboard' },
       { name: 'My Appointments', path: '/my-appointments', icon: 'CalendarDays' },
+      { name: 'Book Appointment', path: '/appointments',   icon: 'PlusCircle' },
       { name: 'My Prescriptions', path: '/prescriptions', icon: 'FileText' },
       { name: 'Test Results', path: '/test-results', icon: 'Activity' },
     ],

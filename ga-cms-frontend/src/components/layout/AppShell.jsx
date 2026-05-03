@@ -5,14 +5,13 @@ import TopNav from './TopNav';
 
 const AppShell = () => {
   return (
-    <div className="flex h-screen bg-offwhite overflow-hidden">
-      <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <TopNav />
-        <main className="flex-1 overflow-y-auto p-8 border-t border-gray-100 relative">
+    <div className="flex flex-col min-h-screen bg-offwhite">
+      <TopNav />
+      <main className="flex-1 p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
           <Outlet />
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };

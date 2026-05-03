@@ -64,7 +64,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         
         # Patient bookings start as 'pending' for doctor approval.
         # Receptionist/Doctor bookings could be auto-confirmed.
-        appt_status = 'pending' if user.role == 'patient' else 'confirmed'
+        appt_status = 'pending' if request.user.role == 'patient' else 'confirmed'
 
         appointment = serializer.save(
             status=appt_status,
