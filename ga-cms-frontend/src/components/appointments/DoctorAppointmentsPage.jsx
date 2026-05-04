@@ -1,14 +1,15 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppointmentStore } from '../../store/appointmentStore';
+import { useAuthStore } from '../../store/authStore';
 import AppointmentTable from '../dashboards/doctor/AppointmentTable';
 import { Calendar, Filter, RefreshCw, Plus } from 'lucide-react';
 import RescheduleModal from './RescheduleModal';
 import api from '../../api/axios';
-import { useState } from 'react';
 
 const DoctorAppointmentsPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const { appointments, loading, fetchDoctorDashboardData, updateAppointmentStatus } = useAppointmentStore();
   const [rescheduleData, setRescheduleData] = useState({ isOpen: false, appointment: null });
 
@@ -48,13 +49,6 @@ const DoctorAppointmentsPage = () => {
         </div>
         
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => navigate('/appointments')}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md active:scale-95"
-          >
-            <Plus size={20} />
-            Book New Appointment
-          </button>
           <button 
             onClick={fetchDoctorDashboardData}
             className="p-2.5 rounded-xl border border-gray-200 text-slate-500 hover:bg-slate-50 transition-colors"

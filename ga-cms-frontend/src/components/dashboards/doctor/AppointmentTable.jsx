@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, X, Calendar, User, MoreVertical, Clock } from 'lucide-react';
+import { Check, X, Calendar, User, MoreVertical, Clock, MapPin } from 'lucide-react';
 import { Badge } from '../../shared/Badge';
 
 const AppointmentTable = ({ appointments, onAction }) => {
@@ -22,8 +22,8 @@ const AppointmentTable = ({ appointments, onAction }) => {
               <th className="px-6 py-4">Patient & Token</th>
               <th className="px-6 py-4">Time</th>
               <th className="px-6 py-4">Type</th>
-              <th className="px-6 py-4">Visits</th>
               <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4">Location</th>
               <th className="px-6 py-4 text-right">Actions</th>
             </tr>
           </thead>
@@ -44,7 +44,7 @@ const AppointmentTable = ({ appointments, onAction }) => {
                 <td className="px-6 py-4">
                   <div className="flex items-center text-slate-700 font-medium">
                     <Calendar size={14} className="mr-2 text-slate-400" />
-                    {appt.time.substring(0,5)}
+                    {appt.time.substring(0, 5)}
                   </div>
                 </td>
                 <td className="px-6 py-4">
@@ -53,16 +53,20 @@ const AppointmentTable = ({ appointments, onAction }) => {
                   </Badge>
                 </td>
                 <td className="px-6 py-4 text-sm text-slate-600 font-semibold">
-                  {appt.revisit_count || 1} visits
+                  <div className="flex items-center gap-1.5">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${appt.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800' :
+                      appt.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                        'bg-slate-100 text-slate-800'
+                      }`}>
+                      {appt.status}
+                    </span>
+                  </div>
                 </td>
                 <td className="px-6 py-4">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    appt.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800' :
-                    appt.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                    'bg-slate-100 text-slate-800'
-                  }`}>
-                    {appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}
-                  </span>
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <MapPin size={14} className="text-slate-400" />
+                    <span className="text-sm font-medium">{appt.patient_location || 'Not set'}</span>
+                  </div>
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-2">
@@ -70,31 +74,23 @@ const AppointmentTable = ({ appointments, onAction }) => {
                       <>
                         <button 
                           onClick={() => onAction(appt.id, 'confirmed')}
-                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                          title="Accept"
+                          className="bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border border-emerald-100 shadow-sm"
                         >
-                          <Check size={18} />
+                          Confirm
                         </button>
                         <button 
                           onClick={() => onAction(appt.id, 'cancelled')}
-                          className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="Reject"
+                          className="bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border border-rose-100 shadow-sm"
                         >
-                          <X size={18} />
+                          Cancel
                         </button>
                       </>
                     )}
-                    {(appt.status === 'confirmed' || appt.status === 'pending') && (
-                      <button 
-                        onClick={() => onAction(appt.id, 'reschedule')}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Reschedule"
-                      >
-                        <Clock size={18} />
-                      </button>
-                    )}
-                    <button className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
-                      <MoreVertical size={18} />
+                    <button 
+                      onClick={() => onAction(appt.id, 'reschedule')}
+                      className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border border-blue-100 shadow-sm"
+                    >
+                      Reschedule
                     </button>
                   </div>
                 </td>

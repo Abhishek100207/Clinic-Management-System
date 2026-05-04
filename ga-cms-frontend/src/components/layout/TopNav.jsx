@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { LogOut, KeyRound, User, ChevronDown, Menu, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LogOut, KeyRound, User, ChevronDown, Menu, X, Phone, MapPin, Droplets, ShieldAlert, Fingerprint } from 'lucide-react';
 import { useNavigate, NavLink } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { authApi } from '../../api/auth';
 import { Badge } from '../shared/Badge';
 import { ROLE_CONFIG } from '../../utils/roleConfig';
+import api from '../../api/axios';
 
 const TopNav = () => {
   const { user, logout } = useAuthStore();
@@ -12,6 +13,23 @@ const TopNav = () => {
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [patientProfile, setPatientProfile] = useState(null);
+
+  useEffect(() => {
+    const fetchPatientProfile = async () => {
+      if (user?.role === 'patient') {
+        try {
+          const res = await api.get('/api/users/patients/');
+          if (res.data && res.data.length > 0) {
+            setPatientProfile(res.data[0]);
+          }
+        } catch (err) {
+          console.error("Failed to fetch patient profile in nav", err);
+        }
+      }
+    };
+    fetchPatientProfile();
+  }, [user]);
 
   const handleLogout = async () => {
     try { await authApi.logout(); } catch (e) { console.error(e); }
@@ -101,33 +119,85 @@ const TopNav = () => {
             {isProfileOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setIsProfileOpen(false)}></div>
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20 overflow-hidden transform origin-top-right transition-all">
-                  <div className="px-4 py-3 border-b border-gray-50 bg-gray-50/50">
-                    <p className="text-sm font-medium text-gray-900">{user?.full_name}</p>
-                    <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                <div className={`absolute right-0 mt-2 ${user?.role === 'patient' ? 'w-80' : 'w-56'} bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-20 overflow-hidden transform origin-top-right transition-all animate-in zoom-in-95 duration-200`}>
+                  <div className="px-5 py-4 border-b border-gray-50 bg-gradient-to-br from-gray-50 to-white">
+                    <div className="flex items-center gap-3 mb-1">
+                      <div className="h-12 w-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-md ring-4 ring-blue-50">
+                        {user?.full_name?.charAt(0) || 'U'}
+                      </div>
+                      <div>
+                        <p className="text-base font-bold text-gray-900 leading-tight">{user?.full_name}</p>
+                        <p className="text-xs text-gray-500 truncate font-medium">{user?.email}</p>
+                      </div>
+                    </div>
                   </div>
                   
-                  <div className="p-1">
+                  {user?.role === 'patient' && patientProfile && (
+                    <div className="p-4 space-y-3 bg-white border-b border-gray-50">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-blue-50/50 p-2.5 rounded-xl border border-blue-100/50">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-blue-600 mb-0.5 flex items-center gap-1">
+                            <Fingerprint size={10} /> ID
+                          </p>
+                          <p className="text-xs font-bold text-gray-900">{patientProfile.patient_id}</p>
+                        </div>
+                        <div className="bg-red-50/50 p-2.5 rounded-xl border border-red-100/50">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-red-600 mb-0.5 flex items-center gap-1">
+                            <Droplets size={10} /> Blood
+                          </p>
+                          <p className="text-xs font-bold text-gray-900">{patientProfile.blood_group || 'N/A'}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2.5 pt-1">
+                        <div className="flex items-start gap-3">
+                          <Phone size={14} className="text-gray-400 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-[10px] uppercase font-bold text-gray-400 leading-none mb-1">Contact</p>
+                            <p className="text-xs text-gray-700 font-medium">{patientProfile.mobile_number || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <MapPin size={14} className="text-gray-400 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-[10px] uppercase font-bold text-gray-400 leading-none mb-1">Address</p>
+                            <p className="text-xs text-gray-700 font-medium line-clamp-2">{patientProfile.address || 'N/A'}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {patientProfile.known_allergies && (
+                        <div className="mt-3 bg-amber-50 p-2.5 rounded-xl border border-amber-100">
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-amber-600 mb-1 flex items-center gap-1">
+                            <ShieldAlert size={12} /> Allergies
+                          </p>
+                          <p className="text-xs text-amber-900 font-medium">{patientProfile.known_allergies}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <div className="p-1.5">
                     <button 
                       onClick={() => { navigate('/profile'); setIsProfileOpen(false); }}
-                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors"
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all"
                     >
                       <User size={18} />
                       My Profile
                     </button>
                     <button 
                       onClick={() => { navigate('/change-password'); setIsProfileOpen(false); }}
-                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors"
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all"
                     >
                       <KeyRound size={18} />
                       Change Password
                     </button>
                   </div>
                   
-                  <div className="p-1 border-t border-gray-50">
+                  <div className="p-1.5 border-t border-gray-50">
                     <button 
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all"
                     >
                       <LogOut size={18} />
                       Logout
