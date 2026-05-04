@@ -39,3 +39,18 @@
 2026-05-03 14:57:02,718 - INFO - User: priya | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-03 14:57:47,780 - INFO - User: priya | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-03 15:22:02,599 - INFO - User: priya | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-03 16:44:26,078 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-03 16:46:22,622 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-03 16:47:18,396 - INFO - User: Senior_Doctor | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-03 16:47:18,441 - INFO - User: Senior_Doctor | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-03 16:47:18,596 - INFO - User: Senior_Doctor | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-03 16:47:18,710 - INFO - User: Senior_Doctor | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-03 16:47:19,341 - INFO - User: Senior_Doctor | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-03 16:47:20,532 - INFO - User: Senior_Doctor | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-03 17:55:53,068 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-03 17:57:10,394 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-03 17:59:56,928 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-03 18:00:12,803 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-03 18:01:43,758 - INFO - User: Senior_Doctor | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-03 18:03:00,191 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-03 18:03:31,332 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
