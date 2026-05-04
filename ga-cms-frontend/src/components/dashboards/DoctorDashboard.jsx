@@ -117,13 +117,6 @@ const DoctorDashboard = () => {
             </button>
           </div>
           <button 
-            onClick={() => navigate('/appointments')}
-            className="flex items-center gap-2 bg-blue-600 text-white font-bold px-4 py-2 rounded-xl shadow-md hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={18} />
-            Book New
-          </button>
-          <button 
             onClick={() => setIsEmergencyModalOpen(true)}
             className="flex items-center gap-2 bg-rose-50 text-rose-600 hover:bg-rose-100 font-bold px-4 py-2 rounded-xl border border-rose-100 transition-colors"
           >
@@ -138,13 +131,8 @@ const DoctorDashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Main Content: Appointments */}
+        {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
-          <AppointmentTable 
-            appointments={appointments} 
-            onAction={handleAction} 
-          />
-          
           <AvailabilityCalendar availabilities={user?.doctor_profile?.availabilities || []} />
         </div>
 

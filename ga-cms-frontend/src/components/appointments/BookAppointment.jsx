@@ -10,7 +10,9 @@ import {
   CheckCircle2, 
   XCircle,
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  Video,
+  Monitor
 } from 'lucide-react';
 
 const BookAppointment = () => {
@@ -30,6 +32,7 @@ const BookAppointment = () => {
     date: '',
     time: '',
     appointment_type: 'in_person',
+    patient_location: '',
     reason: ''
   });
 
@@ -66,7 +69,11 @@ const BookAppointment = () => {
 
         // Auto-select patient if there's only one (for patient role)
         if (patientData.length === 1) {
-          setFormData(prev => ({ ...prev, patient_id: patientData[0].id.toString() }));
+          setFormData(prev => ({ 
+            ...prev, 
+            patient_id: patientData[0].id.toString(),
+            patient_location: patientData[0].city || '' // Pre-fill with patient's city
+          }));
         }
       } catch (err) {
         console.error("Failed to fetch data", err);
@@ -93,6 +100,7 @@ const BookAppointment = () => {
         time: formData.time,
         appointment_type: formData.appointment_type,
         location: fixedLocation,
+        patient_location: formData.patient_location,
         reason: formData.reason
       };
       
@@ -166,8 +174,20 @@ const BookAppointment = () => {
               </div>
             </div>
 
-
-
+            {/* Patient Location */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Your Location</label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-3 text-gray-400" size={18} />
+                <input 
+                  type="text"
+                  placeholder="Enter your city or area (e.g., Mumbai, Bandra)"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  value={formData.patient_location}
+                  onChange={(e) => setFormData({...formData, patient_location: e.target.value})}
+                />
+              </div>
+            </div>
             {/* Doctor Selection */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Select Doctor</label>
@@ -185,6 +205,43 @@ const BookAppointment = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            {/* Consultation Type Selection */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">Consultation Type</label>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, appointment_type: 'in_person' })}
+                  className={`flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                    formData.appointment_type === 'in_person'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
+                  }`}
+                >
+                  <MapPin size={20} />
+                  <div className="text-left">
+                    <p className="font-bold text-sm">In-Person</p>
+                    <p className="text-xs opacity-70">Visit the clinic</p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, appointment_type: 'virtual' })}
+                  className={`flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                    formData.appointment_type === 'virtual'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
+                  }`}
+                >
+                  <Video size={20} />
+                  <div className="text-left">
+                    <p className="font-bold text-sm">Virtual</p>
+                    <p className="text-xs opacity-70">Video consultation</p>
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -266,7 +323,9 @@ const BookAppointment = () => {
                 label="Doctor" 
                 value={selectedDoctor ? `Dr. ${selectedDoctor.user?.full_name || selectedDoctor.user?.first_name} (${selectedDoctor.specialty})` : 'Not selected'} 
               />
-              <SummaryItem label="Location" value={fixedLocation} />
+              <SummaryItem label="Clinic Location" value={fixedLocation} />
+              <SummaryItem label="Consultation" value={formData.appointment_type === 'virtual' ? 'Virtual (Video)' : 'In-Person (Clinic)'} />
+              <SummaryItem label="Patient Location" value={formData.patient_location || 'Not specified'} />
               <SummaryItem label="Date & Time" value={formData.date && formData.time ? `${formData.date} at ${formData.time}` : 'Not selected'} />
             </div>
 

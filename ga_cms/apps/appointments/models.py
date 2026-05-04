@@ -47,6 +47,7 @@ class Appointment(models.Model):
     locked_until = models.DateTimeField(null=True, blank=True, help_text="For 5-minute hold logic")
     distance_to_clinic = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text="Cached distance for in-person")
     meeting_link = models.URLField(max_length=500, null=True, blank=True)
+    patient_location = models.CharField(max_length=255, blank=True, null=True, help_text="Location specified by the patient")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
