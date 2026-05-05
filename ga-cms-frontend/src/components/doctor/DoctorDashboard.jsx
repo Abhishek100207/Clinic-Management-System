@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useAppointmentStore } from '../../store/appointmentStore';
-import DoctorStats from './doctor/DoctorStats';
-import AppointmentTable from './doctor/AppointmentTable';
-import AvailabilityCalendar from './doctor/AvailabilityCalendar';
-import EmergencyRescheduler from './doctor/EmergencyRescheduler';
-import RescheduleModal from '../appointments/RescheduleModal';
+import DoctorStats from './DoctorStats';
+import AppointmentTable from './AppointmentTable';
+import AvailabilityCalendar from './AvailabilityCalendar';
+import EmergencyRescheduler from './EmergencyRescheduler';
+import RescheduleModal from '../shared/appointments/RescheduleModal';
 import { Badge } from '../shared/Badge';
 import { Bell, Settings, AlertTriangle, CheckCircle, FileText, ToggleLeft, ToggleRight, Plus } from 'lucide-react';
 

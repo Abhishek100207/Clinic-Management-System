@@ -52,8 +52,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         patient = serializer.validated_data['patient']
 
         # Verify slot is still available
-        available_slots = generate_available_slots(doctor.id, date, appt_type)
-        if time.strftime('%H:%M:%S') not in available_slots and time.strftime('%H:%M') not in [s[:5] for s in available_slots]:
+        all_slots = generate_available_slots(doctor.id, date, appt_type)
+        available_times = [s['time'] for s in all_slots if s['available']]
+        formatted_time = time.strftime('%H:%M:%S')
+        
+        if formatted_time not in available_times and formatted_time[:5] not in [t[:5] for t in available_times]:
              return Response({"error": "Slot is no longer available"}, status=status.HTTP_400_BAD_REQUEST)
 
         distance = None
@@ -88,8 +91,11 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         reason = serializer.validated_data['reason']
 
         # Check slot availability
-        available_slots = generate_available_slots(appointment.doctor.id, new_date, appointment.appointment_type)
-        if new_time.strftime('%H:%M:%S') not in available_slots and new_time.strftime('%H:%M') not in [s[:5] for s in available_slots]:
+        all_slots = generate_available_slots(appointment.doctor.id, new_date, appointment.appointment_type)
+        available_times = [s['time'] for s in all_slots if s['available']]
+        formatted_new_time = new_time.strftime('%H:%M:%S')
+
+        if formatted_new_time not in available_times and formatted_new_time[:5] not in [t[:5] for t in available_times]:
              return Response({"error": "New slot is not available"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Log history

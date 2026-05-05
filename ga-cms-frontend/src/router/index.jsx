@@ -6,19 +6,62 @@ import SignInPage from '../components/auth/SignInPage';
 import SignUpPage from '../components/auth/SignUpPage';
 import UnauthorizedPage from '../components/auth/UnauthorizedPage';
 import AppShell from '../components/layout/AppShell';
+import { useAuthStore } from '../store/authStore';
 
-import AdminDashboard from '../components/dashboards/AdminDashboard';
-import DoctorDashboard from '../components/dashboards/DoctorDashboard';
-import ReceptionistDashboard from '../components/dashboards/ReceptionistDashboard';
-import TechnicianDashboard from '../components/dashboards/TechnicianDashboard';
-import PatientDashboard from '../components/dashboards/PatientDashboard';
-import PatientRegistrationForm from '../components/patients/PatientRegistrationForm';
-import AddStaffPage from '../components/staff/AddStaffPage';
+import AdminDashboard from '../components/admin/AdminDashboard';
+import DoctorDashboard from '../components/doctor/DoctorDashboard';
+import ReceptionistDashboard from '../components/receptionist/ReceptionistDashboard';
+import TechnicianDashboard from '../components/technician/TechnicianDashboard';
+import PatientDashboard from '../components/patient/PatientDashboard';
+import PatientRegistrationForm from '../components/receptionist/PatientRegistrationForm';
+import AddStaffPage from '../components/admin/AddStaffPage';
 import ChangePasswordPage from '../components/auth/ChangePasswordPage';
 import AuditLogsPage from '../components/admin/AuditLogsPage';
+import AdminAppointmentsPage from '../components/admin/AdminAppointmentsPage';
+import AdminPatientsPage from '../components/admin/AdminPatientsPage';
+import AdminRevenuePage from '../components/admin/AdminRevenuePage';
+import AdminStaffPerformancePage from '../components/admin/AdminStaffPerformancePage';
+import AdminDoctorsPage from '../components/admin/AdminDoctorsPage';
+import AdminSettingsPage from '../components/admin/AdminSettingsPage';
 import ComingSoonPage from '../components/shared/ComingSoonPage';
-import BookAppointment from '../components/appointments/BookAppointment';
-import DoctorAppointmentsPage from '../components/appointments/DoctorAppointmentsPage';
+import BookAppointment from '../components/patient/BookAppointment';
+import DoctorAppointmentsPage from '../components/doctor/DoctorAppointmentsPage';
+import PatientAppointmentsPage from '../components/patient/PatientAppointmentsPage';
+
+// Role-specific action pages
+import UploadResultsPage from '../components/technician/UploadResultsPage';
+import QueuePage from '../components/receptionist/QueuePage';
+import BillingPage from '../components/receptionist/BillingPage';
+import PrescriptionsPage from '../components/patient/PrescriptionsPage';
+import TestResultsPage from '../components/patient/TestResultsPage';
+import DoctorPrescriptionsPage from '../components/doctor/DoctorPrescriptionsPage';
+import DoctorPatientsPage from '../components/doctor/DoctorPatientsPage';
+import DoctorChatPage from '../components/doctor/DoctorChatPage';
+
+const PrescriptionRouteWrapper = () => {
+  const { user } = useAuthStore();
+  if (user?.role === 'patient') {
+    return <PrescriptionsPage />;
+  }
+  return <DoctorPrescriptionsPage />;
+};
+
+const AppointmentRouteWrapper = () => {
+  const { user } = useAuthStore();
+  if (user?.role === 'patient') {
+    return <PatientAppointmentsPage />;
+  }
+  return <DoctorAppointmentsPage />;
+};
+
+const GlobalAppointmentRouteWrapper = () => {
+  const { user } = useAuthStore();
+  if (user?.role === 'senior_doctor') {
+    return <AdminAppointmentsPage />;
+  }
+  // Default to booking page for others (patient/receptionist)
+  return <BookAppointment />;
+};
 
 const AppRouter = () => {
   return (
@@ -46,24 +89,49 @@ const AppRouter = () => {
         <Route path="/logs"
           element={<AuthGuard allowedRoles={['senior_doctor']}><AuditLogsPage /></AuthGuard>} />
 
-        {/* Placeholder Routes */}
-        <Route path="/appointments" element={<BookAppointment />} />
-        <Route path="/patients" element={<ComingSoonPage />} />
-        <Route path="/revenue" element={<ComingSoonPage />} />
-        <Route path="/performance/staff" element={<ComingSoonPage />} />
-        <Route path="/doctors" element={<ComingSoonPage />} />
-        <Route path="/settings" element={<ComingSoonPage />} />
+        <Route path="/appointments" element={<GlobalAppointmentRouteWrapper />} />
+        <Route path="/patients" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminPatientsPage /></AuthGuard>} />
+        <Route path="/revenue" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminRevenuePage /></AuthGuard>} />
+        <Route path="/performance/staff" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminStaffPerformancePage /></AuthGuard>} />
+        <Route path="/doctors" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminDoctorsPage /></AuthGuard>} />
+        <Route path="/settings" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminSettingsPage /></AuthGuard>} />
         <Route path="/my-appointments" 
-          element={<AuthGuard allowedRoles={['doctor', 'senior_doctor', 'patient']}><DoctorAppointmentsPage /></AuthGuard>} />
-        <Route path="/my-patients" element={<ComingSoonPage />} />
-        <Route path="/prescriptions" element={<ComingSoonPage />} />
+          element={
+            <AuthGuard allowedRoles={['doctor', 'senior_doctor', 'patient']}>
+              {/* Conditional rendering based on user role or separate routes would be better, 
+                  but for now we use a small helper or just split them if possible. 
+                  Actually, since they share the same URL, we can use a wrapper or just check role here. */}
+              <AppointmentRouteWrapper />
+            </AuthGuard>
+          } 
+        />
+        <Route path="/my-patients" 
+          element={
+            <AuthGuard allowedRoles={['doctor', 'senior_doctor']}>
+              <DoctorPatientsPage />
+            </AuthGuard>
+          } 
+        />
+        <Route path="/prescriptions" 
+          element={
+            <AuthGuard allowedRoles={['doctor', 'senior_doctor', 'patient']}>
+              <PrescriptionRouteWrapper />
+            </AuthGuard>
+          } 
+        />
         <Route path="/scan-orders" element={<ComingSoonPage />} />
-        <Route path="/chat" element={<ComingSoonPage />} />
+        <Route path="/chat" 
+          element={
+            <AuthGuard allowedRoles={['doctor', 'senior_doctor']}>
+              <DoctorChatPage />
+            </AuthGuard>
+          } 
+        />
         <Route path="/performance" element={<ComingSoonPage />} />
-        <Route path="/queue" element={<ComingSoonPage />} />
-        <Route path="/billing" element={<ComingSoonPage />} />
-        <Route path="/upload-results" element={<ComingSoonPage />} />
-        <Route path="/test-results" element={<ComingSoonPage />} />
+        <Route path="/queue" element={<QueuePage />} />
+        <Route path="/billing" element={<BillingPage />} />
+        <Route path="/upload-results" element={<UploadResultsPage />} />
+        <Route path="/test-results" element={<TestResultsPage />} />
 
         <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
