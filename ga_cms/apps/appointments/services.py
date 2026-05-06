@@ -51,21 +51,38 @@ def generate_available_slots(doctor_id, target_date, appointment_type):
                 all_slots.append(current_time.time())
                 current_time += slot_duration
 
-    # Remove booked or locked slots
+    # Remove booked or locked slots across ALL appointment types for this doctor
     now = timezone.now()
+    # Convert 'now' to local date/time for accurate past-slot filtering
+    current_date = now.date()
+    current_time_val = now.time()
+
     booked_appointments = Appointment.objects.filter(
         doctor_id=doctor_id,
-        date=target_date,
-        appointment_type=appointment_type
+        date=target_date
     ).exclude(status='cancelled')
 
     booked_times = []
     for appt in booked_appointments:
+        # A slot is considered booked if it's confirmed/active, or if it's pending but still under a 5-min lock
         if appt.status != 'pending' or (appt.status == 'pending' and appt.locked_until and appt.locked_until > now):
             booked_times.append(appt.time)
 
-    available_slots = [slot for slot in all_slots if slot not in booked_times]
-    return [slot.strftime('%H:%M:%S') for slot in available_slots]
+    # Determine availability status for each slot
+    results = []
+    for slot in all_slots:
+        is_available = True
+        if slot in booked_times:
+            is_available = False
+        elif target_date == current_date and slot <= current_time_val:
+            is_available = False
+        
+        results.append({
+            "time": slot.strftime('%H:%M:%S'),
+            "available": is_available
+        })
+
+    return results
 
 def send_notification(user, message_type, context):
     """Stub function to mock SMS/push notifications."""

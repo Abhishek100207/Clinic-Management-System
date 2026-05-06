@@ -60,9 +60,29 @@
 2026-05-03 21:29:35,972 - INFO - User: mani | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-03 21:32:06,638 - INFO - User: mani | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-03 21:34:34,460 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-03 21:38:34,259 - INFO - User: Dr. mahesh | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-03 21:40:43,717 - INFO - User: Dr. mahesh | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-03 21:48:11,101 - INFO - User: Dr. mahesh | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-03 21:51:41,326 - INFO - User: Dr. mahesh | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-03 22:20:22,545 - INFO - User: Dr. mahesh | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-04 10:19:07,005 - INFO - User: Dr. mahesh | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-04 10:24:38,168 - INFO - User: Dr. mahesh | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-04 10:26:37,554 - INFO - User: mani | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-04 10:59:24,301 - INFO - User: mani | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-04 12:58:31,586 - INFO - User: mani | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-04 17:35:41,500 - INFO - User: mani | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-04 17:38:07,078 - INFO - User: mani | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
 2026-05-04 17:38:07,863 - INFO - User: mani | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
 2026-05-04 17:39:33,787 - INFO - User: Arjun | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-04 17:42:09,073 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-05 14:29:30,509 - INFO - User: mani | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-05 18:17:40,754 - INFO - User: varun | Action: SIGNUP | IP: 127.0.0.1 | Details: Registered as patient
+2026-05-05 18:36:11,926 - INFO - User: mani | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-05 18:39:40,601 - INFO - User: sri | Action: SIGNUP | IP: 127.0.0.1 | Details: Registered as patient
+2026-05-05 18:44:06,630 - INFO - User: mani | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-05 18:49:15,652 - INFO - User: janu | Action: SIGNUP | IP: 127.0.0.1 | Details: Registered as patient
+2026-05-05 18:57:03,487 - INFO - User: hari | Action: SIGNUP | IP: 127.0.0.1 | Details: Registered as patient
+2026-05-05 18:59:20,944 - INFO - User: Dr. mahesh | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-05 20:07:10,108 - INFO - User: janu | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-05 20:56:21,117 - INFO - User: Dr. mahesh | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-05 21:04:29,725 - INFO - User: janu | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP

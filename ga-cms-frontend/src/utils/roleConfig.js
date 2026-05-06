@@ -54,10 +54,9 @@ export const ROLE_CONFIG = {
     navLinks: [
       { name: 'Dashboard', path: '/dashboard/patient', icon: 'LayoutDashboard' },
       { name: 'My Appointments', path: '/my-appointments', icon: 'CalendarDays' },
-      { name: 'Book Appointment', path: '/appointments',   icon: 'PlusCircle' },
       { name: 'My Prescriptions', path: '/prescriptions', icon: 'FileText' },
       { name: 'Test Results', path: '/test-results', icon: 'Activity' },
     ],
-    badgeColor: 'bg-pink-100 text-pink-800'
+    badgeColor: 'bg-blue-100 text-blue-800'
   }
 };

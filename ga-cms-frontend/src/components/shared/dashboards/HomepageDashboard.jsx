@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '../../store/authStore';
-import { ROLE_CONFIG } from '../../utils/roleConfig';
+import { useAuthStore } from '../../../store/authStore';
+import { ROLE_CONFIG } from '../../../utils/roleConfig';
 
 const HomepageDashboard = () => {
   const { isAuthenticated, user } = useAuthStore();
