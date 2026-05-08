@@ -80,6 +80,31 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(self.get_serializer(appointment).data, status=status.HTTP_201_CREATED, headers=headers)
 
+    def partial_update(self, request, *args, **kwargs):
+        response = super().partial_update(request, *args, **kwargs)
+        appointment = self.get_object()
+        new_status = request.data.get('status')
+        
+        if new_status and new_status != appointment.status:
+            if request.user.role == 'patient' and new_status != 'cancelled':
+                return Response({"error": "Patients can only cancel appointments."}, status=status.HTTP_403_FORBIDDEN)
+            
+            appointment.status = new_status
+            appointment.save(update_fields=['status'])
+            
+            if new_status == 'confirmed':
+                from .services import send_notification
+                send_notification(
+                    appointment.patient.user, 
+                    "Appointment Confirmed", 
+                    f"Your appointment with {appointment.doctor} on {appointment.date} has been confirmed."
+                )
+                
+            serializer = self.get_serializer(appointment)
+            return Response(serializer.data)
+            
+        return response
+
     @action(detail=True, methods=['post'])
     def reschedule(self, request, pk=None):
         appointment = self.get_object()

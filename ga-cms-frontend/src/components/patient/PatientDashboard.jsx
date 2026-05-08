@@ -17,7 +17,8 @@ import {
   Bell,
   Settings,
   Heart,
-  CheckCircle
+  CheckCircle,
+  X
 } from 'lucide-react';
 
 const PatientDashboard = () => {
@@ -28,6 +29,15 @@ const PatientDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [rescheduleData, setRescheduleData] = useState({ isOpen: false, appointment: null });
   const [toast, setToast] = useState(null);
+  const [dismissedConfirmations, setDismissedConfirmations] = useState(() => {
+    return JSON.parse(localStorage.getItem('dismissedConfirmations') || '[]');
+  });
+
+  const handleDismissConfirmation = (id) => {
+    const newDismissed = [...dismissedConfirmations, id];
+    setDismissedConfirmations(newDismissed);
+    localStorage.setItem('dismissedConfirmations', JSON.stringify(newDismissed));
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -95,7 +105,7 @@ const PatientDashboard = () => {
   };
 
   const rescheduledAppointments = appointments.filter(a => a.status === 'rescheduled');
-  const newlyConfirmed = appointments.filter(a => a.status === 'confirmed');
+  const newlyConfirmed = appointments.filter(a => a.status === 'confirmed' && !dismissedConfirmations.includes(a.id));
 
   if (loading) {
     return (
@@ -136,7 +146,14 @@ const PatientDashboard = () => {
           ))}
 
           {newlyConfirmed.map(appt => (
-            <div key={appt.id} className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top duration-500">
+            <div key={appt.id} className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top duration-500 relative">
+              <button 
+                onClick={() => handleDismissConfirmation(appt.id)}
+                className="absolute top-2 right-3 text-emerald-400 hover:text-emerald-700 transition-colors"
+                title="Dismiss"
+              >
+                <X size={16} />
+              </button>
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 shadow-inner">
                   <CheckCircle className="text-emerald-500" size={24} />

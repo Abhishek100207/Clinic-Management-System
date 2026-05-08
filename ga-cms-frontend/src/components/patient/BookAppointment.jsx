@@ -98,7 +98,7 @@ const BookAppointment = ({ onBack }) => {
           // Reverse geocoding using a free API (e.g., Nominatim)
           const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
           const data = await response.json();
-          const address = data.address.city || data.address.town || data.address.suburb || data.address.state || 'Unknown Location';
+          const address = data.address?.city || data.address?.town || data.address?.suburb || data.address?.state || 'Unknown Location';
           setFormData(prev => ({ ...prev, patient_location: address }));
           setNotification({ type: 'success', message: `Location detected: ${address}` });
         } catch (err) {
@@ -110,10 +110,25 @@ const BookAppointment = ({ onBack }) => {
       },
       (error) => {
         console.error("Geolocation error:", error);
-        setLocating(false);
-        setNotification({ type: 'error', message: 'Location access denied or unavailable.' });
+        // Fallback to IP-based location if browser geolocation fails or is denied
+        fetch('https://ipapi.co/json/')
+          .then(res => res.json())
+          .then(data => {
+            if (data.city) {
+              const locationStr = [data.city, data.region].filter(Boolean).join(', ');
+              setFormData(prev => ({ ...prev, patient_location: locationStr }));
+              setNotification({ type: 'success', message: `Location detected (via IP): ${locationStr}` });
+            } else {
+              setNotification({ type: 'error', message: 'Location access denied or unavailable.' });
+            }
+          })
+          .catch(err => {
+            console.error("IP Geolocation fallback error:", err);
+            setNotification({ type: 'error', message: 'Location access denied or unavailable.' });
+          })
+          .finally(() => setLocating(false));
       },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
@@ -221,32 +236,29 @@ const BookAppointment = ({ onBack }) => {
 
             {/* Patient Location */}
             <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-semibold text-gray-700">Address Details</label>
-                <button
-                  type="button"
-                  onClick={handleAutoLocation}
-                  disabled={locating}
-                  className="text-xs flex items-center gap-1.5 text-blue-600 hover:text-blue-700 font-bold transition-colors disabled:opacity-50"
-                >
-                  {locating ? (
-                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  ) : <LocateFixed size={14} />}
-                  Auto-locate
-                </button>
-              </div>
-              <div className="relative">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Patient Address / Location</label>
+              <div className="relative mb-3">
                 <MapPin className="absolute left-3 top-3 text-gray-400" size={18} />
-                <input
-                  type="text"
+                <textarea
                   placeholder="Enter your city or area (e.g., Mumbai, Bandra)"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none min-h-[80px]"
                   value={formData.patient_location}
                   onChange={(e) => setFormData({ ...formData, patient_location: e.target.value })}
                 />
               </div>
-              <p className="text-[10px] text-gray-400 mt-1.5 ml-1 italic">
-                * You can use auto-locate or type your address manually.
+              <button
+                type="button"
+                onClick={handleAutoLocation}
+                disabled={locating}
+                className="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 rounded-xl font-bold border border-blue-200 transition-all flex items-center justify-center gap-2"
+              >
+                {locating ? (
+                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                ) : <LocateFixed size={18} />}
+                Current location
+              </button>
+              <p className="text-[10px] text-gray-400 mt-2 ml-1 italic">
+                * You can use current location to auto-fill or type your address manually.
               </p>
             </div>
             {/* Doctor Selection */}
