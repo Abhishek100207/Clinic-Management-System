@@ -29,21 +29,23 @@ import DoctorAppointmentsPage from '../components/doctor/DoctorAppointmentsPage'
 import PatientAppointmentsPage from '../components/patient/PatientAppointmentsPage';
 
 // Role-specific action pages
+import ScanOrdersPage from '../components/technician/ScanOrdersPage';
 import UploadResultsPage from '../components/technician/UploadResultsPage';
 import QueuePage from '../components/receptionist/QueuePage';
 import BillingPage from '../components/receptionist/BillingPage';
 import PrescriptionsPage from '../components/patient/PrescriptionsPage';
 import TestResultsPage from '../components/patient/TestResultsPage';
-import DoctorPrescriptionsPage from '../components/doctor/DoctorPrescriptionsPage';
+import DoctorConsultationsPage from '../components/doctor/DoctorConsultationsPage';
 import DoctorPatientsPage from '../components/doctor/DoctorPatientsPage';
 import DoctorChatPage from '../components/doctor/DoctorChatPage';
+import MedicalRecordsPage from '../components/patient/MedicalRecordsPage';
 
-const PrescriptionRouteWrapper = () => {
+const ConsultationRouteWrapper = () => {
   const { user } = useAuthStore();
   if (user?.role === 'patient') {
-    return <PrescriptionsPage />;
+    return <Navigate to="/dashboard/patient" replace />;
   }
-  return <DoctorPrescriptionsPage />;
+  return <DoctorConsultationsPage />;
 };
 
 const AppointmentRouteWrapper = () => {
@@ -112,14 +114,20 @@ const AppRouter = () => {
             </AuthGuard>
           } 
         />
-        <Route path="/prescriptions" 
+        <Route path="/consultations" 
           element={
-            <AuthGuard allowedRoles={['doctor', 'senior_doctor', 'patient']}>
-              <PrescriptionRouteWrapper />
+            <AuthGuard allowedRoles={['doctor', 'senior_doctor']}>
+              <ConsultationRouteWrapper />
             </AuthGuard>
           } 
         />
-        <Route path="/scan-orders" element={<ComingSoonPage />} />
+        <Route path="/scan-orders" 
+          element={
+            <AuthGuard allowedRoles={['technician', 'senior_doctor']}>
+              <ScanOrdersPage />
+            </AuthGuard>
+          } 
+        />
         <Route path="/chat" 
           element={
             <AuthGuard allowedRoles={['doctor', 'senior_doctor']}>
@@ -131,7 +139,20 @@ const AppRouter = () => {
         <Route path="/queue" element={<QueuePage />} />
         <Route path="/billing" element={<BillingPage />} />
         <Route path="/upload-results" element={<UploadResultsPage />} />
-        <Route path="/test-results" element={<TestResultsPage />} />
+        <Route path="/test-results" 
+          element={
+            <AuthGuard allowedRoles={['doctor', 'senior_doctor', 'technician']}>
+              <TestResultsPage />
+            </AuthGuard>
+          } 
+        />
+        <Route path="/medical-records" 
+          element={
+            <AuthGuard allowedRoles={['patient']}>
+              <MedicalRecordsPage />
+            </AuthGuard>
+          } 
+        />
 
         <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />

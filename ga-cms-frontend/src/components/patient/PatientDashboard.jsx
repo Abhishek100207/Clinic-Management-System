@@ -227,72 +227,13 @@ const PatientDashboard = () => {
             </div>
           </section>
 
-          {/* Test Results / Medical Records */}
-          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-navy flex items-center gap-2">
-                <Activity className="text-emerald-500" size={22} />
-                Latest Test Results
-              </h2>
-            </div>
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { name: 'Blood Work (CBC)', status: 'Completed', date: 'Yesterday', icon: <Activity size={18} /> },
-                { name: 'X-Ray Chest', status: 'Completed', date: '3 days ago', icon: <Activity size={18} /> },
-              ].map((test, i) => (
-                <div key={i} className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white rounded-lg text-emerald-500 shadow-sm">
-                      {test.icon}
-                    </div>
-                    <div>
-                      <p className="font-bold text-navy text-sm">{test.name}</p>
-                      <p className="text-[11px] text-slate-500">{test.date}</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded">
-                    {test.status}
-                  </span>
-                </div>
-              ))}
-              <button className="md:col-span-2 mt-2 w-full py-3 text-sm text-blue-600 font-bold hover:bg-blue-50 rounded-xl transition-colors border border-dashed border-blue-200">
-                View All Lab Reports
-              </button>
-            </div>
-          </section>
+
         </div>
 
         {/* Sidebar (Right 1/3) */}
         <div className="space-y-8">
           
-          {/* Prescriptions Sidebar */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="font-bold text-navy flex items-center gap-2">
-                <FileText size={20} className="text-blue-500" />
-                Active Prescriptions
-              </h3>
-            </div>
-            <div className="p-6 space-y-4">
-              {[
-                { name: 'Amoxicillin 500mg', doctor: 'Dr. Sarah Johnson', time: '2 days ago' },
-                { name: 'Paracetamol 650mg', doctor: 'Dr. Robert Chen', time: '1 week ago' },
-              ].map((item, i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="mt-1 w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                    <FileText size={16} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-navy font-bold leading-tight">{item.name}</p>
-                    <p className="text-[11px] text-slate-400 mt-1">{item.doctor} • {item.time}</p>
-                  </div>
-                </div>
-              ))}
-              <button className="w-full mt-4 bg-slate-50 hover:bg-slate-100 py-2.5 rounded-lg font-bold text-xs text-slate-600 transition-colors">
-                View All Prescriptions
-              </button>
-            </div>
-          </div>
+
 
           {/* Quick Support / Health Tips */}
           <div className="bg-indigo-900 rounded-3xl p-8 text-white shadow-xl overflow-hidden relative">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, X, Calendar, User, MoreVertical, Clock, MapPin } from 'lucide-react';
+import { Check, X, Calendar, User, MoreVertical, Clock, MapPin, Stethoscope } from 'lucide-react';
 import { Badge } from '../shared/Badge';
 
 const AppointmentTable = ({ appointments, onAction }) => {
@@ -76,6 +76,15 @@ const AppointmentTable = ({ appointments, onAction }) => {
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-2">
+                    {appt.status === 'confirmed' && (
+                      <button 
+                        onClick={() => onAction(appt.id, 'consult')}
+                        className="bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border border-indigo-100 shadow-sm flex items-center gap-1.5"
+                      >
+                        <Stethoscope size={12} />
+                        Consult
+                      </button>
+                    )}
                     {appt.status === 'pending' && (
                       <>
                         <button 

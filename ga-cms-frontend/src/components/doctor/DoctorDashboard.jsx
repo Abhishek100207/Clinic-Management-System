@@ -7,8 +7,22 @@ import AppointmentTable from './AppointmentTable';
 import AvailabilityCalendar from './AvailabilityCalendar';
 import EmergencyRescheduler from './EmergencyRescheduler';
 import RescheduleModal from '../shared/appointments/RescheduleModal';
+import ConsultationModal from './ConsultationModal';
 import { Badge } from '../shared/Badge';
-import { Bell, Settings, AlertTriangle, CheckCircle, FileText, ToggleLeft, ToggleRight, Plus } from 'lucide-react';
+import { 
+  Bell, 
+  Settings, 
+  AlertTriangle, 
+  CheckCircle, 
+  FileText, 
+  ToggleLeft, 
+  ToggleRight, 
+  Plus,
+  Search,
+  Users,
+  ChevronRight,
+  Stethoscope
+} from 'lucide-react';
 
 const DoctorDashboard = () => {
   const navigate = useNavigate();
@@ -27,6 +41,7 @@ const DoctorDashboard = () => {
   const [showMorningConfirmation, setShowMorningConfirmation] = useState(false);
   const [isConfirmedForToday, setIsConfirmedForToday] = useState(false);
   const [rescheduleData, setRescheduleData] = useState({ isOpen: false, appointment: null });
+  const [consultationData, setConsultationData] = useState({ isOpen: false, appointment: null });
 
   useEffect(() => {
     fetchDoctorDashboardData();
@@ -69,9 +84,18 @@ const DoctorDashboard = () => {
     if (action === 'reschedule') {
       const appt = appointments.find(a => a.id === id);
       setRescheduleData({ isOpen: true, appointment: appt });
+    } else if (action === 'consult') {
+      const appt = appointments.find(a => a.id === id);
+      setConsultationData({ isOpen: true, appointment: appt });
     } else {
       updateAppointmentStatus(id, action);
     }
+  };
+
+  const handleConsultationSave = (data) => {
+    console.log("Consultation saved:", data);
+    // Here you would typically call an API to save the consultation
+    alert("Consultation finalized successfully!");
   };
 
   return (
@@ -192,6 +216,52 @@ const DoctorDashboard = () => {
             </button>
           </div>
 
+          {/* Quick Patient Search */}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-navy flex items-center gap-2">
+                <Users size={18} className="text-indigo-500" />
+                Recent Patients
+              </h3>
+              <button onClick={() => navigate('/my-patients')} className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-widest">View All</button>
+            </div>
+            <div className="p-4 space-y-3">
+               <div className="relative mb-4">
+                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                 <input 
+                   type="text" 
+                   placeholder="Quick search..." 
+                   className="w-full bg-slate-50 border border-slate-100 pl-9 pr-3 py-2 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+                 />
+               </div>
+               {[
+                 { name: 'Rahul Verma', id: '001', gender: 'M' },
+                 { name: 'Anjali Sharma', id: '002', gender: 'F' },
+                 { name: 'Vikram Singh', id: '003', gender: 'M' },
+               ].map((patient, i) => (
+                 <div key={i} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer group">
+                   <div className="flex items-center gap-3">
+                     <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                       {patient.name.charAt(0)}
+                     </div>
+                     <div>
+                       <p className="text-[13px] font-bold text-navy">{patient.name}</p>
+                       <p className="text-[10px] text-slate-400">ID: {patient.id} • {patient.gender}</p>
+                     </div>
+                   </div>
+                   <button 
+                    onClick={() => {
+                      setConsultationData({ isOpen: true, appointment: { patient_name: patient.name, patient_id: patient.id } });
+                    }}
+                    className="p-1.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                   >
+                     <Stethoscope size={14} />
+                   </button>
+                 </div>
+               ))}
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -206,6 +276,13 @@ const DoctorDashboard = () => {
         onClose={() => setRescheduleData({ isOpen: false, appointment: null })}
         onConfirm={handleRescheduleSubmit}
         appointment={rescheduleData.appointment}
+      />
+
+      <ConsultationModal 
+        isOpen={consultationData.isOpen}
+        onClose={() => setConsultationData({ isOpen: false, appointment: null })}
+        patient={consultationData.appointment}
+        onSave={handleConsultationSave}
       />
 
     </div>

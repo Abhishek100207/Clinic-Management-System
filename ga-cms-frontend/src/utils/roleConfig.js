@@ -22,7 +22,7 @@ export const ROLE_CONFIG = {
       { name: 'Dashboard',       path: '/dashboard/doctor', icon: 'LayoutDashboard' },
       { name: 'My Appointments', path: '/my-appointments',  icon: 'CalendarDays' },
       { name: 'My Patients',     path: '/my-patients',      icon: 'Users' },
-      { name: 'Prescriptions',   path: '/prescriptions',    icon: 'FileText' },
+      { name: 'Consultations',   path: '/consultations',    icon: 'Stethoscope' },
       { name: 'Chat',            path: '/chat',             icon: 'MessageSquare' },
     ],
     badgeColor: 'bg-blue-100 text-blue-800'
@@ -43,8 +43,8 @@ export const ROLE_CONFIG = {
     displayName: 'Scanning Technician',
     dashboardRoute: '/dashboard/technician',
     navLinks: [
-      { name: 'Scan Queue', path: '/dashboard/technician', icon: 'ListOrdered' },
-      { name: 'Upload Results', path: '/upload-results', icon: 'Upload' },
+      { name: 'Dashboard', path: '/dashboard/technician', icon: 'LayoutDashboard' },
+      { name: 'Scan Queue', path: '/scan-orders', icon: 'ListOrdered' },
     ],
     badgeColor: 'bg-amber-100 text-amber-800'
   },
@@ -54,8 +54,7 @@ export const ROLE_CONFIG = {
     navLinks: [
       { name: 'Dashboard', path: '/dashboard/patient', icon: 'LayoutDashboard' },
       { name: 'My Appointments', path: '/my-appointments', icon: 'CalendarDays' },
-      { name: 'My Prescriptions', path: '/prescriptions', icon: 'FileText' },
-      { name: 'Test Results', path: '/test-results', icon: 'Activity' },
+      { name: 'Medical Records', path: '/medical-records', icon: 'Clipboard' },
     ],
     badgeColor: 'bg-blue-100 text-blue-800'
   }

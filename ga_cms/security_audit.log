@@ -138,3 +138,13 @@
 2026-05-08 21:39:19,299 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
 2026-05-08 21:39:19,859 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
 2026-05-08 21:39:43,332 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-09 12:08:40,067 - INFO - User: ramu | Action: SIGNUP | IP: 127.0.0.1 | Details: Registered as patient
+2026-05-09 19:58:50,789 - INFO - User: abhishek100207@gmail.com | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-09 21:59:24,313 - INFO - User: ramu | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-09 22:01:42,221 - INFO - User: abhishek100207@gmail.com | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-09 22:52:33,069 - INFO - User: abhishek100207@gmail.com | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-10 11:02:36,246 - INFO - User: abhishek100207@gmail.com | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-10 11:03:51,713 - INFO - User: ramu | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-10 15:12:30,758 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-10 15:14:00,455 - INFO - User: Senior_Doctor | Action: STAFF_CREATED | IP: 127.0.0.1 | Details: Created staff user: rammohan as technician
+2026-05-10 15:18:51,065 - INFO - User: rammohan | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
