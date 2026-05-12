@@ -11,8 +11,10 @@ import {
   Microscope
 } from 'lucide-react';
 import { Badge } from '../shared/Badge';
+import { useNavigate } from 'react-router-dom';
 
 const ScanQueue = ({ isTechnician }) => {
+  const navigate = useNavigate();
   // Mock data for lab test requests
   const [requests, setRequests] = useState([
     {
@@ -189,6 +191,15 @@ const ScanQueue = ({ isTechnician }) => {
                         >
                           <PlusCircle size={18} />
                           Edit Report (Add Records)
+                        </button>
+                      )}
+                      {request.status === 'Completed' && (
+                        <button 
+                          onClick={() => navigate('/scan-report/SCAN-10294')}
+                          className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
+                        >
+                          <FileText size={18} />
+                          View Report
                         </button>
                       )}
                     </div>

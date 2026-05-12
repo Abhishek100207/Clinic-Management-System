@@ -39,6 +39,7 @@ import DoctorConsultationsPage from '../components/doctor/DoctorConsultationsPag
 import DoctorPatientsPage from '../components/doctor/DoctorPatientsPage';
 import DoctorChatPage from '../components/doctor/DoctorChatPage';
 import MedicalRecordsPage from '../components/patient/MedicalRecordsPage';
+import ScanReportPage from '../components/shared/ScanReportPage';
 
 const ConsultationRouteWrapper = () => {
   const { user } = useAuthStore();
@@ -150,6 +151,13 @@ const AppRouter = () => {
           element={
             <AuthGuard allowedRoles={['patient']}>
               <MedicalRecordsPage />
+            </AuthGuard>
+          } 
+        />
+        <Route path="/scan-report/:reportId" 
+          element={
+            <AuthGuard allowedRoles={['doctor', 'senior_doctor', 'patient', 'technician']}>
+              <ScanReportPage />
             </AuthGuard>
           } 
         />

@@ -8,9 +8,11 @@ import {
   ChevronRight,
   Plus
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 
 const DoctorPatientsPage = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -103,8 +105,11 @@ const DoctorPatientsPage = () => {
                 <button className="flex-1 md:flex-none px-6 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
                   <Clipboard size={14} /> Medical History
                 </button>
-                <button className="flex-1 md:flex-none px-6 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100 flex items-center justify-center gap-2">
-                  <FileText size={14} /> Medical Reports
+                <button 
+                  onClick={() => navigate('/scan-report/SCAN-10294')} // Mocking report ID for now
+                  className="flex-1 md:flex-none px-6 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+                >
+                  <FileText size={14} /> View Scan
                 </button>
               </div>
             </div>
