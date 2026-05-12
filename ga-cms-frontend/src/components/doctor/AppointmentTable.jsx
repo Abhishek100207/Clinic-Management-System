@@ -62,6 +62,8 @@ const AppointmentTable = ({ appointments, onAction }) => {
                   <div className="flex items-center gap-1.5">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${appt.status === 'confirmed' ? 'bg-emerald-100 text-emerald-800' :
                       appt.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                      appt.status === 'consult' ? 'bg-indigo-100 text-indigo-800' :
+                      appt.status === 'cancelled' ? 'bg-rose-100 text-rose-800' :
                         'bg-slate-100 text-slate-800'
                       }`}>
                       {appt.status}
@@ -76,7 +78,7 @@ const AppointmentTable = ({ appointments, onAction }) => {
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex justify-end gap-2">
-                    {appt.status === 'confirmed' && (
+                    {(appt.status === 'confirmed' || appt.status === 'consult') && (
                       <button 
                         onClick={() => onAction(appt.id, 'consult')}
                         className="bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border border-indigo-100 shadow-sm flex items-center gap-1.5"

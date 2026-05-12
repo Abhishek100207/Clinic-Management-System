@@ -148,3 +148,5 @@
 2026-05-10 15:12:30,758 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-10 15:14:00,455 - INFO - User: Senior_Doctor | Action: STAFF_CREATED | IP: 127.0.0.1 | Details: Created staff user: rammohan as technician
 2026-05-10 15:18:51,065 - INFO - User: rammohan | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-10 17:06:28,841 - INFO - User: rammohan | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-12 18:53:57,697 - INFO - User: Arjun | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
