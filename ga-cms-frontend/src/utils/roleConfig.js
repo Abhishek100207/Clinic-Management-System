@@ -55,6 +55,7 @@ export const ROLE_CONFIG = {
       { name: 'Dashboard', path: '/dashboard/patient', icon: 'LayoutDashboard' },
       { name: 'My Appointments', path: '/my-appointments', icon: 'CalendarDays' },
       { name: 'Medical Records', path: '/medical-records', icon: 'Clipboard' },
+      { name: 'Chat with Doctor', path: '/chat', icon: 'MessageSquare' },
     ],
     badgeColor: 'bg-blue-100 text-blue-800'
   }
