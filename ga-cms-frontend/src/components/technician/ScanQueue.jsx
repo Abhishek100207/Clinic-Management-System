@@ -195,7 +195,15 @@ const ScanQueue = ({ isTechnician }) => {
                       )}
                       {request.status === 'Completed' && (
                         <button 
-                          onClick={() => navigate('/scan-report/SCAN-10294')}
+                          onClick={() => navigate(`/scan-report/SCAN-${request.id}`, { 
+                            state: { 
+                              patientData: {
+                                full_name: request.patientName,
+                                id: request.id,
+                                address: request.place
+                              } 
+                            } 
+                          })}
                           className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold text-sm hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200"
                         >
                           <FileText size={18} />

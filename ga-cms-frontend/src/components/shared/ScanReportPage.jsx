@@ -15,29 +15,31 @@ import {
   MapPin,
   Droplets
 } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 
 const ScanReportPage = () => {
   const navigate = useNavigate();
   const { reportId } = useParams();
+  const location = useLocation();
+  const passedPatient = location.state?.patientData;
 
   // Mock data for the scan report
   const reportData = {
     id: reportId || 'SCAN-10294',
-    type: 'Chest X-Ray PA View',
-    date: 'May 12, 2026',
+    type: reportId?.charCodeAt(reportId.length - 1) % 2 === 0 ? 'Chest X-Ray PA View' : 'Abdominal Ultrasound',
+    date: `May ${10 + (reportId?.charCodeAt(reportId.length - 1) % 5)}, 2026`,
     time: '11:45 AM',
     patient: {
-      name: 'Abhishek Sharma',
-      id: 'PAT-8821',
-      age: 28,
-      gender: 'Male',
-      bloodGroup: 'O+',
-      place: 'Hyderabad, Telangana'
+      name: passedPatient?.full_name || 'Abhishek Sharma',
+      id: passedPatient?.id ? `PAT-${passedPatient.id}` : 'PAT-8821',
+      age: passedPatient?.age || 28,
+      gender: passedPatient?.gender || 'Male',
+      bloodGroup: passedPatient?.blood_group || 'O+',
+      place: passedPatient?.address || 'Hyderabad, Telangana'
     },
     doctor: 'Dr. Sarah Johnson',
     department: 'Radiology & Imaging',
-    imageUrl: '/medical_xray_scan_1778599392682.png', // This will be linked correctly in the actual env
+    imageUrl: '/medical_xray_scan_1778599392682.png', 
     findings: [
       "The lung fields are clear with no evidence of focal consolidation, pleural effusion, or pneumothorax.",
       "The cardiomediastinal silhouette is within normal limits for size and contour.",

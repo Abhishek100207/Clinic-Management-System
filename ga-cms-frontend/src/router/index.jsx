@@ -41,15 +41,12 @@ import DoctorChatPage from '../components/doctor/DoctorChatPage';
 import MedicalRecordsPage from '../components/patient/MedicalRecordsPage';
 import ScanReportPage from '../components/shared/ScanReportPage';
 import PatientChatPage from '../components/patient/PatientChatPage';
+import StaffChatPage from '../components/shared/chat/StaffChatPage';
 
 const ChatRouteWrapper = () => {
-  const { user } = useAuthStore();
-  if (user?.role === 'patient') {
-    return <PatientChatPage />;
-  }
   return (
-    <AuthGuard allowedRoles={['doctor', 'senior_doctor']}>
-      <DoctorChatPage />
+    <AuthGuard allowedRoles={['doctor', 'senior_doctor', 'patient', 'technician', 'receptionist']}>
+      <StaffChatPage />
     </AuthGuard>
   );
 };
@@ -143,6 +140,11 @@ const AppRouter = () => {
           } 
         />
         <Route path="/chat" 
+          element={
+            <ChatRouteWrapper />
+          } 
+        />
+        <Route path="/staff-chat" 
           element={
             <ChatRouteWrapper />
           } 

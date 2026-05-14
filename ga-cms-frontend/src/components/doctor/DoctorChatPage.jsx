@@ -10,11 +10,7 @@ const DoctorChatPage = () => {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto w-full p-4 md:p-8 h-[calc(100vh-100px)] animate-fade-in flex flex-col">
-      <div className="shrink-0 mb-6">
-        <h1 className="text-3xl font-black text-navy tracking-tight mb-2">Patient Communications</h1>
-        <p className="text-slate-500 font-medium">Securely chat with your consulted patients and review their inquiries.</p>
-      </div>
+    <div className="w-full h-full animate-fade-in flex flex-col overflow-hidden">
       <div className="flex-1 min-h-0">
         <ChatContainer role="doctor" contacts={patientContacts} />
       </div>

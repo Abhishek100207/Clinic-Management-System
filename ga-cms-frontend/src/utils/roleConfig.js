@@ -12,6 +12,7 @@ export const ROLE_CONFIG = {
       { name: 'Add Staff',       path: '/staff/add',        icon: 'UserPlus' },
       { name: 'Audit Logs',      path: '/logs',             icon: 'ClipboardList' },
       { name: 'Settings', path: '/settings', icon: 'Settings' },
+      { name: 'Staff chat',      path: '/staff-chat',       icon: 'MessageSquare' },
     ],
     badgeColor: 'bg-purple-100 text-purple-800'
   },
@@ -24,6 +25,7 @@ export const ROLE_CONFIG = {
       { name: 'My Patients',     path: '/my-patients',      icon: 'Users' },
       { name: 'Consultations',   path: '/consultations',    icon: 'Stethoscope' },
       { name: 'Chat',            path: '/chat',             icon: 'MessageSquare' },
+      { name: 'Staff chat',      path: '/staff-chat',       icon: 'MessageSquare' },
     ],
     badgeColor: 'bg-blue-100 text-blue-800'
   },
@@ -36,6 +38,7 @@ export const ROLE_CONFIG = {
       { name: 'Patient Registration', path: '/register-patient', icon: 'UserPlus' },
       { name: 'Queue', path: '/queue', icon: 'ListOrdered' },
       { name: 'Billing & Invoices', path: '/billing', icon: 'CreditCard' },
+      { name: 'Staff chat', path: '/staff-chat', icon: 'MessageSquare' },
     ],
     badgeColor: 'bg-emerald-100 text-emerald-800'
   },
@@ -45,6 +48,7 @@ export const ROLE_CONFIG = {
     navLinks: [
       { name: 'Dashboard', path: '/dashboard/technician', icon: 'LayoutDashboard' },
       { name: 'Scan Queue', path: '/scan-orders', icon: 'ListOrdered' },
+      { name: 'Staff chat', path: '/staff-chat', icon: 'MessageSquare' },
     ],
     badgeColor: 'bg-amber-100 text-amber-800'
   },
@@ -60,3 +64,4 @@ export const ROLE_CONFIG = {
     badgeColor: 'bg-blue-100 text-blue-800'
   }
 };
+
