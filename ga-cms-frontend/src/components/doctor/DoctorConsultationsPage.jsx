@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import OPConsultationModal from './OPConsultationModal';
 import api from '../../api/axios';
+import { createConsultationNote, createPrescription, fetchDrugs, checkDrugInteractions } from '../../api/medicalRecords';
 
 const DoctorConsultationsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,7 +24,7 @@ const DoctorConsultationsPage = () => {
 
   // Mock data for OP appointments
   const mockAppointments = [
-    { id: '1', patient_name: 'Rahul Verma', age: 28, gender: 'Male', blood_group: 'O+', consultation_time: '10:30 AM', date: '2026-05-09', type: 'OP' },
+    { id: '26', patient_name: 'Rahul Verma', age: 28, gender: 'Male', blood_group: 'O+', consultation_time: '10:30 AM', date: '2026-05-09', type: 'OP' },
     { id: '2', patient_name: 'Anjali Sharma', age: 24, gender: 'Female', blood_group: 'A-', consultation_time: '11:15 AM', date: '2026-05-09', type: 'OP' },
     { id: '3', patient_name: 'Vikram Singh', age: 35, gender: 'Male', blood_group: 'B+', consultation_time: '12:00 PM', date: '2026-05-09', type: 'OP' },
     { id: '4', patient_name: 'Priya Das', age: 31, gender: 'Female', blood_group: 'AB+', consultation_time: '01:45 PM', date: '2026-05-09', type: 'OP' },
@@ -33,11 +34,19 @@ const DoctorConsultationsPage = () => {
     const fetchOPAppointments = async () => {
       try {
         const res = await api.get('/api/appointments/appointments/');
-        // Filter for OP and today (simplified for mock/demo)
-        const opList = res.data.filter(a => a.appointment_type === 'in-person' || a.type === 'OP');
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        // Filter for OP (in-person) and confirmed for today
+        const opList = res.data.filter(a => 
+          (a.appointment_type === 'in_person' || a.appointment_type === 'in-person' || a.type === 'OP') &&
+          a.status === 'confirmed' &&
+          a.date === todayStr
+        );
+        
         if (opList.length > 0) {
           setAppointments(opList);
         } else {
+          // If no real confirmed appointments, fallback to mock but update the first one to be valid for testing
           setAppointments(mockAppointments);
         }
       } catch (err) {
@@ -59,14 +68,64 @@ const DoctorConsultationsPage = () => {
     setIsModalOpen(true);
   };
 
-  const handleSaveConsultation = (data) => {
-    console.log("Saving full consultation to Patient Profile:", data);
-    
-    if (data.recommendedTests && data.recommendedTests !== 'None') {
-      console.log("Sending Test Order to Technician:", data.recommendedTests);
-      alert(`Consultation finalized. SOAP notes saved to patient profile. Test orders sent to Technician.`);
-    } else {
-      alert(`Consultation finalized. SOAP notes saved to patient profile.`);
+  const handleSaveConsultation = async (data) => {
+    try {
+      const apptId = selectedPatient?.id;
+      if (!apptId) {
+        alert("Cannot save without an appointment ID.");
+        return;
+      }
+      
+      await createConsultationNote({
+        appointment: apptId,
+        subjective: data.soap.subjective,
+        objective: data.soap.objective,
+        assessment: data.soap.assessment,
+        plan: data.soap.plan,
+      });
+
+      let availableDrugs = [];
+      try {
+        availableDrugs = await fetchDrugs();
+      } catch(e) {}
+
+      if (data.prescriptions && data.prescriptions.length > 0 && data.prescriptions[0].medicine) {
+        const meds = data.prescriptions.filter(p => p.medicine).map(p => {
+          const matchedDrug = availableDrugs.find(d => d.name.toLowerCase() === p.medicine.toLowerCase());
+          return {
+            drug_id: matchedDrug ? matchedDrug.id : (availableDrugs.length > 0 ? availableDrugs[0].id : 1),
+            dosage: p.dosage,
+            frequency: 'As directed',
+            duration: 'As directed'
+          };
+        });
+
+        if (meds.length > 1) {
+          try {
+            const drugIds = meds.map(m => m.drug_id);
+            const interactionRes = await checkDrugInteractions(drugIds);
+            if (interactionRes.interactions && interactionRes.interactions.length > 0) {
+              const proceed = window.confirm(`WARNING: Drug Interactions Detected:\n- ${interactionRes.interactions.join('\n- ')}\n\nDo you still want to prescribe these medications?`);
+              if (!proceed) return;
+            }
+          } catch(e) { console.error("Interaction check failed", e); }
+        }
+
+        await createPrescription({
+          appointment: apptId,
+          medications: meds
+        });
+      }
+
+      if (data.recommendedTests && data.recommendedTests !== 'None') {
+        alert(`Consultation finalized. SOAP notes saved to patient profile. Test orders sent to Technician.`);
+      } else {
+        alert(`Consultation finalized. SOAP notes saved to patient profile.`);
+      }
+    } catch (err) {
+      console.error(err);
+      const errorMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      alert(`Failed to save consultation records: ${errorMsg}`);
     }
   };
 

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchConsultationNotes, fetchPrescriptions, fetchLabResults, fetchScanResults } from '../../api/medicalRecords';
 import { 
   FileText, 
   Activity, 
@@ -17,6 +18,39 @@ import {
 
 const MedicalRecordsPage = () => {
   const [activeModal, setActiveModal] = useState(null);
+  const [records, setRecords] = useState({
+    prescriptions: [],
+    soap_notes: [],
+    lab_results: [],
+    scan_results: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Here we'd ideally pass the logged-in patient's ID if we had it in context
+        // For now, we fetch all that the user has access to (backend filters by user)
+        const [presReq, soapReq, labReq, scanReq] = await Promise.all([
+          fetchPrescriptions(),
+          fetchConsultationNotes(),
+          fetchLabResults(),
+          fetchScanResults()
+        ]);
+        setRecords({
+          prescriptions: presReq,
+          soap_notes: soapReq,
+          lab_results: labReq,
+          scan_results: scanReq
+        });
+      } catch (error) {
+        console.error("Failed to fetch medical records:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const categories = [
     { id: 'prescriptions', title: 'Prescriptions', icon: <Pill size={28} />, color: 'blue', desc: 'Active and past medication lists' },
@@ -31,19 +65,18 @@ const MedicalRecordsPage = () => {
       case 'prescriptions':
         return (
           <div className="space-y-4">
-            {[
-              { id: 'RX-9901', doctor: 'Dr. Sarah Johnson', date: 'May 04, 2026', title: 'Standard Prescription', meds: 'Amoxicillin, Paracetamol' },
-              { id: 'RX-8452', doctor: 'Dr. Robert Chen', date: 'April 20, 2026', title: 'Post-Surgery Medication', meds: 'Ibuprofen, Pantoprazole' },
-            ].map((item, i) => (
+            {records.prescriptions.length === 0 ? <p className="text-sm text-slate-500">No prescriptions found.</p> : records.prescriptions.map((item, i) => (
               <div key={i} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
                     <Pill size={20} />
                   </div>
                   <div>
-                    <h4 className="font-bold text-navy text-sm">{item.title}</h4>
-                    <p className="text-[11px] text-slate-500">{item.doctor} • {item.date}</p>
-                    <p className="text-[10px] text-blue-600 font-medium mt-1">{item.meds}</p>
+                    <h4 className="font-bold text-navy text-sm">Prescription #{item.id}</h4>
+                    <p className="text-[11px] text-slate-500">Dr. {item.doctor} • {new Date(item.created_at).toLocaleDateString()}</p>
+                    <p className="text-[10px] text-blue-600 font-medium mt-1">
+                      {item.medications?.map(m => m.drug_details?.name || m.drug_id).join(', ')}
+                    </p>
                   </div>
                 </div>
                 <button className="p-2 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-lg transition-colors">
@@ -80,75 +113,72 @@ const MedicalRecordsPage = () => {
       case 'soap_notes':
         return (
           <div className="space-y-6">
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+            {records.soap_notes.length === 0 ? <p className="text-sm text-slate-500">No consultation notes found.</p> : records.soap_notes.map((note, i) => (
+            <div key={i} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
               <div className="bg-purple-600 px-4 py-2 text-white text-[10px] font-bold uppercase tracking-widest flex justify-between">
-                <span>Clinical Note #SOAP-1024</span>
-                <span>Date: May 04, 2026</span>
+                <span>Clinical Note #{note.id}</span>
+                <span>Date: {new Date(note.created_at).toLocaleDateString()}</span>
               </div>
               <div className="p-4 space-y-4">
                 <div>
                   <h5 className="text-[11px] font-bold text-purple-600 uppercase mb-1">Subjective</h5>
-                  <p className="text-xs text-slate-600 leading-relaxed">Patient reports persistent dry cough and mild fever for 3 days. No shortness of breath.</p>
+                  <p className="text-xs text-slate-600 leading-relaxed">{note.subjective}</p>
                 </div>
                 <div>
                   <h5 className="text-[11px] font-bold text-purple-600 uppercase mb-1">Objective</h5>
-                  <p className="text-xs text-slate-600 leading-relaxed">Temp: 100.2°F, BP: 120/80. Lungs clear to auscultation. Throat shows mild erythema.</p>
+                  <p className="text-xs text-slate-600 leading-relaxed">{note.objective}</p>
                 </div>
                 <div>
                   <h5 className="text-[11px] font-bold text-purple-600 uppercase mb-1">Assessment</h5>
-                  <p className="text-xs text-slate-600 leading-relaxed">Acute Viral Upper Respiratory Infection.</p>
+                  <p className="text-xs text-slate-600 leading-relaxed">{note.assessment}</p>
                 </div>
                 <div>
                   <h5 className="text-[11px] font-bold text-purple-600 uppercase mb-1">Plan</h5>
-                  <p className="text-xs text-slate-600 leading-relaxed">Rest, hydration, and prescribed medications. Follow up if symptoms worsen.</p>
+                  <p className="text-xs text-slate-600 leading-relaxed">{note.plan}</p>
                 </div>
               </div>
             </div>
+            ))}
           </div>
         );
       case 'lab_results':
         return (
           <div className="space-y-4">
-             <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl">
-               <h4 className="font-bold text-amber-900 text-sm mb-3">Complete Blood Count (CBC)</h4>
-               <div className="space-y-2">
-                 {[
-                   { param: 'Hemoglobin', value: '14.2 g/dL', range: '13.5-17.5', status: 'Normal' },
-                   { param: 'WBC Count', value: '11,500 /mcL', range: '4,500-11,000', status: 'High' },
-                   { param: 'Platelets', value: '250,000 /mcL', range: '150,000-450,000', status: 'Normal' },
-                 ].map((row, i) => (
-                   <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-amber-100 last:border-0">
-                     <span className="text-slate-500">{row.param}</span>
-                     <div className="flex gap-4">
-                        <span className="font-bold text-slate-700">{row.value}</span>
-                        <span className={`w-16 text-center font-bold px-1 rounded ${row.status === 'High' ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                          {row.status}
-                        </span>
-                     </div>
-                   </div>
-                 ))}
+            {records.lab_results.length === 0 ? <p className="text-sm text-slate-500">No lab results found.</p> : records.lab_results.map((lab, i) => (
+             <div key={i} className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex justify-between items-center">
+               <div>
+                 <h4 className="font-bold text-amber-900 text-sm mb-1">{lab.test_name}</h4>
+                 <p className="text-xs text-slate-500">Uploaded on {new Date(lab.uploaded_at).toLocaleDateString()}</p>
+                 <span className="text-[10px] font-bold bg-amber-200 text-amber-800 px-2 py-1 rounded mt-2 inline-block">
+                  {lab.status}
+                 </span>
                </div>
+               {lab.file && (
+                 <a href={lab.file} target="_blank" rel="noopener noreferrer" className="p-2 bg-amber-200 hover:bg-amber-300 text-amber-800 rounded-lg transition-colors">
+                   <Download size={18} />
+                 </a>
+               )}
              </div>
+            ))}
           </div>
         );
       case 'scan_results':
         return (
           <div className="grid grid-cols-2 gap-4">
-            {[
-              { name: 'Chest X-Ray', date: 'May 04, 2026', img: 'Radiology View' },
-              { name: 'Abdominal USG', date: 'April 15, 2026', img: 'Sonography' },
-            ].map((scan, i) => (
+            {records.scan_results.length === 0 ? <p className="text-sm text-slate-500 col-span-2">No scan results found.</p> : records.scan_results.map((scan, i) => (
               <div key={i} className="group relative bg-slate-900 rounded-2xl aspect-square overflow-hidden flex flex-col items-center justify-center border border-slate-800">
                 <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-500 to-transparent group-hover:opacity-40 transition-opacity"></div>
                 <Layers className="text-blue-400 mb-2 opacity-50" size={40} />
-                <span className="text-[10px] text-blue-300 font-bold uppercase tracking-widest">{scan.img}</span>
+                <span className="text-[10px] text-blue-300 font-bold uppercase tracking-widest">Radiology</span>
                 <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                  <p className="text-white text-xs font-bold">{scan.name}</p>
-                  <p className="text-slate-400 text-[10px]">{scan.date}</p>
+                  <p className="text-white text-xs font-bold">{scan.scan_type}</p>
+                  <p className="text-slate-400 text-[10px]">{new Date(scan.uploaded_at).toLocaleDateString()}</p>
                 </div>
-                <button className="absolute top-2 right-2 p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ExternalLink size={14} />
-                </button>
+                {scan.file && (
+                  <a href={scan.file} target="_blank" rel="noopener noreferrer" className="absolute top-2 right-2 p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ExternalLink size={14} />
+                  </a>
+                )}
               </div>
             ))}
           </div>

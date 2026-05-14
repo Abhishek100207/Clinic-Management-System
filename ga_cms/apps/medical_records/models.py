@@ -1,0 +1,85 @@
+from django.db import models
+from django.utils import timezone
+from datetime import timedelta
+from apps.users.models import Patient, Doctor
+from apps.appointments.models import Appointment
+
+class ConsultationNote(models.Model):
+    appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name='consultation_note')
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='consultation_notes')
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='consultation_notes')
+    
+    # SOAP format
+    subjective = models.TextField(blank=True)
+    objective = models.TextField(blank=True)
+    assessment = models.TextField(blank=True)
+    plan = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def is_locked(self):
+        # 24-hour lock logic
+        if not self.created_at:
+            return False
+        return timezone.now() > self.created_at + timedelta(hours=24)
+
+    def __str__(self):
+        return f"Consultation for {self.patient} on {self.appointment.date}"
+
+
+class LabResult(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='lab_results')
+    test_name = models.CharField(max_length=255)
+    file = models.FileField(upload_to='lab_results/')
+    status = models.CharField(max_length=50, default='Available')
+    reported_by = models.CharField(max_length=255, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Lab: {self.test_name} for {self.patient}"
+
+
+class ScanResult(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='scan_results')
+    scan_type = models.CharField(max_length=255)
+    file = models.FileField(upload_to='scan_results/')
+    reported_by = models.CharField(max_length=255, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Scan: {self.scan_type} for {self.patient}"
+
+
+class Drug(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    generic_name = models.CharField(max_length=255, blank=True)
+    description = models.TextField(blank=True)
+    interactions = models.JSONField(default=list, blank=True, help_text="List of drug names this drug interacts with")
+
+    def __str__(self):
+        return self.name
+
+
+class Prescription(models.Model):
+    appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name='prescription')
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='prescriptions')
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='prescriptions')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Prescription for {self.patient} on {self.created_at.date()}"
+
+
+class PrescribedMedication(models.Model):
+    prescription = models.ForeignKey(Prescription, on_delete=models.CASCADE, related_name='medications')
+    drug = models.ForeignKey(Drug, on_delete=models.CASCADE)
+    dosage = models.CharField(max_length=100) # e.g., "500mg"
+    frequency = models.CharField(max_length=100) # e.g., "Twice a day"
+    duration = models.CharField(max_length=100) # e.g., "5 days"
+    instructions = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.drug.name} - {self.dosage}"

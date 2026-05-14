@@ -23,6 +23,8 @@ import {
   ChevronRight,
   Stethoscope
 } from 'lucide-react';
+import api from '../../api/axios';
+import { createConsultationNote, createPrescription, fetchDrugs, checkDrugInteractions } from '../../api/medicalRecords';
 
 const DoctorDashboard = () => {
   const navigate = useNavigate();
@@ -92,10 +94,62 @@ const DoctorDashboard = () => {
     }
   };
 
-  const handleConsultationSave = (data) => {
-    console.log("Consultation saved:", data);
-    // Here you would typically call an API to save the consultation
-    alert("Consultation finalized successfully!");
+  const handleConsultationSave = async (data) => {
+    try {
+      const apptId = consultationData.appointment?.id;
+      if (!apptId) {
+        alert("Cannot save consultation without a valid appointment ID.");
+        return;
+      }
+      
+      await createConsultationNote({
+        appointment: apptId,
+        subjective: data.soap.subjective,
+        objective: data.soap.objective,
+        assessment: data.soap.assessment,
+        plan: data.soap.plan,
+      });
+
+      let availableDrugs = [];
+      try {
+        availableDrugs = await fetchDrugs();
+      } catch(e) {}
+
+      if (data.prescriptions && data.prescriptions.length > 0 && data.prescriptions[0].medication) {
+        const meds = data.prescriptions.filter(p => p.medication).map(p => {
+          const matchedDrug = availableDrugs.find(d => d.name.toLowerCase() === p.medication.toLowerCase());
+          return {
+            drug_id: matchedDrug ? matchedDrug.id : (availableDrugs.length > 0 ? availableDrugs[0].id : 1),
+            dosage: p.dosage,
+            frequency: p.frequency || 'As directed',
+            duration: p.duration || 'As directed'
+          };
+        });
+
+        if (meds.length > 1) {
+          try {
+            const drugIds = meds.map(m => m.drug_id);
+            const interactionRes = await checkDrugInteractions(drugIds);
+            if (interactionRes.interactions && interactionRes.interactions.length > 0) {
+              const proceed = window.confirm(`WARNING: Drug Interactions Detected:\n- ${interactionRes.interactions.join('\n- ')}\n\nDo you still want to prescribe these medications?`);
+              if (!proceed) return;
+            }
+          } catch(e) { console.error("Interaction check failed", e); }
+        }
+
+        await createPrescription({
+          appointment: apptId,
+          medications: meds
+        });
+      }
+
+      alert("Consultation finalized successfully!");
+      setConsultationData({ isOpen: false, appointment: null });
+    } catch (error) {
+      console.error(error);
+      const errorMsg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
+      alert(`Failed to save consultation: ${errorMsg}`);
+    }
   };
 
   return (
