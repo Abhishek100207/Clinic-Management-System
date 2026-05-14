@@ -81,7 +81,8 @@ const StaffChatPage = () => {
           });
         } else if (user?.role === 'patient' && activeTab === 'Doctors') {
           const res = await api.get('/api/users/doctors/');
-          data = res.data.map(d => {
+          const doctorsArray = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+          data = doctorsArray.map(d => {
             const uid = d.user?.id || d.id;
             const conv = conversationsMap[uid] || {};
             return {

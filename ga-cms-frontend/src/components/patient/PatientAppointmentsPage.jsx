@@ -12,6 +12,7 @@ const PatientAppointmentsPage = () => {
   const { appointments, loading, fetchDoctorDashboardData, updateAppointmentStatus } = useAppointmentStore();
   const [rescheduleData, setRescheduleData] = useState({ isOpen: false, appointment: null });
   const [isBooking, setIsBooking] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('All My Bookings');
 
   useEffect(() => {
     // We use the same fetch function but it's filtered by user role on backend
@@ -38,6 +39,14 @@ const PatientAppointmentsPage = () => {
       alert("Failed to reschedule: " + (err.response?.data?.error || ""));
     }
   };
+
+  const filteredAppointments = appointments.filter(appt => {
+    if (activeFilter === 'All My Bookings') return true;
+    if (activeFilter === 'Upcoming') return ['pending', 'confirmed', 'rescheduled'].includes(appt.status);
+    if (activeFilter === 'Pending Confirmation') return appt.status === 'pending';
+    if (activeFilter === 'Past Visits') return ['completed', 'cancelled'].includes(appt.status);
+    return true;
+  });
 
   return (
     <div className="p-6 max-w-7xl mx-auto w-full animate-fade-in">
@@ -92,8 +101,9 @@ const PatientAppointmentsPage = () => {
             {['All My Bookings', 'Upcoming', 'Pending Confirmation', 'Past Visits'].map((filter, i) => (
               <button 
                 key={i}
+                onClick={() => setActiveFilter(filter)}
                 className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${
-                  i === 0 ? 'bg-blue-600 text-white shadow-md' : 'bg-white border border-gray-200 text-slate-500 hover:border-blue-300 hover:text-blue-600'
+                  activeFilter === filter ? 'bg-blue-600 text-white shadow-md' : 'bg-white border border-gray-200 text-slate-500 hover:border-blue-300 hover:text-blue-600'
                 }`}
               >
                 {filter}
@@ -109,7 +119,7 @@ const PatientAppointmentsPage = () => {
               </div>
             ) : (
               <PatientAppointmentTable 
-                appointments={appointments} 
+                appointments={filteredAppointments} 
                 onAction={handleAction} 
               />
             )}

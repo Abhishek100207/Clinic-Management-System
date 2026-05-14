@@ -7,26 +7,56 @@ const PatientChatPage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDoctors = async () => {
+    let isFirstLoad = true;
+    const fetchContacts = async () => {
       try {
-        setLoading(true);
-        const res = await api.get('/api/users/doctors/');
-        const mapped = res.data.map(d => ({
-          id: d.user?.id || d.id,
-          name: `Dr. ${d.user?.full_name || d.user?.first_name || 'Unknown'}`,
-          lastMessage: 'Select to view messages',
-          lastTime: '',
-          online: false,
-          unread: 0
-        }));
-        setDoctorContacts(mapped);
+        if (isFirstLoad) setLoading(true);
+        const convRes = await api.get('/api/chat/messages/conversations/');
+        const docRes = await api.get('/api/users/doctors/');
+        
+        const conversations = convRes.data;
+        const doctorsData = docRes.data.results || docRes.data;
+        
+        const convMap = {};
+        conversations.forEach(c => {
+          convMap[c.id] = c;
+        });
+        
+        const mappedDoctors = doctorsData.map(d => {
+          const userId = d.user?.id || d.id;
+          if (convMap[userId]) {
+            return convMap[userId];
+          } else {
+            return {
+              id: userId,
+              name: `Dr. ${d.user?.full_name || d.user?.first_name || 'Unknown'}`,
+              lastMessage: 'Select to view messages',
+              lastTime: '',
+              online: false,
+              unread: 0
+            };
+          }
+        });
+        
+        const doctorUserIds = new Set(doctorsData.map(d => d.user?.id || d.id));
+        const otherConvs = conversations.filter(c => !doctorUserIds.has(c.id));
+        
+        const allContacts = [...mappedDoctors, ...otherConvs];
+        
+        setDoctorContacts(allContacts);
       } catch (err) {
-        console.error("Failed to fetch doctors for chat", err);
+        console.error("Failed to fetch contacts", err);
       } finally {
-        setLoading(false);
+        if (isFirstLoad) {
+          setLoading(false);
+          isFirstLoad = false;
+        }
       }
     };
-    fetchDoctors();
+    
+    fetchContacts();
+    const interval = setInterval(fetchContacts, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
