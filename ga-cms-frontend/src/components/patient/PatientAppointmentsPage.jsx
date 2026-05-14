@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { useAppointmentStore } from '../../store/appointmentStore';
 import PatientAppointmentTable from './PatientAppointmentTable';
 import { Calendar, RefreshCw, Plus, X } from 'lucide-react';
@@ -8,7 +8,7 @@ import BookAppointment from './BookAppointment';
 import api from '../../api/axios';
 
 const PatientAppointmentsPage = () => {
-  const navigate = useNavigate();
+
   const { appointments, loading, fetchDoctorDashboardData, updateAppointmentStatus } = useAppointmentStore();
   const [rescheduleData, setRescheduleData] = useState({ isOpen: false, appointment: null });
   const [isBooking, setIsBooking] = useState(false);
@@ -16,7 +16,8 @@ const PatientAppointmentsPage = () => {
   useEffect(() => {
     // We use the same fetch function but it's filtered by user role on backend
     fetchDoctorDashboardData();
-  }, []);
+  }, [fetchDoctorDashboardData]);
+
 
   const handleAction = (id, action) => {
     if (action === 'reschedule') {

@@ -2,6 +2,8 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 
 const ClinicAnalytics = lazy(() => import('./ClinicAnalytics')); // PERF: Lazy load heavy chart
 import { useAuthStore } from '../../store/authStore';
+import { authApi } from '../../api/auth';
+
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '../shared/Badge';
 import AdminStats from './AdminStats';

@@ -24,7 +24,7 @@ const MedicalRecordsPage = () => {
     lab_results: [],
     scan_results: []
   });
-  const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     const loadData = async () => {
@@ -45,10 +45,9 @@ const MedicalRecordsPage = () => {
         });
       } catch (error) {
         console.error("Failed to fetch medical records:", error);
-      } finally {
-        setLoading(false);
       }
     };
+
     loadData();
   }, []);
 

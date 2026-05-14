@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense, useCallback } from 'react';
 
 const UploadScanModal = lazy(() => import('./UploadScanModal')); // PERF: Lazy load modal
 import { 
@@ -40,7 +40,7 @@ const ScanQueue = ({ isTechnician }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get(`/api/medical_records/scan-orders/?status=${statusFilter}`);
@@ -65,11 +65,15 @@ const ScanQueue = ({ isTechnician }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
-    fetchRequests();
-  }, [statusFilter]);
+    const timer = setTimeout(() => {
+      fetchRequests();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchRequests]);
+
 
   useEffect(() => {
     const fetchPatients = async () => {

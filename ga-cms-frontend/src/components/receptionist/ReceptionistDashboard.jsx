@@ -31,7 +31,7 @@ const ReceptionistDashboard = () => {
   });
 
   const [queueData, setQueueData] = useState([]);
-  const [loading, setLoading] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300); // PERF: Debounce search input
   
@@ -45,7 +45,7 @@ const ReceptionistDashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
+
         const [pRes, aRes] = await Promise.all([
           api.get('/api/users/patients/'),
           api.get('/api/appointments/appointments/')
@@ -75,10 +75,9 @@ const ReceptionistDashboard = () => {
         setQueueData(mappedQueue);
       } catch (err) {
         console.error("Failed to fetch data for receptionist dashboard:", err);
-      } finally {
-        setLoading(false);
       }
     };
+
     fetchData();
   }, []);
 

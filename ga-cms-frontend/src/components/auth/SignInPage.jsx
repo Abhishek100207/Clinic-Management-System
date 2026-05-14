@@ -71,20 +71,7 @@ const SignInPage = () => {
     } finally { setLoading(false); }
   };
 
-  const Logo = () => (
-    <div className="flex flex-col items-center mb-8">
-      <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-900/50 mb-4"
-        style={{ background: 'linear-gradient(135deg,#1d4ed8,#0ea5e9)' }}>
-        <svg viewBox="0 0 24 24" fill="white" className="w-8 h-8">
-          <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-6 14h-2v-4H7v-2h4V7h2v4h4v2h-4v4z"/>
-        </svg>
-      </div>
-      <p className="text-white font-black text-xl">GA Clinic</p>
-      <p className="text-white/40 text-sm mt-1">
-        {step === 'credentials' ? 'Sign in to your account' : 'Verify your identity'}
-      </p>
-    </div>
-  );
+
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4"
@@ -99,7 +86,18 @@ const SignInPage = () => {
       </button>
 
       <div className="w-full max-w-[420px]">
-        <Logo />
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-900/50 mb-4"
+            style={{ background: 'linear-gradient(135deg,#1d4ed8,#0ea5e9)' }}>
+            <svg viewBox="0 0 24 24" fill="white" className="w-8 h-8">
+              <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-6 14h-2v-4H7v-2h4V7h2v4h4v2h-4v4z"/>
+            </svg>
+          </div>
+          <p className="text-white font-black text-xl">GA Clinic</p>
+          <p className="text-white/40 text-sm mt-1">
+            {step === 'credentials' ? 'Sign in to your account' : 'Verify your identity'}
+          </p>
+        </div>
 
         <div className="rounded-3xl overflow-hidden border border-white/10"
           style={{ background: 'rgba(8,22,52,0.95)', boxShadow: '0 40px 100px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.07)' }}>

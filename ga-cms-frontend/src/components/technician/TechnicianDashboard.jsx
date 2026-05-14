@@ -19,12 +19,12 @@ const TechnicianDashboard = () => {
 
   const [statsData, setStatsData] = useState({ pending: 0, inProgress: 0, completed: 0, total: 0 });
   const [pendingPatients, setPendingPatients] = useState([]);
-  const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
+
         const res = await api.get('/api/medical_records/scan-orders/');
         const data = Array.isArray(res.data) ? res.data : (res.data.results || []);
         
@@ -49,10 +49,9 @@ const TechnicianDashboard = () => {
         });
       } catch (err) {
         console.error("Failed to fetch scan orders for dashboard:", err);
-      } finally {
-        setLoading(false);
       }
     };
+
     fetchData();
   }, []);
 

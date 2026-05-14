@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
@@ -9,7 +9,7 @@ const AppointmentBookingPage = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+
   const [bookedToken, setBookedToken] = useState(null);
   
   // State for Booking Form
@@ -31,21 +31,16 @@ const AppointmentBookingPage = () => {
     { id: 'west_wing', name: 'West Wing Center', distance: '4.3 km' },
   ];
 
-  useEffect(() => {
-    fetchDoctors();
-    fetchPatients();
-  }, [user]);
-
-  const fetchDoctors = async () => {
+  const fetchDoctors = useCallback(async () => {
     try {
       const res = await api.get('/api/users/doctors/');
       setDoctors(Array.isArray(res.data) ? res.data : (res.data.results ?? []));
     } catch (err) {
       console.error("Failed to fetch doctors", err);
     }
-  };
+  }, []);
 
-  const fetchPatients = async () => {
+  const fetchPatients = useCallback(async () => {
     try {
       const res = await api.get('/api/users/patients/');
       const patientList = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
@@ -58,7 +53,17 @@ const AppointmentBookingPage = () => {
     } catch (err) {
       console.error("Failed to fetch patients", err);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchDoctors();
+      fetchPatients();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchDoctors, fetchPatients]);
+
+
 
   // Fetch slots
   useEffect(() => {
@@ -69,7 +74,7 @@ const AppointmentBookingPage = () => {
           const res = await api.get(`/api/appointments/slots/?doctor_id=${doctorId}&date=${date}&appointment_type=${appointmentType}`);
           setAvailableSlots(res.data.available_slots || []);
         } catch (err) {
-          setError('Failed to fetch slots.');
+          console.error("Failed to fetch slots", err);
           setAvailableSlots(['09:00:00', '09:20:00', '09:40:00', '10:20:00', '11:00:00']);
         } finally {
           setLoading(false);

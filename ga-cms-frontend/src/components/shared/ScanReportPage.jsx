@@ -32,10 +32,13 @@ const ScanReportPage = () => {
   useEffect(() => {
     console.log('ScanReportPage: reportId =', reportId);
     if (!reportId) {
-      setError('Report ID is missing.');
-      setLoading(false);
+      setTimeout(() => {
+        setError('Report ID is missing.');
+        setLoading(false);
+      }, 0);
       return;
     }
+
 
     const fetchReport = async () => {
       try {
@@ -158,11 +161,12 @@ const ScanReportPage = () => {
             <Printer size={18} /> Print
           </button>
           <button 
-            onClick={() => window.print()}
+            onClick={handleDownload}
             className="flex items-center gap-2 bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
           >
             <Download size={18} /> Download PDF
           </button>
+
         </div>
       </div>
 

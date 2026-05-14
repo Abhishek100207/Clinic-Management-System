@@ -371,7 +371,8 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
                 </span>
               </div>
               
-              {chatMessages.map((msg, i) => (
+              {chatMessages.map((msg) => (
+
                 <div key={msg.id} className={`flex ${msg.senderId === 'me' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-300`}>
                   <div className={`max-w-[85%] lg:max-w-[65%] px-3 py-2 rounded-lg shadow-sm text-sm relative ${
                     msg.senderId === 'me' 

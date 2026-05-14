@@ -8,7 +8,7 @@ import {
   ChevronRight,
   Plus
 } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useDebounce } from '../../hooks/useDebounce';
 
@@ -69,14 +69,7 @@ const DoctorPatientsPage = () => {
     }
   };
 
-  // Mock data as fallback
-  const mockPatients = [
-    { id: '1', full_name: 'Rahul Verma', blood_group: 'O+' },
-    { id: '2', full_name: 'Anjali Sharma', blood_group: 'A-' },
-    { id: '3', full_name: 'Vikram Singh', blood_group: 'B+' },
-    { id: '4', full_name: 'Priya Das', blood_group: 'AB+' },
-    { id: '5', full_name: 'Suresh Kumar', blood_group: 'O-' },
-  ];
+
 
   useEffect(() => {
     const fetchPatients = async () => {
