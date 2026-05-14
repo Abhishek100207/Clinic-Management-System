@@ -39,6 +39,17 @@ import DoctorConsultationsPage from '../components/doctor/DoctorConsultationsPag
 import DoctorPatientsPage from '../components/doctor/DoctorPatientsPage';
 import DoctorChatPage from '../components/doctor/DoctorChatPage';
 import MedicalRecordsPage from '../components/patient/MedicalRecordsPage';
+import ScanReportPage from '../components/shared/ScanReportPage';
+import PatientChatPage from '../components/patient/PatientChatPage';
+import StaffChatPage from '../components/shared/chat/StaffChatPage';
+
+const ChatRouteWrapper = () => {
+  return (
+    <AuthGuard allowedRoles={['doctor', 'senior_doctor', 'patient', 'technician', 'receptionist']}>
+      <StaffChatPage />
+    </AuthGuard>
+  );
+};
 
 const ConsultationRouteWrapper = () => {
   const { user } = useAuthStore();
@@ -130,9 +141,12 @@ const AppRouter = () => {
         />
         <Route path="/chat" 
           element={
-            <AuthGuard allowedRoles={['doctor', 'senior_doctor']}>
-              <DoctorChatPage />
-            </AuthGuard>
+            <ChatRouteWrapper />
+          } 
+        />
+        <Route path="/staff-chat" 
+          element={
+            <ChatRouteWrapper />
           } 
         />
         <Route path="/performance" element={<ComingSoonPage />} />
@@ -150,6 +164,13 @@ const AppRouter = () => {
           element={
             <AuthGuard allowedRoles={['patient']}>
               <MedicalRecordsPage />
+            </AuthGuard>
+          } 
+        />
+        <Route path="/scan-report/:reportId" 
+          element={
+            <AuthGuard allowedRoles={['doctor', 'senior_doctor', 'patient', 'technician']}>
+              <ScanReportPage />
             </AuthGuard>
           } 
         />

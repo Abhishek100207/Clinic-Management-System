@@ -35,15 +35,12 @@ const TechnicianDashboard = () => {
   return (
     <div className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in">
       
-      {/* Header Section - Technician Details */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-navy mb-2">Technician Dashboard</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight text-navy mb-2 uppercase">
+            Welcome {(user?.full_name || 'Rahul Verma')}
+          </h1>
           <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-slate-500">
-              Welcome back, <span className="text-amber-600 font-bold">{user?.full_name || 'Rahul Verma'}</span>
-            </span>
-            <span className="text-slate-300">•</span>
             <Badge colorClass="bg-amber-100 text-amber-800">
               {user?.qualification || 'Senior Lab Technician (B.Sc MLT)'}
             </Badge>
