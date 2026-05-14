@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { User, Clock, ArrowRight } from 'lucide-react';
 
-const QueueTable = ({ queue = [] }) => {
+// PERF: Memoize component to prevent unnecessary re-renders
+const QueueTable = memo(({ queue = [] }) => {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="p-6 border-b border-gray-100 flex items-center justify-between">
@@ -66,6 +67,6 @@ const QueueTable = ({ queue = [] }) => {
       </div>
     </div>
   );
-};
+});
 
 export default QueueTable;

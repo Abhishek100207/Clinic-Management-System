@@ -2,10 +2,16 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import serializers, status
+from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth import get_user_model
 from .models import AuditLog, Doctor, Patient, Receptionist, Technician
 
 User = get_user_model()
+
+class StandardPagination(PageNumberPagination): # PERF: Standard pagination for list endpoints
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 class AuditLogSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
@@ -27,7 +33,14 @@ class AuditLogListView(APIView):
         if request.user.role not in ['senior_doctor']:
             return Response({'error': 'Permission denied. Senior Doctor access only.'}, status=403)
         
-        logs = AuditLog.objects.all()[:100] # Limit to latest 100 for now
+        logs = AuditLog.objects.select_related('user').all().order_by('-timestamp') # PERF: select_related and order by timestamp
+        
+        paginator = StandardPagination() # PERF: Add pagination
+        page = paginator.paginate_queryset(logs, request)
+        if page is not None:
+            serializer = AuditLogSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+            
         serializer = AuditLogSerializer(logs, many=True)
         return Response(serializer.data)
 
@@ -49,7 +62,14 @@ class PatientSerializer(serializers.ModelSerializer):
 class DoctorListView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
-        doctors = Doctor.objects.filter(is_visible_to_patients=True)
+        doctors = Doctor.objects.select_related('user').filter(is_visible_to_patients=True).order_by('id') # PERF: select_related
+        
+        paginator = StandardPagination() # PERF: Add pagination
+        page = paginator.paginate_queryset(doctors, request)
+        if page is not None:
+            serializer = DoctorSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+            
         serializer = DoctorSerializer(doctors, many=True)
         return Response(serializer.data)
 
@@ -59,9 +79,16 @@ class PatientListView(APIView):
         # Admin, Receptionist, Doctor can see all patients.
         # Patients can only see themselves.
         if request.user.role == 'patient':
-            patients = Patient.objects.filter(user=request.user)
+            patients = Patient.objects.select_related('user').filter(user=request.user).order_by('id') # PERF: select_related
         else:
-            patients = Patient.objects.all()
+            patients = Patient.objects.select_related('user').all().order_by('id') # PERF: select_related
+            
+        paginator = StandardPagination() # PERF: Add pagination
+        page = paginator.paginate_queryset(patients, request)
+        if page is not None:
+            serializer = PatientSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+            
         serializer = PatientSerializer(patients, many=True)
         return Response(serializer.data)
 

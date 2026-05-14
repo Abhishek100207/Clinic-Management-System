@@ -49,3 +49,7 @@ export const checkDrugInteractions = async (drugIds) => {
     const response = await apiClient.post(`${API_BASE_URL}/drugs/check_interactions/`, { drug_ids: drugIds });
     return response.data;
 };
+export const searchDrugs = async (query, limit = 10, page = 1) => {
+    const response = await apiClient.get(`${API_BASE_URL}/drugs/search?q=${query}&limit=${limit}&page=${page}`);
+    return response.data;
+};

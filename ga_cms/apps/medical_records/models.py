@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 from apps.users.models import Patient, Doctor
@@ -47,9 +48,36 @@ class ScanResult(models.Model):
     file = models.FileField(upload_to='scan_results/')
     reported_by = models.CharField(max_length=255, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    # New fields for scan reports
+    findings = models.JSONField(default=list, blank=True, null=True)
+    status = models.CharField(max_length=50, default='completed', blank=True, null=True)
+    scan_date = models.DateField(blank=True, null=True, db_index=True) # PERF: Index for filtering
 
     def __str__(self):
         return f"Scan: {self.scan_type} for {self.patient}"
+
+
+class ScanOrder(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='scan_orders')
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='scan_orders')
+    scan_type = models.CharField(max_length=255)
+    status = models.CharField(max_length=50, default='pending') # pending/in_progress/completed
+    ordered_at = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Order: {self.scan_type} for {self.patient} by {self.doctor}"
+
+class ChatMessage(models.Model):
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages')
+    receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_messages')
+    message = models.TextField()
+    sent_at = models.DateTimeField(auto_now_add=True, db_index=True) # PERF: Index for sorting
+    is_read = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"From {self.sender} to {self.receiver} at {self.sent_at}"
 
 
 class Drug(models.Model):
@@ -57,9 +85,20 @@ class Drug(models.Model):
     generic_name = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
     interactions = models.JSONField(default=list, blank=True, help_text="List of drug names this drug interacts with")
+    
+    # New fields for Kaggle dataset
+    use_case = models.TextField(null=True, blank=True)
+    side_effects = models.JSONField(default=list, blank=True, null=True)
+    substitutes = models.JSONField(default=list, blank=True, null=True)
+    manufacturer = models.CharField(max_length=255, null=True, blank=True)
+    dosage_form = models.CharField(max_length=255, null=True, blank=True)
+
+    class Meta:
+        db_table = 'drugs'
 
     def __str__(self):
         return self.name
+
 
 
 class Prescription(models.Model):

@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+
+const ClinicAnalytics = lazy(() => import('./ClinicAnalytics')); // PERF: Lazy load heavy chart
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '../shared/Badge';
@@ -20,19 +22,41 @@ const AdminDashboard = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
-  // Mock data for demonstration
   const [stats, setStats] = useState({
-    staffCount: 18,
+    staffCount: 0,
     growth: 15,
     revenue: 450000
   });
 
-  const [staffData, setStaffData] = useState([
-    { name: 'Dr. Sarah Johnson', role: 'Cardiologist', email: 'sarah.j@clinic.com', status: 'Online', lastActive: 'Now' },
-    { name: 'Dr. Robert Chen', role: 'Orthopedic', email: 'robert.c@clinic.com', status: 'Online', lastActive: '5m ago' },
-    { name: 'Alice Walker', role: 'Receptionist', email: 'alice.w@clinic.com', status: 'Offline', lastActive: '2h ago' },
-    { name: 'David Smith', role: 'Technician', email: 'david.s@clinic.com', status: 'Online', lastActive: 'Now' },
-  ]);
+  const [staffData, setStaffData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        setLoading(true);
+        const data = await authApi.listStaff();
+        
+        setStaffData(data.map(member => ({
+          name: member.full_name || member.username,
+          role: member.role || 'Staff',
+          email: member.email,
+          status: 'Online',
+          lastActive: 'Now'
+        })));
+        
+        setStats(prev => ({
+          ...prev,
+          staffCount: data.length
+        }));
+      } catch (err) {
+        console.error("Failed to fetch staff for admin dashboard:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStaff();
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in">
@@ -68,34 +92,10 @@ const AdminDashboard = () => {
         <div className="lg:col-span-2 space-y-8">
           <StaffTable staff={staffData} />
           
-          {/* System Performance Chart Placeholder */}
-          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xl font-bold text-navy flex items-center gap-2">
-                <BarChart3 className="text-blue-500" size={22} />
-                Clinic Analytics
-              </h2>
-              <select className="bg-slate-50 border-none text-xs font-bold text-slate-500 rounded-lg px-3 py-2 outline-none">
-                <option>Last 30 Days</option>
-                <option>Last 7 Days</option>
-              </select>
-            </div>
-            <div className="h-64 flex items-end justify-between gap-2 px-2">
-              {[65, 45, 75, 55, 90, 70, 85, 60, 95, 75, 80, 85].map((h, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
-                  <div 
-                    className="w-full bg-indigo-100 group-hover:bg-indigo-500 rounded-t-lg transition-all duration-500 cursor-pointer relative"
-                    style={{ height: `${h}%` }}
-                  >
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                      {h*10}
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-400">M{i+1}</span>
-                </div>
-              ))}
-            </div>
-          </section>
+          {/* System Performance Chart */}
+          <Suspense fallback={<div className="h-64 flex items-center justify-center bg-white rounded-2xl border border-gray-100 shadow-sm"><div className="w-8 h-8 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin"></div></div>}>
+            <ClinicAnalytics />
+          </Suspense> {/* PERF: Suspense for lazy loaded component */}
         </div>
 
         {/* Sidebar (Right 1/3) */}

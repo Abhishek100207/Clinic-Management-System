@@ -22,8 +22,9 @@ import {
   Download
 } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
+import api from '../../../api/axios';
 
-const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange }) => {
+const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnreadCounts = {} }) => {
   const { user } = useAuthStore();
   const [selectedChat, setSelectedChat] = useState(null);
   const [message, setMessage] = useState('');
@@ -32,11 +33,36 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange }) => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const [chatMessages, setChatMessages] = useState([
-    { id: 1, senderId: 'other', text: 'Hello, how can I help you today?', time: '10:00 AM', status: 'read', type: 'text' },
-    { id: 2, senderId: 'me', text: 'I have some questions about my prescription.', time: '10:05 AM', status: 'read', type: 'text' },
-    { id: 3, senderId: 'other', text: 'Sure, go ahead. I am here to clarify anything.', time: '10:06 AM', status: 'read', type: 'text' },
-  ]);
+  const [chatMessages, setChatMessages] = useState([]);
+
+  useEffect(() => {
+    let interval;
+    const fetchMessages = async () => {
+      if (selectedChat?.id) {
+        try {
+          const res = await api.get(`/api/chat/messages/?with=${selectedChat.id}`);
+          const mapped = res.data.map(m => ({
+            id: m.id,
+            senderId: m.sender === user?.id ? 'me' : 'other',
+            text: m.message,
+            time: new Date(m.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: m.is_read ? 'read' : 'sent',
+            type: 'text'
+          }));
+          setChatMessages(mapped);
+        } catch (err) {
+          console.error("Failed to fetch messages", err);
+        }
+      }
+    };
+
+    if (selectedChat?.id) {
+      fetchMessages();
+      interval = setInterval(fetchMessages, 5000); // Poll every 5s
+    }
+
+    return () => clearInterval(interval);
+  }, [selectedChat, user?.id]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -46,24 +72,38 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange }) => {
     scrollToBottom();
   }, [chatMessages, selectedChat]);
 
-  const handleSendMessage = (e, fileData = null) => {
+  const handleSendMessage = async (e, fileData = null) => {
     if (e) e.preventDefault();
     if (!message.trim() && !fileData) return;
+    if (!selectedChat?.id) return;
 
-    const newMessage = {
-      id: Date.now(),
-      senderId: 'me',
-      text: message,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'sent',
-      type: fileData ? fileData.type : 'text',
-      fileUrl: fileData ? fileData.url : null,
-      fileName: fileData ? fileData.name : null,
-      fileSize: fileData ? fileData.size : null
-    };
+    let textToSend = message;
+    if (fileData) {
+      textToSend = `[File: ${fileData.name}] ${message}`;
+    }
 
-    setChatMessages([...chatMessages, newMessage]);
-    setMessage('');
+    try {
+      const payload = {
+        receiver: selectedChat.id,
+        message: textToSend,
+      };
+      
+      const res = await api.post('/api/chat/messages/', payload);
+      
+      const newMessage = {
+        id: res.data.id,
+        senderId: 'me',
+        text: textToSend,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'sent',
+        type: fileData ? fileData.type : 'text'
+      };
+      setChatMessages([...chatMessages, newMessage]);
+      setMessage('');
+    } catch (err) {
+      console.error("Failed to send message", err);
+      alert("Failed to send message.");
+    }
   };
 
   const handleFileChange = (e) => {
@@ -95,10 +135,15 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange }) => {
     c.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSelectChat = (contact) => {
+  const handleSelectChat = async (contact) => {
     setSelectedChat(contact);
     if (window.innerWidth < 1024) {
       setShowMobileSidebar(false);
+    }
+    try {
+      await api.post('/api/chat/messages/mark_read/', { with: contact.id });
+    } catch (err) {
+      console.error("Failed to mark messages as read", err);
     }
   };
 
@@ -187,7 +232,14 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange }) => {
                         : 'bg-white text-slate-400 hover:text-slate-600 border border-slate-100'
                     }`}
                   >
-                    {tab}
+                    <span className="flex items-center gap-1">
+                      {tab}
+                      {tabUnreadCounts[tab] > 0 && (
+                        <span className="bg-emerald-500 text-white text-[9px] font-black px-1 py-0.5 rounded-full min-w-[14px] h-[14px] flex items-center justify-center">
+                          {tabUnreadCounts[tab]}
+                        </span>
+                      )}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -255,7 +307,7 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange }) => {
                   <div className="flex justify-between items-center">
                     <h3 className="font-semibold text-[15px] truncate text-slate-900">{contact.name}</h3>
                     <span className={`text-[10px] font-medium ${selectedChat?.id === contact.id ? 'text-blue-600' : 'text-slate-400'}`}>
-                      {contact.lastTime}
+                      {contact.lastTime ? new Date(contact.lastTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                     </span>
                   </div>
                   <div className="flex justify-between items-center mt-0.5">

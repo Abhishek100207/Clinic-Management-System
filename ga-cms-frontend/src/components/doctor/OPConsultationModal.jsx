@@ -1,8 +1,35 @@
-import React, { useState } from 'react';
-import { X, Save, Clipboard, TestTube, ChevronRight, ChevronLeft, Scale, User, Calendar, Droplets, Pill, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Save, Clipboard, TestTube, ChevronRight, ChevronLeft, Scale, User, Calendar, Droplets, Pill, Plus, Trash2, Loader2 } from 'lucide-react';
+import { searchDrugs } from '../../api/medicalRecords';
 
 const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
   const [step, setStep] = useState(1);
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [activeMedIndex, setActiveMedIndex] = useState(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+  const [timeoutId, setTimeoutId] = useState(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
+
   const [formData, setFormData] = useState({
     weight: '',
     soap: {
@@ -12,7 +39,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
       plan: ''
     },
     recommendedTests: '',
-    prescriptions: [{ medicine: '', dosage: '' }]
+    prescriptions: [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, food: '' }]
   });
 
   if (!isOpen) return null;
@@ -23,7 +50,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
   const handleAddMedicine = () => {
     setFormData({
       ...formData,
-      prescriptions: [...formData.prescriptions, { medicine: '', dosage: '' }]
+      prescriptions: [...formData.prescriptions, { medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, food: '' }]
     });
   };
 
@@ -31,7 +58,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
     const newPres = formData.prescriptions.filter((_, i) => i !== index);
     setFormData({
       ...formData,
-      prescriptions: newPres.length ? newPres : [{ medicine: '', dosage: '' }]
+      prescriptions: newPres.length ? newPres : [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, food: '' }]
     });
   };
 
@@ -39,10 +66,56 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
     const newPres = [...formData.prescriptions];
     newPres[index][field] = value;
     setFormData({ ...formData, prescriptions: newPres });
+
+    if (field === 'medicine') {
+      setActiveMedIndex(index);
+      setShowDropdown(true);
+      
+      if (timeoutId) clearTimeout(timeoutId);
+      
+      const id = setTimeout(async () => {
+        if (!value) {
+          setSuggestions([]);
+          setLoading(false);
+          return;
+        }
+        setLoading(true);
+        try {
+          const data = await searchDrugs(value);
+          setSuggestions(data);
+        } catch (error) {
+          console.error('Error fetching drugs:', error);
+          setSuggestions([]);
+        } finally {
+          setLoading(false);
+        }
+      }, 300);
+      
+      setTimeoutId(id);
+    }
   };
 
+
   const handleSubmit = () => {
-    onSave(formData);
+    const mappedPrescriptions = formData.prescriptions.map(med => {
+      const times = [];
+      if (med.time?.morning) times.push('Morning');
+      if (med.time?.afternoon) times.push('Afternoon');
+      if (med.time?.night) times.push('Night');
+      
+      const dosageStr = med.dosage_value ? `${med.dosage_value} ${med.dosage_unit || ''}`.trim() : '';
+      
+      return {
+        medicine: med.medicine,
+        dosage: dosageStr,
+        frequency: times.join(', ') || 'As directed',
+        instructions: med.food || '',
+        side_effects: med.side_effects,
+        substitutes: med.substitutes
+      };
+    });
+    
+    onSave({ ...formData, prescriptions: mappedPrescriptions });
     onClose();
   };
 
@@ -169,35 +242,151 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                 </div>
                 
                 {formData.prescriptions.map((med, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-slate-50 p-6 rounded-[2rem] border border-slate-100 animate-in slide-in-from-left duration-200">
-                    <div className="md:col-span-7 space-y-2">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Name of the Medicine</label>
-                      <input 
-                        type="text"
-                        value={med.medicine}
-                        onChange={(e) => handleMedChange(index, 'medicine', e.target.value)}
-                        placeholder="E.g. Paracetamol"
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-all"
-                      />
+                  <div key={index} className="space-y-4 bg-slate-50 p-6 rounded-[2rem] border border-slate-100 animate-in slide-in-from-left duration-200">
+                    
+                    {/* Row 1: Medicine & Dosage */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+                      <div className="md:col-span-7 space-y-2 relative" ref={activeMedIndex === index ? dropdownRef : null}>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Name of the Medicine</label>
+                        <div className="relative">
+                          <input 
+                            type="text"
+                            value={med.medicine}
+                            onChange={(e) => handleMedChange(index, 'medicine', e.target.value)}
+                            onFocus={() => {
+                              setActiveMedIndex(index);
+                              setShowDropdown(true);
+                            }}
+                            placeholder="E.g. Paracetamol"
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-all pr-10"
+                          />
+                          {loading && activeMedIndex === index && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <Loader2 size={16} className="animate-spin text-blue-500" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {med.use_case && (
+                          <div className="text-xs text-blue-600 font-medium mt-1">
+                            Used for: {med.use_case}
+                          </div>
+                        )}
+
+                        {/* Dropdown */}
+                        {showDropdown && activeMedIndex === index && (suggestions.length > 0 || !loading) && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
+                            {suggestions.length > 0 ? (
+                              suggestions.map((drug, i) => (
+                                <div 
+                                  key={i}
+                                  className="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm"
+                                  onClick={() => {
+                                    const newPres = [...formData.prescriptions];
+                                    newPres[index]['medicine'] = drug.drug_name;
+                                    newPres[index]['side_effects'] = drug.side_effects;
+                                    newPres[index]['substitutes'] = drug.substitutes;
+                                    newPres[index]['use_case'] = drug.use_case;
+                                    newPres[index]['dosage_form'] = drug.dosage_form;
+                                    setFormData({ ...formData, prescriptions: newPres });
+                                    setShowDropdown(false);
+                                  }}
+                                >
+                                  <div className="font-bold">{drug.drug_name}</div>
+                                  {drug.dosage_form && <div className="text-xs text-slate-400">{drug.dosage_form}</div>}
+                                </div>
+                              ))
+                            ) : (
+                              !loading && <div className="px-4 py-2 text-sm text-slate-400">No medicines found</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="md:col-span-5 space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Dosage</label>
+                        <div className="flex gap-2">
+                          <input 
+                            type="text"
+                            value={med.dosage_value}
+                            onChange={(e) => handleMedChange(index, 'dosage_value', e.target.value)}
+                            placeholder="E.g. 5, 500"
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-all"
+                          />
+                          <select
+                            value={med.dosage_unit}
+                            onChange={(e) => handleMedChange(index, 'dosage_unit', e.target.value)}
+                            className="bg-white border border-slate-200 rounded-xl px-2 py-2.5 text-sm focus:border-blue-500 outline-none transition-all"
+                          >
+                            <option value="">Unit</option>
+                            <option value="mg">mg</option>
+                            <option value="ml">ml</option>
+                            <option value="Tablet">Tablet</option>
+                            <option value="Half Tablet">Half Tablet</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                    <div className="md:col-span-4 space-y-2">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase">Dosage</label>
-                      <input 
-                        type="text"
-                        value={med.dosage}
-                        onChange={(e) => handleMedChange(index, 'dosage', e.target.value)}
-                        placeholder="E.g. 500mg, Twice a day"
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-all"
-                      />
+
+                    {/* Row 2: Time & Food & Delete */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+                      <div className="md:col-span-6 space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Time</label>
+                        <div className="flex gap-2">
+                          {['morning', 'afternoon', 'night'].map(t => (
+                            <button
+                              key={t}
+                              onClick={() => {
+                                const newPres = [...formData.prescriptions];
+                                newPres[index]['time'][t] = !newPres[index]['time'][t];
+                                setFormData({ ...formData, prescriptions: newPres });
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${med.time?.[t] ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                            >
+                              {t.charAt(0).toUpperCase() + t.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="md:col-span-5 space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Food</label>
+                        <select
+                          value={med.food}
+                          onChange={(e) => handleMedChange(index, 'food', e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-all"
+                        >
+                          <option value="">Select</option>
+                          <option value="Before Food">Before Food</option>
+                          <option value="After Food">After Food</option>
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-1 flex justify-center pt-4">
+                        <button 
+                          onClick={() => handleRemoveMedicine(index)}
+                          className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="md:col-span-1 flex justify-center pb-1">
-                      <button 
-                        onClick={() => handleRemoveMedicine(index)}
-                        className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
-                      >
-                        <Trash2 size={20} />
-                      </button>
-                    </div>
+
+                    {/* Read-only Info Blocks */}
+                    {(med.side_effects?.length > 0 || med.substitutes?.length > 0) && (
+                      <div className="space-y-1 mt-2">
+                        {med.side_effects && med.side_effects.length > 0 && (
+                          <div className="p-3 bg-rose-50 rounded-lg text-xs text-rose-700">
+                            <strong>Side Effects:</strong> {Array.isArray(med.side_effects) ? med.side_effects.join(', ') : med.side_effects}
+                          </div>
+                        )}
+                        {med.substitutes && med.substitutes.length > 0 && (
+                          <div className="p-3 bg-emerald-50 rounded-lg text-xs text-emerald-700">
+                            <strong>Substitutes:</strong> {Array.isArray(med.substitutes) ? med.substitutes.join(', ') : med.substitutes}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

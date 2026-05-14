@@ -82,7 +82,7 @@ class AuditLog(models.Model):
     action = models.CharField(max_length=100)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     details = models.TextField(blank=True)
-    timestamp = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True) # PERF: Index for sorting
 
     class Meta:
         ordering = ['-timestamp']

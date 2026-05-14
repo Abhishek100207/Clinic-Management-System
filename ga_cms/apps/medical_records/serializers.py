@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ConsultationNote, LabResult, ScanResult, Drug, Prescription, PrescribedMedication
+from .models import ConsultationNote, LabResult, ScanResult, Drug, Prescription, PrescribedMedication, ScanOrder, ChatMessage
 
 class ConsultationNoteSerializer(serializers.ModelSerializer):
     is_locked = serializers.ReadOnlyField()
@@ -8,11 +8,41 @@ class ConsultationNoteSerializer(serializers.ModelSerializer):
         model = ConsultationNote
         fields = '__all__'
         read_only_fields = ('doctor', 'patient', 'created_at', 'updated_at')
+        extra_kwargs = {
+            'appointment': {
+                'validators': [] # Remove UniqueValidator to allow update_or_create in view
+            }
+        }
 
     def update(self, instance, validated_data):
         if instance.is_locked:
             raise serializers.ValidationError("This consultation note is locked and cannot be edited after 24 hours.")
         return super().update(instance, validated_data)
+
+
+class ScanOrderSerializer(serializers.ModelSerializer):
+    patientName = serializers.StringRelatedField(source='patient', read_only=True)
+    doctorName = serializers.StringRelatedField(source='doctor', read_only=True)
+    result_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ScanOrder
+        fields = '__all__'
+
+    def get_result_id(self, obj):
+        from .models import ScanResult
+        result = ScanResult.objects.filter(patient=obj.patient, scan_type=obj.scan_type).last()
+        return result.id if result else None
+
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    sender_name = serializers.StringRelatedField(source='sender', read_only=True)
+    receiver_name = serializers.StringRelatedField(source='receiver', read_only=True)
+
+    class Meta:
+        model = ChatMessage
+        fields = '__all__'
+        read_only_fields = ('sender',)
 
 
 class LabResultSerializer(serializers.ModelSerializer):
@@ -23,10 +53,19 @@ class LabResultSerializer(serializers.ModelSerializer):
 
 
 class ScanResultSerializer(serializers.ModelSerializer):
+    requesting_doctor = serializers.SerializerMethodField()
+
     class Meta:
         model = ScanResult
         fields = '__all__'
         read_only_fields = ('uploaded_at',)
+
+    def get_requesting_doctor(self, obj):
+        from .models import ScanOrder
+        order = ScanOrder.objects.filter(patient=obj.patient, scan_type=obj.scan_type).last()
+        if order and order.doctor and order.doctor.user:
+            return f"Dr. {order.doctor.user.first_name} {order.doctor.user.last_name}"
+        return "Dr. Radiologist"
 
 
 class DrugSerializer(serializers.ModelSerializer):
@@ -51,6 +90,11 @@ class PrescriptionSerializer(serializers.ModelSerializer):
         model = Prescription
         fields = ['id', 'appointment', 'patient', 'doctor', 'notes', 'created_at', 'medications']
         read_only_fields = ('doctor', 'patient', 'created_at')
+        extra_kwargs = {
+            'appointment': {
+                'validators': [] # Remove UniqueValidator to allow update_or_create in view
+            }
+        }
 
     def create(self, validated_data):
         medications_data = validated_data.pop('medications', [])

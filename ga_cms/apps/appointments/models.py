@@ -40,10 +40,10 @@ class Appointment(models.Model):
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='appointments')
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='appointments')
-    date = models.DateField()
+    date = models.DateField(db_index=True) # PERF: Index for filtering
     time = models.TimeField()
     appointment_type = models.CharField(max_length=20, choices=APPOINTMENT_TYPE_CHOICES)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True) # PERF: Index for filtering
     locked_until = models.DateTimeField(null=True, blank=True, help_text="For 5-minute hold logic")
     distance_to_clinic = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text="Cached distance for in-person")
     meeting_link = models.URLField(max_length=500, null=True, blank=True)

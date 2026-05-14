@@ -14,6 +14,7 @@ import {
 import OPConsultationModal from './OPConsultationModal';
 import api from '../../api/axios';
 import { createConsultationNote, createPrescription, fetchDrugs, checkDrugInteractions } from '../../api/medicalRecords';
+import { toast } from 'react-toastify';
 
 const DoctorConsultationsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,14 +44,10 @@ const DoctorConsultationsPage = () => {
           a.date === todayStr
         );
         
-        if (opList.length > 0) {
-          setAppointments(opList);
-        } else {
-          // If no real confirmed appointments, fallback to mock but update the first one to be valid for testing
-          setAppointments(mockAppointments);
-        }
+        setAppointments(opList);
       } catch (err) {
-        setAppointments(mockAppointments);
+        console.error("Failed to fetch appointments:", err);
+        setAppointments([]);
       } finally {
         setLoading(false);
       }
@@ -118,14 +115,33 @@ const DoctorConsultationsPage = () => {
       }
 
       if (data.recommendedTests && data.recommendedTests !== 'None') {
-        alert(`Consultation finalized. SOAP notes saved to patient profile. Test orders sent to Technician.`);
+        const tests = data.recommendedTests.split(',').map(t => t.trim()).filter(Boolean);
+        for (const test of tests) {
+          try {
+            await api.post('/api/medical_records/scan-orders/', {
+              patient: selectedPatient.patient || selectedPatient.id,
+              doctor: selectedPatient.doctor || 1,
+              scan_type: test,
+              status: 'pending'
+            });
+          } catch (err) {
+            console.error(`Failed to create scan order for ${test}:`, err);
+          }
+        }
+        // Update appointment status to completed
+        await api.patch(`/api/appointments/appointments/${apptId}/`, { status: 'completed' });
+        toast.success(`Consultation finalized. SOAP notes saved to patient profile. ${tests.length} test orders sent to Technician.`);
       } else {
-        alert(`Consultation finalized. SOAP notes saved to patient profile.`);
+        // Update appointment status to completed
+        await api.patch(`/api/appointments/appointments/${apptId}/`, { status: 'completed' });
+        toast.success(`Consultation finalized. SOAP notes saved to patient profile.`);
       }
+      // Remove from list
+      setAppointments(prev => prev.filter(a => a.id !== apptId));
     } catch (err) {
       console.error(err);
       const errorMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
-      alert(`Failed to save consultation records: ${errorMsg}`);
+      toast.error(`Failed to save consultation records: ${errorMsg}`);
     }
   };
 

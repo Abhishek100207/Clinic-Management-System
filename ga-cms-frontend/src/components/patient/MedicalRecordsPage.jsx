@@ -38,10 +38,10 @@ const MedicalRecordsPage = () => {
           fetchScanResults()
         ]);
         setRecords({
-          prescriptions: presReq,
-          soap_notes: soapReq,
-          lab_results: labReq,
-          scan_results: scanReq
+          prescriptions: Array.isArray(presReq) ? presReq : presReq.results ?? [],
+          soap_notes: Array.isArray(soapReq) ? soapReq : soapReq.results ?? [],
+          lab_results: Array.isArray(labReq) ? labReq : labReq.results ?? [],
+          scan_results: Array.isArray(scanReq) ? scanReq : scanReq.results ?? []
         });
       } catch (error) {
         console.error("Failed to fetch medical records:", error);

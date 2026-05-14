@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../../api/axios';
 import { useAuthStore } from '../../store/authStore';
 import { 
   User, 
@@ -16,21 +17,44 @@ const TechnicianDashboard = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
-  // Mock stats for the dashboard
-  const statsData = {
-    pending: 5,
-    inProgress: 2,
-    completed: 14,
-    total: 21
-  };
+  const [statsData, setStatsData] = useState({ pending: 0, inProgress: 0, completed: 0, total: 0 });
+  const [pendingPatients, setPendingPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock list of patient names needing tests
-  const [pendingPatients] = useState([
-    { id: 'LAB-001', name: 'Amit Sharma', time: '10:30 AM', test: 'Blood Test' },
-    { id: 'LAB-002', name: 'Priya Patel', time: '11:15 AM', test: 'Chest X-Ray' },
-    { id: 'LAB-004', name: 'Suresh Raina', time: '12:00 PM', test: 'Lipid Profile' },
-    { id: 'LAB-005', name: 'Anjali Gupta', time: '12:45 PM', test: 'ECG' },
-  ]);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get('/api/medical_records/scan-orders/');
+        const data = Array.isArray(res.data) ? res.data : (res.data.results || []);
+        
+        const pending = data.filter(o => o.status === 'pending');
+        const inProgress = data.filter(o => o.status === 'in_progress' || o.status === 'In Progress');
+        const completed = data.filter(o => o.status === 'completed' || o.status === 'Completed');
+        
+        const mapped = pending.map(order => ({
+          id: `SCAN-${order.id}`,
+          name: order.patientName || `Patient ${order.patient}`,
+          time: order.ordered_at ? new Date(order.ordered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+          test: order.scan_type
+        }));
+        
+        setPendingPatients(mapped);
+        
+        setStatsData({
+          pending: pending.length,
+          inProgress: inProgress.length,
+          completed: completed.length,
+          total: data.length
+        });
+      } catch (err) {
+        console.error("Failed to fetch scan orders for dashboard:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in">
@@ -68,7 +92,7 @@ const TechnicianDashboard = () => {
             
             <div className="p-6 space-y-4">
               {pendingPatients.map((patient) => (
-                <div key={patient.id} className="p-4 rounded-xl border border-slate-50 bg-slate-50/50 flex items-center justify-between group hover:bg-amber-50/30 hover:border-amber-100 transition-all">
+                <div key={patient.id} onClick={() => navigate('/scan-orders')} className="p-4 rounded-xl border border-slate-50 bg-slate-50/50 flex items-center justify-between group hover:bg-amber-50/30 hover:border-amber-100 transition-all cursor-pointer">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-slate-400 border border-slate-100 group-hover:text-amber-500 group-hover:border-amber-200 transition-colors">
                       <User size={20} />

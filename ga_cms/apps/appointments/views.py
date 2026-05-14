@@ -33,12 +33,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        queryset = Appointment.objects.select_related('patient', 'doctor', 'doctor__user').all() # PERF: select_related
         if user.role == 'patient':
-            return Appointment.objects.filter(patient__user=user)
+            return queryset.filter(patient__user=user)
         elif user.role in ['doctor', 'senior_doctor']:
-            return Appointment.objects.filter(doctor__user=user)
+            return queryset.filter(doctor__user=user)
         # Receptionist or Admin
-        return Appointment.objects.all()
+        return queryset
 
     def create(self, request, *args, **kwargs):
         # Apply 5-minute lock and distance calculation

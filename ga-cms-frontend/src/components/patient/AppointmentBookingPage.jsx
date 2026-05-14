@@ -39,7 +39,7 @@ const AppointmentBookingPage = () => {
   const fetchDoctors = async () => {
     try {
       const res = await api.get('/api/users/doctors/');
-      setDoctors(res.data || []);
+      setDoctors(Array.isArray(res.data) ? res.data : (res.data.results ?? []));
     } catch (err) {
       console.error("Failed to fetch doctors", err);
     }
@@ -48,7 +48,7 @@ const AppointmentBookingPage = () => {
   const fetchPatients = async () => {
     try {
       const res = await api.get('/api/users/patients/');
-      const patientList = res.data || [];
+      const patientList = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
       setPatients(patientList);
       
       if (user && user.role === 'patient' && patientList.length > 0) {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User, 
   Calendar, 
@@ -16,6 +16,8 @@ import {
   Droplets
 } from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import axios from 'axios';
+import api from '../../api/axios';
 
 const ScanReportPage = () => {
   const navigate = useNavigate();
@@ -23,34 +25,115 @@ const ScanReportPage = () => {
   const location = useLocation();
   const passedPatient = location.state?.patientData;
 
-  // Mock data for the scan report
-  const reportData = {
-    id: reportId || 'SCAN-10294',
-    type: reportId?.charCodeAt(reportId.length - 1) % 2 === 0 ? 'Chest X-Ray PA View' : 'Abdominal Ultrasound',
-    date: `May ${10 + (reportId?.charCodeAt(reportId.length - 1) % 5)}, 2026`,
-    time: '11:45 AM',
-    patient: {
-      name: passedPatient?.full_name || 'Abhishek Sharma',
-      id: passedPatient?.id ? `PAT-${passedPatient.id}` : 'PAT-8821',
-      age: passedPatient?.age || 28,
-      gender: passedPatient?.gender || 'Male',
-      bloodGroup: passedPatient?.blood_group || 'O+',
-      place: passedPatient?.address || 'Hyderabad, Telangana'
-    },
-    doctor: 'Dr. Sarah Johnson',
-    department: 'Radiology & Imaging',
-    imageUrl: '/medical_xray_scan_1778599392682.png', 
-    findings: [
-      "The lung fields are clear with no evidence of focal consolidation, pleural effusion, or pneumothorax.",
-      "The cardiomediastinal silhouette is within normal limits for size and contour.",
-      "The trachea is midline and the hila are unremarkable.",
-      "The visualised bony structures and soft tissues are within normal limits."
-    ],
-    impressions: [
-      "No active cardiopulmonary disease identified.",
-      "Normal study of the chest."
-    ]
+  const [reportData, setReportData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    console.log('ScanReportPage: reportId =', reportId);
+    if (!reportId) {
+      setError('Report ID is missing.');
+      setLoading(false);
+      return;
+    }
+
+    const fetchReport = async () => {
+      try {
+        const id = reportId.replace('SCAN-', '');
+        console.log('ScanReportPage: fetching ID =', id);
+        
+        // 1. Fetch Scan Order first to get the correct metadata
+        const orderResponse = await api.get(`/api/medical_records/scan-orders/${id}/`);
+        const orderData = orderResponse.data;
+        
+        let scanData = {};
+        // 2. Fetch Scan Result by matching patient and scan_type
+        try {
+          const resultsResponse = await api.get(`/api/medical_records/scan-results/`);
+          const resultsData = Array.isArray(resultsResponse.data) ? resultsResponse.data : (resultsResponse.data.results || []);
+          
+          const matchingResult = resultsData.find(res => 
+            res.patient === orderData.patient && res.scan_type === orderData.scan_type
+          );
+          
+          if (matchingResult) {
+            scanData = matchingResult;
+            console.log('ScanReportPage: found matching scan data =', scanData);
+          } else {
+            console.log('ScanReportPage: no matching scan data found for patient', orderData.patient, 'and type', orderData.scan_type);
+          }
+        } catch (err) {
+          console.error('Error fetching scan results:', err);
+        }
+
+        let patientData = passedPatient;
+        if (!patientData && orderData.patient) {
+          try {
+            const patientResponse = await api.get(`/api/users/patients/${orderData.patient}/`);
+            patientData = patientResponse.data;
+          } catch (err) {
+            console.error('Error fetching patient details:', err);
+            patientData = { full_name: orderData.patientName || `Patient ID: ${orderData.patient}` };
+          }
+        }
+
+        setReportData({
+          id: reportId,
+          type: orderData.scan_type || scanData.scan_type || 'Scan',
+          date: scanData.scan_date || orderData.created_at?.split('T')[0] || 'N/A',
+          time: scanData.uploaded_at ? new Date(scanData.uploaded_at).toLocaleTimeString() : 'N/A',
+          patient: {
+            name: patientData?.full_name || patientData?.name || orderData.patientName || `Patient ${orderData.patient}`,
+            id: patientData?.id ? `PAT-${patientData.id}` : `PAT-${orderData.patient}`,
+            age: patientData?.age || 28,
+            gender: patientData?.gender || 'Male',
+            bloodGroup: patientData?.blood_group || 'O+',
+            place: patientData?.address || 'Hyderabad'
+          },
+          doctor: orderData.doctorName || scanData.requesting_doctor || 'Dr. Radiologist',
+          department: 'Radiology & Imaging',
+          imageUrl: scanData.file || '/medical_xray_scan_1778599392682.png',
+          findings: Array.isArray(scanData.findings) ? scanData.findings : (scanData.findings ? [scanData.findings] : []),
+          impressions: orderData.status === 'completed' ? ['Normal study or check findings.'] : ['Pending review.']
+        });
+      } catch (err) {
+        console.error('Error fetching scan report:', err);
+        setError('Failed to load scan report.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReport();
+  }, [reportId, passedPatient]);
+
+  const handleDownload = async () => {
+    try {
+      const id = reportId.replace('SCAN-', '');
+      const response = await axios.get(`/api/medical_records/scan-results/${id}/download/`, {
+        responseType: 'blob',
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `scan_report_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error('Error downloading report:', err);
+      alert('Failed to download report.');
+    }
   };
+
+  if (loading) {
+    return <div className="text-center p-8">Loading scan report...</div>;
+  }
+
+  if (error || !reportData) {
+    return <div className="text-center p-8 text-rose-500">{error || 'Report not found.'}</div>;
+  }
 
   return (
     <div className="max-w-screen-2xl mx-auto w-full p-4 md:p-8 space-y-6 animate-fade-in">
@@ -68,10 +151,16 @@ const ScanReportPage = () => {
         </button>
         
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm">
+          <button 
+            onClick={() => window.print()}
+            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm"
+          >
             <Printer size={18} /> Print
           </button>
-          <button className="flex items-center gap-2 bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
+          <button 
+            onClick={() => window.print()}
+            className="flex items-center gap-2 bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+          >
             <Download size={18} /> Download PDF
           </button>
         </div>
@@ -161,11 +250,23 @@ const ScanReportPage = () => {
                   Using a stylized div to represent the scan if the image is not available, 
                   but we'll include the img tag for the generated image 
                */}
-               <img 
-                 src="/medical_xray_scan_1778599392682.png" 
-                 alt="Scan View" 
-                 className="w-full h-full object-contain pointer-events-none select-none"
-               />
+               {reportData.imageUrl.endsWith('.pdf') ? (
+                 <iframe 
+                   src={reportData.imageUrl} 
+                   className="w-full h-full border-none"
+                   title="Scan Report PDF"
+                 />
+               ) : (
+                 <img 
+                   src={reportData.imageUrl} 
+                   alt="Scan View" 
+                   className="w-full h-full object-contain pointer-events-none select-none"
+                   onError={(e) => {
+                     e.target.onerror = null;
+                     e.target.src = '/medical_xray_scan_1778599392682.png';
+                   }}
+                 />
+               )}
             </div>
 
             {/* Scan Controls Overlay */}
@@ -187,7 +288,7 @@ const ScanReportPage = () => {
             {/* Scan Identity Label */}
             <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
               <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-white text-[10px] font-bold uppercase tracking-widest">
-                Chest PA View • Digital Imaging
+                {reportData.type} • Digital Imaging
               </div>
               <div className="flex items-center gap-2 text-white/50 text-[10px] font-bold uppercase tracking-widest">
                 <Activity size={14} /> Live View System

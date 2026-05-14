@@ -34,38 +34,68 @@ const StaffChatPage = () => {
   
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [tabUnreadCounts, setTabUnreadCounts] = useState({});
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const fetchData = async (isSilent = false) => {
+      if (!isSilent) setLoading(true);
       try {
         let data = [];
+        const convsRes = await api.get('/api/chat/messages/conversations/');
+        const conversationsMap = {};
+        const unreadCounts = {
+          'Patients': 0,
+          'Doctors': 0,
+          'Senior Doctor': 0,
+          'Technicians': 0,
+          'Receptionists': 0
+        };
+        
+        convsRes.data.forEach(c => {
+          conversationsMap[c.id] = c;
+          if (c.role === 'patient') unreadCounts['Patients'] += c.unread;
+          else if (c.role === 'doctor') unreadCounts['Doctors'] += c.unread;
+          else if (c.role === 'senior_doctor') unreadCounts['Senior Doctor'] += c.unread;
+          else if (c.role === 'technician') unreadCounts['Technicians'] += c.unread;
+          else if (c.role === 'receptionist') unreadCounts['Receptionists'] += c.unread;
+        });
+        setTabUnreadCounts(unreadCounts);
         
         if (activeTab === 'Patients') {
           const res = await api.get('/api/users/patients/');
-          data = res.data.map(p => ({
-            id: p.id,
-            name: p.user?.full_name || p.full_name || p.user?.username || p.username,
-            role: 'patient',
-            avatar: p.user?.avatar_url || null,
-            online: Math.random() > 0.5,
-            lastMessage: 'Patient message',
-            lastTime: '10:00 AM',
-            unread: 0
-          }));
+          const patientsArray = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+          data = patientsArray.map(p => {
+            const uid = p.user?.id || p.id;
+            const conv = conversationsMap[uid] || {};
+            return {
+              id: uid,
+              name: p.user?.full_name || p.full_name || p.user?.username || p.username,
+              role: 'patient',
+              avatar: p.user?.avatar_url || null,
+              online: Math.random() > 0.5,
+              lastMessage: conv.lastMessage || 'No messages yet',
+              lastTime: conv.lastTime || '',
+              unread: conv.unread || 0,
+              last_time_raw: conv.last_time_raw || null
+            };
+          });
         } else if (user?.role === 'patient' && activeTab === 'Doctors') {
-          // Special case for patients: use the doctors list endpoint
           const res = await api.get('/api/users/doctors/');
-          data = res.data.map(d => ({
-            id: d.user?.id || d.id,
-            name: d.user?.full_name || d.user?.username || 'Doctor',
-            role: 'doctor',
-            avatar: d.user?.avatar_url || null,
-            online: Math.random() > 0.5,
-            lastMessage: 'Doctor message',
-            lastTime: '10:00 AM',
-            unread: 0
-          }));
+          data = res.data.map(d => {
+            const uid = d.user?.id || d.id;
+            const conv = conversationsMap[uid] || {};
+            return {
+              id: uid,
+              name: d.user?.full_name || d.user?.username || 'Doctor',
+              role: 'doctor',
+              avatar: d.user?.avatar_url || null,
+              online: Math.random() > 0.5,
+              lastMessage: conv.lastMessage || 'No messages yet',
+              lastTime: conv.lastTime || '',
+              unread: conv.unread || 0,
+              last_time_raw: conv.last_time_raw || null
+            };
+          });
         } else {
           const staff = await authApi.listStaff();
           
@@ -81,39 +111,46 @@ const StaffChatPage = () => {
           data = staff
             .filter(member => {
               if (member.id === user?.id || member.email === user?.email) return false;
-              
-              // Only show staff matching the target role
               if (member.role !== targetRole) return false;
-
-              // Restriction: Only doctors can chat with senior doctor
               if (member.role === 'senior_doctor') {
                 return user?.role === 'doctor' || user?.role === 'senior_doctor';
               }
-              
               return true;
             })
-            .map(member => ({
-              id: member.id,
-              name: member.full_name || member.username,
-              role: member.role,
-              avatar: null,
-              online: Math.random() > 0.5,
-              lastMessage: 'Internal staff message',
-              lastTime: '10:00 AM',
-              unread: 0
-            }));
+            .map(member => {
+              const conv = conversationsMap[member.id] || {};
+              return {
+                id: member.id,
+                name: member.full_name || member.username,
+                role: member.role,
+                avatar: null,
+                online: Math.random() > 0.5,
+                lastMessage: conv.lastMessage || 'No messages yet',
+                lastTime: conv.lastTime || '',
+                unread: conv.unread || 0,
+                last_time_raw: conv.last_time_raw || null
+              };
+            });
         }
           
+        data.sort((a, b) => {
+          const timeA = a.last_time_raw ? new Date(a.last_time_raw) : new Date(0);
+          const timeB = b.last_time_raw ? new Date(b.last_time_raw) : new Date(0);
+          return timeB - timeA;
+        });
+
         setContacts(data);
       } catch (err) {
         console.error("Failed to fetch data for chat:", err);
       } finally {
-        setLoading(false);
+        if (!isSilent) setLoading(false);
       }
     };
 
     if (user) {
       fetchData();
+      const interval = setInterval(() => fetchData(true), 10000);
+      return () => clearInterval(interval);
     }
   }, [user, activeTab]);
 
@@ -134,9 +171,10 @@ const StaffChatPage = () => {
       <ChatContainer 
         role={user?.role} 
         contacts={contacts} 
-        tabs={tabs.length > 1 ? tabs : null} // Only show tabs if there's more than one
+        tabs={tabs.length > 1 ? tabs : null} 
         activeTab={activeTab}
         onTabChange={handleTabChange}
+        tabUnreadCounts={tabUnreadCounts}
       />
     </div>
   );

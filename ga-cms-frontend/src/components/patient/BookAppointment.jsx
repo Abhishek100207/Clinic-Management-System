@@ -65,9 +65,10 @@ const BookAppointment = ({ onBack }) => {
           api.get('/api/users/patients/'),
           api.get('/api/users/doctors/')
         ]);
-        const patientData = pRes.data || [];
+        const patientData = Array.isArray(pRes.data) ? pRes.data : (pRes.data.results ?? []);
+        const doctorData = Array.isArray(dRes.data) ? dRes.data : (dRes.data.results ?? []);
         setPatients(patientData);
-        setDoctors(dRes.data || []);
+        setDoctors(doctorData);
 
         // Auto-select patient if there's only one (for patient role)
         if (patientData.length === 1) {

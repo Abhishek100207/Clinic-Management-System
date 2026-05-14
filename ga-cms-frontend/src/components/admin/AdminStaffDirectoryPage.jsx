@@ -12,10 +12,12 @@ import {
   Filter
 } from 'lucide-react';
 import { authApi } from '../../api/auth';
+import { useDebounce } from '../../hooks/useDebounce';
 
 const AdminStaffDirectoryPage = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300); // PERF: Debounce search input
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,13 +34,10 @@ const AdminStaffDirectoryPage = () => {
     const fetchStaff = async () => {
       try {
         const data = await authApi.listStaff();
-        if (data && data.length > 0) {
-          setStaffList(data);
-        } else {
-          setStaffList(mockStaff);
-        }
+        setStaffList(data || []);
       } catch (err) {
-        setStaffList(mockStaff);
+        console.error("Failed to fetch staff:", err);
+        setStaffList([]);
       } finally {
         setLoading(false);
       }
@@ -48,10 +47,10 @@ const AdminStaffDirectoryPage = () => {
 
   const filteredStaff = staffList.filter(s => {
     const matchesTab = activeTab === 'all' || s.role === activeTab;
-    const matchesSearch = s.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          s.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = s.full_name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || 
+                          s.email?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
     return matchesTab && matchesSearch;
-  });
+  }); // PERF: Use debounced search term
 
   const roleIcons = {
     doctor: <Stethoscope size={20} />,

@@ -8,7 +8,7 @@ import { ROLE_CONFIG } from '../../utils/roleConfig';
 import api from '../../api/axios';
 
 const TopNav = () => {
-  const { user, logout } = useAuthStore();
+  const { user, logout, unreadChatCount, setUnreadChatCount } = useAuthStore();
   const roleConfig = user?.role ? ROLE_CONFIG[user.role] : null;
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -20,8 +20,9 @@ const TopNav = () => {
       if (user?.role === 'patient') {
         try {
           const res = await api.get('/api/users/patients/');
-          if (res.data && res.data.length > 0) {
-            setPatientProfile(res.data[0]);
+          const patientData = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+          if (patientData.length > 0) {
+            setPatientProfile(patientData[0]);
           }
         } catch (err) {
           console.error("Failed to fetch patient profile in nav", err);
@@ -30,6 +31,23 @@ const TopNav = () => {
     };
     fetchPatientProfile();
   }, [user]);
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!user) return;
+      try {
+        const res = await api.get('/api/chat/messages/conversations/');
+        const totalUnread = res.data.reduce((acc, conv) => acc + conv.unread, 0);
+        setUnreadChatCount(totalUnread);
+      } catch (err) {
+        console.error("Failed to fetch unread count", err);
+      }
+    };
+    
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 10000);
+    return () => clearInterval(interval);
+  }, [user, setUnreadChatCount]);
 
   const handleLogout = async () => {
     try { await authApi.logout(); } catch (e) { console.error(e); }
@@ -69,7 +87,7 @@ const TopNav = () => {
                 key={link.path}
                 to={link.path}
                 className={({ isActive }) =>
-                  `px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  `px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
                     isActive
                       ? 'bg-blue-50 text-blue-600'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -77,6 +95,11 @@ const TopNav = () => {
                 }
               >
                 {link.name}
+                {link.name === 'Chat' && unreadChatCount > 0 && (
+                  <span className="bg-emerald-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    {unreadChatCount}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>

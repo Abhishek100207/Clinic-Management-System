@@ -1,18 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import ChatContainer from '../shared/chat/ChatContainer';
+import api from '../../api/axios';
 
 const DoctorChatPage = () => {
-  const patientContacts = [
-    { id: 1, name: 'Abhishek Sharma', lastMessage: 'Thank you doctor, I will follow the advice.', lastTime: '10:05 AM', online: true, unread: 2 },
-    { id: 2, name: 'Rahul Verma', lastMessage: 'Should I continue the medication?', lastTime: 'Yesterday', online: false, unread: 0 },
-    { id: 3, name: 'Anjali Sharma', lastMessage: 'Report attached for review.', lastTime: 'Monday', online: true, unread: 1 },
-    { id: 4, name: 'Priya Das', lastMessage: 'When is my next follow-up?', lastTime: 'May 10', online: false, unread: 0 },
-  ];
+  const [patientContacts, setPatientContacts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        const res = await api.get('/api/chat/messages/conversations/');
+        setPatientContacts(res.data);
+      } catch (err) {
+        console.error("Failed to fetch contacts", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchContacts();
+    
+    // Poll every 10 seconds to update last message and sorting
+    const interval = setInterval(fetchContacts, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="w-full h-full animate-fade-in flex flex-col overflow-hidden">
       <div className="flex-1 min-h-0">
-        <ChatContainer role="doctor" contacts={patientContacts} />
+        {loading ? (
+          <div className="flex justify-center items-center h-full">
+            <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+          </div>
+        ) : (
+          <ChatContainer role="doctor" contacts={patientContacts} />
+        )}
       </div>
     </div>
   );

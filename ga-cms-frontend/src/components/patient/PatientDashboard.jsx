@@ -49,8 +49,9 @@ const PatientDashboard = () => {
         
         setAppointments(apptRes.data || []);
         
-        if (patientRes.data && patientRes.data.length > 0) {
-          setPatientProfile(patientRes.data[0]);
+        const patientData = Array.isArray(patientRes.data) ? patientRes.data : (patientRes.data.results ?? []);
+        if (patientData.length > 0) {
+          setPatientProfile(patientData[0]);
         }
       } catch (err) {
         console.error("Failed to fetch dashboard data", err);

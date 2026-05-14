@@ -206,3 +206,59 @@
 2026-05-14 11:24:27,315 - INFO - User: rammohan | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-14 12:04:06,734 - INFO - User: abhishek100207@gmail.com | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-14 12:15:42,621 - INFO - User: ramu | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 12:51:54,556 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 13:45:42,184 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 13:45:42,341 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 13:45:42,859 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 13:45:43,130 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 13:45:43,159 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 13:45:43,301 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 13:45:43,812 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 13:45:58,108 - INFO - User: Arjun | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 14:11:27,479 - INFO - User: TECH001 | Action: SIGNUP | IP: 127.0.0.1 | Details: Registered as senior_doctor
+2026-05-14 14:12:55,597 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 14:12:55,621 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 14:12:56,563 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 14:12:56,566 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 14:12:57,766 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 14:12:57,776 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 14:13:25,063 - INFO - User: rammohan | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 15:01:01,654 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 16:55:13,653 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 16:56:27,390 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 16:56:29,427 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 16:57:31,345 - INFO - User: Arjun | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 17:01:44,123 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 17:02:06,130 - INFO - User: rammohan | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 17:43:45,941 - INFO - User: rammohan | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 17:43:46,549 - INFO - User: rammohan | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 17:43:55,044 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 17:52:00,666 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 17:52:14,007 - INFO - User: Arjun | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 18:00:38,434 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 18:01:02,157 - INFO - User: rammohan | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 18:12:16,345 - INFO - User: rammohan | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 18:13:15,576 - INFO - User: rammohan | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 18:28:32,923 - INFO - User: rammohan | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 18:28:47,613 - INFO - User: Arjun | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 18:40:37,610 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 18:40:48,332 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 18:48:21,397 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 18:55:12,191 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 18:55:27,359 - INFO - User: Arjun | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 18:58:05,896 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 18:58:14,841 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 18:58:44,277 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 18:58:59,838 - INFO - User: Arjun | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 18:59:43,334 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 19:00:04,857 - INFO - User: rammohan | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 19:00:37,400 - INFO - User: rammohan | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 19:00:53,267 - INFO - User: Arjun | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 19:21:07,208 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 19:27:03,105 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 19:27:19,327 - INFO - User: Arjun | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 19:55:34,613 - INFO - User: Arjun | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 19:55:58,364 - INFO - User: rammohan | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 20:01:30,891 - INFO - User: rammohan | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-14 20:28:15,127 - INFO - User: rammohan | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-05-14 20:28:29,759 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP

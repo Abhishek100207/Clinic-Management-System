@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import api from '../../api/axios';
+import { useDebounce } from '../../hooks/useDebounce';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '../shared/Badge';
@@ -21,19 +23,64 @@ const ReceptionistDashboard = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   
-  // Mock data for demonstration - in a real app, this would come from an API/Store
   const [stats, setStats] = useState({
-    totalPatients: 1250,
-    inQueue: 8,
-    appointmentsToday: 24,
+    totalPatients: 0,
+    inQueue: 0,
+    appointmentsToday: 0,
     revenue: 12500
   });
 
-  const [queueData, setQueueData] = useState([
-    { token: '101', patientName: 'Arjun Mehra', doctorName: 'Dr. Sarah Johnson', waitTime: 15 },
-    { token: '102', patientName: 'Priya Sharma', doctorName: 'Dr. Robert Chen', waitTime: 10 },
-    { token: '103', patientName: 'Vikram Singh', doctorName: 'Dr. Sarah Johnson', waitTime: 5 },
-  ]);
+  const [queueData, setQueueData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300); // PERF: Debounce search input
+  
+  const filteredQueue = useMemo(() => {
+    return queueData.filter(q => 
+      q.patientName?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      q.token?.includes(debouncedSearchTerm)
+    );
+  }, [queueData, debouncedSearchTerm]); // PERF: Memoize filtered list
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [pRes, aRes] = await Promise.all([
+          api.get('/api/users/patients/'),
+          api.get('/api/appointments/appointments/')
+        ]);
+        
+        const patients = Array.isArray(pRes.data) ? pRes.data : (pRes.data.results || []);
+        const appointments = Array.isArray(aRes.data) ? aRes.data : (aRes.data.results || []);
+        
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayAppts = appointments.filter(a => a.date === todayStr);
+        const inQueueAppts = todayAppts.filter(a => a.status === 'checked_in' || a.status === 'pending' || a.status === 'confirmed');
+        
+        setStats({
+          totalPatients: patients.length,
+          inQueue: inQueueAppts.length,
+          appointmentsToday: todayAppts.length,
+          revenue: 12500
+        });
+        
+        const mappedQueue = inQueueAppts.map((a, index) => ({
+          token: a.id.toString(),
+          patientName: a.patient_name || `Patient ${a.patient}`,
+          doctorName: a.doctor_name || `Doctor ${a.doctor}`,
+          waitTime: (index + 1) * 5
+        }));
+        
+        setQueueData(mappedQueue);
+      } catch (err) {
+        console.error("Failed to fetch data for receptionist dashboard:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in">
@@ -55,6 +102,8 @@ const ReceptionistDashboard = () => {
             <input 
               type="text" 
               placeholder="Search patient or token..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="bg-white border border-slate-200 pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all w-64 shadow-sm"
             />
           </div>
@@ -68,7 +117,7 @@ const ReceptionistDashboard = () => {
         
         {/* Main Content (Left 2/3) */}
         <div className="lg:col-span-2 space-y-8">
-          <QueueTable queue={queueData} />
+          <QueueTable queue={filteredQueue} /> {/* PERF: Use memoized filtered list */}
           
           {/* Quick Tasks / Pending Actions */}
           <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
