@@ -45,11 +45,24 @@ const StaffChatPage = () => {
           const res = await api.get('/api/users/patients/');
           data = res.data.map(p => ({
             id: p.id,
-            name: p.full_name || p.username,
+            name: p.user?.full_name || p.full_name || p.user?.username || p.username,
             role: 'patient',
-            avatar: null,
+            avatar: p.user?.avatar_url || null,
             online: Math.random() > 0.5,
             lastMessage: 'Patient message',
+            lastTime: '10:00 AM',
+            unread: 0
+          }));
+        } else if (user?.role === 'patient' && activeTab === 'Doctors') {
+          // Special case for patients: use the doctors list endpoint
+          const res = await api.get('/api/users/doctors/');
+          data = res.data.map(d => ({
+            id: d.user?.id || d.id,
+            name: d.user?.full_name || d.user?.username || 'Doctor',
+            role: 'doctor',
+            avatar: d.user?.avatar_url || null,
+            online: Math.random() > 0.5,
+            lastMessage: 'Doctor message',
             lastTime: '10:00 AM',
             unread: 0
           }));

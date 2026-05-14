@@ -115,7 +115,7 @@ class ListStaffView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if request.user.role not in ['senior_doctor', 'doctor']:
+        if request.user.role not in ['senior_doctor', 'doctor', 'technician', 'receptionist']:
             return Response({'error': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
         
         # Return all users who are NOT patients
