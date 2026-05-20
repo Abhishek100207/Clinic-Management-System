@@ -18,6 +18,7 @@ import {
 import { Badge } from '../shared/Badge';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
+import ErrorBoundary from '../shared/ErrorBoundary';
 
 const ScanQueue = ({ isTechnician }) => {
   const navigate = useNavigate();
@@ -144,7 +145,8 @@ const ScanQueue = ({ isTechnician }) => {
   };
 
   return (
-    <section className="space-y-6">
+    <ErrorBoundary>
+      <section className="space-y-6">
       <div className="flex items-center justify-between px-2">
         <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
           <Microscope className="text-amber-500" size={28} />
@@ -359,7 +361,8 @@ const ScanQueue = ({ isTechnician }) => {
           </Suspense>
         </div>
       )}
-    </section>
+      </section>
+    </ErrorBoundary>
   );
 };
 

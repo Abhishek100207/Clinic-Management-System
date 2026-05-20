@@ -21,11 +21,16 @@ import {
   File,
   Download
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import useWebSocket from '../../../hooks/useWebSocket';
+import { Spinner } from '../Spinner';
+import ErrorBoundary from '../ErrorBoundary';
 import { useAuthStore } from '../../../store/authStore';
 import api from '../../../api/axios';
 
 const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnreadCounts = {} }) => {
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const [selectedChat, setSelectedChat] = useState(null);
   const [message, setMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,36 +38,19 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const [chatMessages, setChatMessages] = useState([]);
+  const { messages: wsMessages, sendMessage, connectionStatus } = useWebSocket(selectedChat?.id);
 
-  useEffect(() => {
-    let interval;
-    const fetchMessages = async () => {
-      if (selectedChat?.id) {
-        try {
-          const res = await api.get(`/api/chat/messages/?with=${selectedChat.id}`);
-          const mapped = res.data.map(m => ({
-            id: m.id,
-            senderId: m.sender === user?.id ? 'me' : 'other',
-            text: m.message,
-            time: new Date(m.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: m.is_read ? 'read' : 'sent',
-            type: 'text'
-          }));
-          setChatMessages(mapped);
-        } catch (err) {
-          console.error("Failed to fetch messages", err);
-        }
-      }
-    };
-
-    if (selectedChat?.id) {
-      fetchMessages();
-      interval = setInterval(fetchMessages, 5000); // Poll every 5s
-    }
-
-    return () => clearInterval(interval);
-  }, [selectedChat, user?.id]);
+  // Format websocket messages to match our UI needs
+  const chatMessages = wsMessages.map(m => ({
+    id: m.id,
+    senderId: m.sender === user?.id ? 'me' : 'other',
+    text: m.message,
+    time: new Date(m.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    status: m.is_read ? 'read' : 'sent',
+    type: 'text',
+    pending: m.pending,
+    failed: m.failed
+  }));
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -82,28 +70,8 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
       textToSend = `[File: ${fileData.name}] ${message}`;
     }
 
-    try {
-      const payload = {
-        receiver: selectedChat.id,
-        message: textToSend,
-      };
-      
-      const res = await api.post('/api/chat/messages/', payload);
-      
-      const newMessage = {
-        id: res.data.id,
-        senderId: 'me',
-        text: textToSend,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: 'sent',
-        type: fileData ? fileData.type : 'text'
-      };
-      setChatMessages([...chatMessages, newMessage]);
-      setMessage('');
-    } catch (err) {
-      console.error("Failed to send message", err);
-      alert("Failed to send message.");
-    }
+    sendMessage(textToSend);
+    setMessage('');
   };
 
   const handleFileChange = (e) => {
@@ -141,7 +109,8 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
       setShowMobileSidebar(false);
     }
     try {
-      await api.post('/api/chat/messages/mark_read/', { with: contact.id });
+      await api.patch('/api/chat/messages/mark-read/', { sender_id: contact.id });
+      queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
     } catch (err) {
       console.error("Failed to mark messages as read", err);
     }
@@ -197,7 +166,8 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
   };
 
   return (
-    <div className="flex bg-white overflow-hidden h-full animate-fade-in relative">
+    <ErrorBoundary>
+      <div className="flex bg-white overflow-hidden h-full animate-fade-in relative">
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -376,14 +346,20 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
                 <div key={msg.id} className={`flex ${msg.senderId === 'me' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-300`}>
                   <div className={`max-w-[85%] lg:max-w-[65%] px-3 py-2 rounded-lg shadow-sm text-sm relative ${
                     msg.senderId === 'me' 
-                      ? 'bg-[#dcf8c6] text-slate-800' 
+                      ? msg.failed ? 'bg-red-100 text-slate-800 border border-red-300' : 'bg-[#dcf8c6] text-slate-800'
                       : 'bg-white text-slate-800'
-                  }`}>
+                  } ${msg.pending ? 'opacity-60' : ''}`}>
                     {renderMessageContent(msg)}
                     <div className="flex items-center justify-end gap-1 mt-1">
                       <span className="text-[9px] text-slate-500 uppercase">{msg.time}</span>
                       {msg.senderId === 'me' && (
-                        <CheckCheck size={14} className={msg.status === 'read' ? 'text-blue-400' : 'text-slate-400'} />
+                        msg.pending ? (
+                          <div className="w-3 h-3 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin inline-block ml-1"></div>
+                        ) : msg.failed ? (
+                          <button onClick={() => sendMessage(msg.text)} className="text-[10px] text-red-600 hover:text-red-800 font-bold ml-1 px-1.5 py-0.5 bg-red-200 rounded">RETRY</button>
+                        ) : (
+                          <CheckCheck size={14} className={msg.status === 'read' ? 'text-blue-400' : 'text-slate-400'} />
+                        )
                       )}
                     </div>
                   </div>
@@ -436,7 +412,8 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 };
 

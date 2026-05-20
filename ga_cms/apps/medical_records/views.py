@@ -232,15 +232,37 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
         conversations.sort(key=lambda x: x['last_time_raw'] or timezone.now(), reverse=True)
         return Response(conversations)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['patch'], url_path='mark-read')
     def mark_read(self, request):
-        with_user = request.data.get('with')
-        if with_user:
+        sender_id = request.data.get('sender_id')
+        if sender_id:
             ChatMessage.objects.filter(
-                sender_id=with_user, receiver=request.user, is_read=False
+                sender_id=sender_id, receiver=request.user, is_read=False
             ).update(is_read=True)
             return Response({'status': 'marked as read'})
-        return Response({'error': 'with user ID required'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'sender_id required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'], url_path='unread-count')
+    def unread_count(self, request):
+        user = request.user
+        unread_msgs = ChatMessage.objects.filter(receiver=user, is_read=False).select_related('sender')
+        
+        by_sender = {}
+        total = 0
+        for msg in unread_msgs:
+            total += 1
+            if msg.sender_id not in by_sender:
+                by_sender[msg.sender_id] = {
+                    'sender_id': msg.sender_id,
+                    'sender_name': msg.sender.get_full_name() or msg.sender.username,
+                    'count': 0
+                }
+            by_sender[msg.sender_id]['count'] += 1
+            
+        return Response({
+            "total": total,
+            "by_sender": list(by_sender.values())
+        })
 
 
 class DrugViewSet(viewsets.ModelViewSet):

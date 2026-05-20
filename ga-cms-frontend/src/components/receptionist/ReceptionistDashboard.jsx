@@ -18,6 +18,7 @@ import {
   ClipboardList,
   History
 } from 'lucide-react';
+import ErrorBoundary from '../shared/ErrorBoundary';
 
 const ReceptionistDashboard = () => {
   const { user } = useAuthStore();
@@ -82,7 +83,8 @@ const ReceptionistDashboard = () => {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in">
+    <ErrorBoundary>
+      <div className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in">
       
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -218,7 +220,8 @@ const ReceptionistDashboard = () => {
 
         </div>
       </div>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 };
 

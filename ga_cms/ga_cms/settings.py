@@ -12,6 +12,8 @@ ALLOWED_HOSTS = ['*']
 
 # Application definition
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -61,16 +63,28 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'ga_cms.wsgi.application'
+ASGI_APPLICATION = 'ga_cms.asgi.application'
+
+# WARNING: InMemoryChannelLayer is for development only.
+# Replace with channels_redis.core.RedisChannelLayer before production deployment.
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 import dj_database_url
 
 # Database
 # Use DATABASE_URL from .env if provided (e.g. Neon/Supabase), otherwise fallback to local sqlite3
+db_url = config('DATABASE_URL', default=f'sqlite:///{BASE_DIR / "db.sqlite3"}')
+if 'neon.tech' in db_url and 'sslmode=require' not in db_url:
+    db_url += '&sslmode=require' if '?' in db_url else '?sslmode=require'
+
 DATABASES = {
     'default': dj_database_url.config(
-        default=config('DATABASE_URL', default=f'sqlite:///{BASE_DIR / "db.sqlite3"}'),
-        conn_max_age=600,
+        default=db_url,
+        conn_max_age=60,
         conn_health_checks=True,
     )
 }

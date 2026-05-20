@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import { createConsultationNote, createPrescription, fetchDrugs, checkDrugInteractions } from '../../api/medicalRecords';
+import ErrorBoundary from '../shared/ErrorBoundary';
 
 const DoctorDashboard = () => {
   const navigate = useNavigate();
@@ -153,7 +154,8 @@ const DoctorDashboard = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in">
+    <ErrorBoundary>
+      <div className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in">
       
       {/* Morning Confirmation Banner */}
       {showMorningConfirmation && !isConfirmedForToday && (
@@ -340,6 +342,7 @@ const DoctorDashboard = () => {
       />
 
     </div>
+  </ErrorBoundary>
   );
 };
 

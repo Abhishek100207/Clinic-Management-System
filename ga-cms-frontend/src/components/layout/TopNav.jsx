@@ -6,9 +6,10 @@ import { authApi } from '../../api/auth';
 import { Badge } from '../shared/Badge';
 import { ROLE_CONFIG } from '../../utils/roleConfig';
 import api from '../../api/axios';
+import useUnreadCount from '../../hooks/useUnreadCount';
 
 const TopNav = () => {
-  const { user, logout, unreadChatCount, setUnreadChatCount } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const roleConfig = user?.role ? ROLE_CONFIG[user.role] : null;
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -32,22 +33,8 @@ const TopNav = () => {
     fetchPatientProfile();
   }, [user]);
 
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      if (!user) return;
-      try {
-        const res = await api.get('/api/chat/messages/conversations/');
-        const totalUnread = res.data.reduce((acc, conv) => acc + conv.unread, 0);
-        setUnreadChatCount(totalUnread);
-      } catch (err) {
-        console.error("Failed to fetch unread count", err);
-      }
-    };
-    
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 10000);
-    return () => clearInterval(interval);
-  }, [user, setUnreadChatCount]);
+  const { totalUnread } = useUnreadCount();
+  const unreadChatCount = totalUnread;
 
   const handleLogout = async () => {
     try { await authApi.logout(); } catch (e) { console.error(e); }
