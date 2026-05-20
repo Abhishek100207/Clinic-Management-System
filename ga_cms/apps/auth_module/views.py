@@ -31,6 +31,7 @@ def generate_otp():
 
 
 def send_otp_email(email, otp, purpose='login'):
+    print(f"\n[{'='*40}]\n OTP GENERATED FOR {email} ({purpose}): {otp}\n[{'='*40}]\n")
     subject = 'GA Clinic — Your OTP'
     message = (
         f'Your GA Clinic OTP for {purpose} is: {otp}\n\n'

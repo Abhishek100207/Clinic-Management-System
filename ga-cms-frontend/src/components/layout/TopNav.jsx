@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, KeyRound, User, ChevronDown, Menu, X, Phone, MapPin, Droplets, ShieldAlert, Fingerprint } from 'lucide-react';
+import { LogOut, KeyRound, User, ChevronDown, Menu, X, Phone, MapPin, Droplets, ShieldAlert, Fingerprint, Settings, Sun, Moon, Volume2, Laptop } from 'lucide-react';
 import { useNavigate, NavLink } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { authApi } from '../../api/auth';
@@ -7,6 +7,8 @@ import { Badge } from '../shared/Badge';
 import { ROLE_CONFIG } from '../../utils/roleConfig';
 import api from '../../api/axios';
 import useUnreadCount from '../../hooks/useUnreadCount';
+import { NotificationDrawer } from './NotificationDrawer';
+
 
 const TopNav = () => {
   const { user, logout } = useAuthStore();
@@ -15,6 +17,76 @@ const TopNav = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [patientProfile, setPatientProfile] = useState(null);
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [prefData, setPrefData] = useState({
+    theme: 'light',
+    soundEnabled: true,
+    emailAlerts: {
+      appointments: true,
+      labReports: true,
+      prescriptions: true,
+      cancellations: true,
+      labCompletions: true,
+      scanOrders: true,
+      patientRegistrations: true,
+      payments: true
+    }
+  });
+
+  // Load preferences from localStorage when user is loaded or modal opens
+  useEffect(() => {
+    if (user) {
+      const storageKey = `settings_user_${user.id}`;
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setPrefData(parsed);
+          // Apply theme
+          if (parsed.theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {
+          console.error("Failed to parse settings", e);
+        }
+      }
+    }
+  }, [user, isSettingsOpen]);
+
+  const handlePreferenceChange = (key, value) => {
+    setPrefData(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleAlertToggle = (alertKey, value) => {
+    setPrefData(prev => ({
+      ...prev,
+      emailAlerts: {
+        ...prev.emailAlerts,
+        [alertKey]: value
+      }
+    }));
+  };
+
+  const handleSaveSettings = () => {
+    if (user) {
+      const storageKey = `settings_user_${user.id}`;
+      localStorage.setItem(storageKey, JSON.stringify(prefData));
+      // Apply theme class
+      if (prefData.theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      alert("Preferences saved successfully!");
+      setIsSettingsOpen(false);
+    }
+  };
 
   useEffect(() => {
     const fetchPatientProfile = async () => {
@@ -105,6 +177,9 @@ const TopNav = () => {
               </Badge>
             </div>
           )}
+
+          {/* Notification Bell */}
+          <NotificationDrawer />
 
           {/* User Profile Dropdown */}
           <div className="relative">
@@ -202,6 +277,13 @@ const TopNav = () => {
                       <KeyRound size={18} />
                       Change Password
                     </button>
+                    <button 
+                      onClick={() => { setIsSettingsOpen(true); setIsProfileOpen(false); }}
+                      className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all"
+                    >
+                      <Settings size={18} />
+                      Settings & Preferences
+                    </button>
                   </div>
                   
                   <div className="p-1.5 border-t border-gray-50">
@@ -243,8 +325,207 @@ const TopNav = () => {
           </nav>
         </div>
       )}
+
+      {/* Settings & Preferences Modal Overlay */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Settings className="text-blue-600" size={22} />
+                <h3 className="text-lg font-bold text-slate-800">Settings & Preferences</h3>
+              </div>
+              <button 
+                onClick={() => setIsSettingsOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <div className="px-6 py-5 overflow-y-auto space-y-6 max-h-[450px] text-left">
+              
+              {/* Section 1: Display & Theme */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Display & Sound</h4>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Theme Selector */}
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase">Theme Preference</label>
+                    <div className="flex bg-slate-200 p-0.5 rounded-full">
+                      <button
+                        type="button"
+                        onClick={() => handlePreferenceChange('theme', 'light')}
+                        className={`flex-1 py-1 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                          prefData.theme === 'light' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        <Sun size={13} /> Light
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handlePreferenceChange('theme', 'dark')}
+                        className={`flex-1 py-1 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                          prefData.theme === 'dark' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        <Moon size={13} /> Dark
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sound Alerts */}
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col justify-between">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">Sound Alerts</label>
+                    <button
+                      type="button"
+                      onClick={() => handlePreferenceChange('soundEnabled', !prefData.soundEnabled)}
+                      className={`w-full py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                        prefData.soundEnabled 
+                          ? 'border-blue-200 bg-blue-50 text-blue-700 font-bold' 
+                          : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 font-bold'
+                      }`}
+                    >
+                      <Volume2 size={13} /> {prefData.soundEnabled ? 'Enabled' : 'Disabled'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Email Alerts */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email Notification Channels</h4>
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-3.5">
+                  
+                  {user?.role === 'patient' && (
+                    <>
+                      <ToggleOption 
+                        label="Appointment Booking Emails"
+                        desc="Receive confirmation and reminder emails for visits."
+                        checked={prefData.emailAlerts.appointments}
+                        onChange={(val) => handleAlertToggle('appointments', val)}
+                      />
+                      <ToggleOption 
+                        label="Laboratory Scan Uploads"
+                        desc="Get alerts when technician uploads MRI/CT scan reports."
+                        checked={prefData.emailAlerts.labReports}
+                        onChange={(val) => handleAlertToggle('labReports', val)}
+                      />
+                      <ToggleOption 
+                        label="Prescription Adjustments"
+                        desc="Emails for new dosages or medication updates."
+                        checked={prefData.emailAlerts.prescriptions}
+                        onChange={(val) => handleAlertToggle('prescriptions', val)}
+                      />
+                    </>
+                  )}
+
+                  {(user?.role === 'doctor' || user?.role === 'senior_doctor') && (
+                    <>
+                      <ToggleOption 
+                        label="Patient Cancellation Emails"
+                        desc="Receive alerts if a patient cancels their schedule."
+                        checked={prefData.emailAlerts.cancellations}
+                        onChange={(val) => handleAlertToggle('cancellations', val)}
+                      />
+                      <ToggleOption 
+                        label="Scan Lab Completions"
+                        desc="Receive updates when lab uploads scan results."
+                        checked={prefData.emailAlerts.labCompletions}
+                        onChange={(val) => handleAlertToggle('labCompletions', val)}
+                      />
+                    </>
+                  )}
+
+                  {user?.role === 'technician' && (
+                    <ToggleOption 
+                      label="New Scan Orders Alerts"
+                      desc="Receive emails when doctor requests a scan."
+                      checked={prefData.emailAlerts.scanOrders}
+                      onChange={(val) => handleAlertToggle('scanOrders', val)}
+                    />
+                  )}
+
+                  {user?.role === 'receptionist' && (
+                    <>
+                      <ToggleOption 
+                        label="Patient Registration Requests"
+                        desc="Receive alerts when new patients sign up."
+                        checked={prefData.emailAlerts.patientRegistrations}
+                        onChange={(val) => handleAlertToggle('patientRegistrations', val)}
+                      />
+                      <ToggleOption 
+                        label="Online Consultation Payments"
+                        desc="Receive confirmations for patient online fee captures."
+                        checked={prefData.emailAlerts.payments}
+                        onChange={(val) => handleAlertToggle('payments', val)}
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Section 3: Devices Sessions */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Device Active Sessions</h4>
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-xs space-y-2 font-mono text-slate-500">
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1.5 text-slate-700 font-bold"><Laptop size={12} /> Chrome (Windows 11)</span>
+                    <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full">CURRENT</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 pl-4">IP: 192.168.1.48 • Location: Mumbai, IN</div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className="flex-1 py-2.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-xl font-bold text-slate-600 transition-all text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSettings}
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-100 transition-all text-xs"
+              >
+                Save Changes
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </>
   );
 };
+
+const ToggleOption = ({ label, desc, checked, onChange }) => (
+  <div className="flex items-start justify-between gap-4">
+    <div className="space-y-0.5">
+      <p className="text-xs font-bold text-slate-800">{label}</p>
+      <p className="text-[10px] text-slate-500">{desc}</p>
+    </div>
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-5.5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+        checked ? 'bg-blue-600' : 'bg-slate-200'
+      }`}
+    >
+      <span
+        className={`pointer-events-none inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+          checked ? 'translate-x-4.5' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  </div>
+);
 
 export default TopNav;

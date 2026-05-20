@@ -2,13 +2,26 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
-import { MapPin, Ticket, CheckCircle } from 'lucide-react';
+import {
+  MapPin,
+  Ticket,
+  CheckCircle,
+  ArrowLeft,
+  CreditCard,
+  QrCode,
+  ShieldCheck,
+  Building2,
+  Printer,
+  Check,
+  Loader2
+} from 'lucide-react';
 
 const AppointmentBookingPage = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const [bookedToken, setBookedToken] = useState(null);
   
@@ -25,11 +38,27 @@ const AppointmentBookingPage = () => {
   const [doctors, setDoctors] = useState([]);
   const [patients, setPatients] = useState([]);
 
+  // Payment states
+  const [paymentMethod, setPaymentMethod] = useState('upi'); // 'upi', 'card', 'netbanking'
+  const [upiId, setUpiId] = useState('');
+  const [cardData, setCardData] = useState({ number: '', expiry: '', cvv: '', name: '' });
+  const [selectedBank, setSelectedBank] = useState('');
+  const [processingMessage, setProcessingMessage] = useState('');
+  const [transactionId, setTransactionId] = useState('');
+  const [fees, setFees] = useState({ consultation: 500, gst: 90, total: 590 });
+
   const locations = [
     { id: 'main_clinic', name: 'Main City Clinic', distance: '2.5 km' },
     { id: 'suburb_branch', name: 'Suburb Branch', distance: '8.1 km' },
     { id: 'west_wing', name: 'West Wing Center', distance: '4.3 km' },
   ];
+
+  // Auto-calculate fees
+  useEffect(() => {
+    const consultation = appointmentType === 'virtual' ? 300 : 500;
+    const gst = Math.round(consultation * 0.18);
+    setFees({ consultation, gst, total: consultation + gst });
+  }, [appointmentType]);
 
   const fetchDoctors = useCallback(async () => {
     try {
@@ -86,8 +115,59 @@ const AppointmentBookingPage = () => {
     fetchSlots();
   }, [doctorId, date, appointmentType]);
 
+  const handleExpiryChange = (e) => {
+    let val = e.target.value.replace(/\D/g, '');
+    if (val.length > 2) {
+      val = val.substring(0, 2) + '/' + val.substring(2, 4);
+    }
+    setCardData(prev => ({ ...prev, expiry: val }));
+  };
+
+  const handleCardNumberChange = (e) => {
+    let val = e.target.value.replace(/\D/g, '');
+    let formatted = val.replace(/(\d{4})(?=\d)/g, '$1 ');
+    setCardData(prev => ({ ...prev, number: formatted.substring(0, 19) }));
+  };
+
+  const handleProceedToPayment = () => {
+    if (!patientId || !doctorId || !date || !time) {
+      alert("Please select all required details.");
+      return;
+    }
+    setStep(4);
+  };
+
   const handleBook = async () => {
+    // Payment Form Validations
+    if (paymentMethod === 'upi' && !upiId.trim() && !upiId.includes('@')) {
+      alert("Please enter a valid UPI ID");
+      return;
+    }
+    if (paymentMethod === 'card' && (cardData.number.replace(/\s/g, '').length !== 16 || cardData.expiry.length < 5 || cardData.cvv.length < 3 || !cardData.name.trim())) {
+      alert("Please fill correct Card Details.");
+      return;
+    }
+    if (paymentMethod === 'netbanking' && !selectedBank) {
+      alert("Please select your bank.");
+      return;
+    }
+
     setLoading(true);
+    setError(null);
+
+    // Mock progress message sequence
+    const messages = [
+      "Initiating secure payment gateway...",
+      "Verifying payment transaction details...",
+      "Authorizing amount of ₹" + fees.total.toFixed(2) + " with your bank...",
+      "Payment approved! Booking your appointment slot..."
+    ];
+
+    for (let i = 0; i < messages.length; i++) {
+      setProcessingMessage(messages[i]);
+      await new Promise(resolve => setTimeout(resolve, 800));
+    }
+
     try {
       const res = await api.post('/api/appointments/appointments/', {
         patient: patientId,
@@ -98,17 +178,27 @@ const AppointmentBookingPage = () => {
         location: location
       });
       
-      // Mocking token generation for demo if not in response
       const token = res.data.token_number || `T-${Math.floor(Math.random() * 900) + 100}`;
+      const generatedTxn = 'TXN' + Math.floor(100000000 + Math.random() * 900000000);
+      setTransactionId(generatedTxn);
       setBookedToken(token);
-      setStep(4); // Success step
+      setStep(5); // Success step
     } catch (err) {
       console.error(err);
-      alert("Failed to book appointment. Please try again.");
+      setError("Failed to book appointment. Please try again.");
+      setStep(4); // Keep in payment step
     } finally {
       setLoading(false);
     }
   };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const selectedPatient = patients.find(p => p.id === parseInt(patientId));
+  const selectedDoctor = doctors.find(d => d.id === parseInt(doctorId));
+  const selectedLocation = locations.find(l => l.id === location);
 
   return (
     <div className="p-6 max-w-4xl mx-auto w-full animate-fade-in">
@@ -122,24 +212,26 @@ const AppointmentBookingPage = () => {
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         
         {/* Progress Bar */}
-        {step < 4 && (
+        {step < 5 && (
           <div className="flex items-center justify-between mb-10">
             {[
               { s: 1, l: 'Patient' },
               { s: 2, l: 'Details' },
-              { s: 3, l: 'Schedule' }
+              { s: 3, l: 'Schedule' },
+              { s: 4, l: 'Payment' }
             ].map((item, idx) => (
               <React.Fragment key={item.s}>
                 <div className={`flex flex-col items-center ${step >= item.s ? 'text-blue-600' : 'text-slate-400'}`}>
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-2 font-bold transition-all ${step >= item.s ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-50 border-2 border-slate-200'}`}>{item.s}</div>
                   <span className="text-xs font-bold uppercase tracking-tighter">{item.l}</span>
                 </div>
-                {idx < 2 && <div className={`flex-1 h-0.5 mx-4 rounded-full transition-all ${step > item.s ? 'bg-blue-600' : 'bg-slate-100'}`}></div>}
+                {idx < 3 && <div className={`flex-1 h-0.5 mx-4 rounded-full transition-all ${step > item.s ? 'bg-blue-600' : 'bg-slate-100'}`}></div>}
               </React.Fragment>
             ))}
           </div>
         )}
 
+        {/* STEP 1: SELECT PATIENT */}
         {step === 1 && (
           <div className="animate-in slide-in-from-right-4 duration-300 space-y-6">
             <h2 className="text-xl font-bold text-navy">Select Patient</h2>
@@ -166,6 +258,7 @@ const AppointmentBookingPage = () => {
           </div>
         )}
 
+        {/* STEP 2: DOCTOR & LOCATION */}
         {step === 2 && (
           <div className="animate-in slide-in-from-right-4 duration-300 space-y-8">
             <h2 className="text-xl font-bold text-navy">Doctor & Location</h2>
@@ -215,12 +308,13 @@ const AppointmentBookingPage = () => {
             </div>
 
             <div className="flex justify-between pt-6 border-t border-gray-100">
-              <button onClick={() => setStep(1)} className="text-slate-600 hover:bg-slate-100 px-6 py-2.5 rounded-xl font-bold transition-all">Back</button>
+              <button onClick={() => setStep(user?.role === 'patient' ? 2 : 1)} className="text-slate-600 hover:bg-slate-100 px-6 py-2.5 rounded-xl font-bold transition-all">Back</button>
               <button onClick={() => setStep(3)} disabled={!doctorId} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-10 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">Continue</button>
             </div>
           </div>
         )}
 
+        {/* STEP 3: DATE & TIME */}
         {step === 3 && (
           <div className="animate-in slide-in-from-right-4 duration-300 space-y-6">
             <h2 className="text-xl font-bold text-navy">Select Date & Time</h2>
@@ -259,45 +353,277 @@ const AppointmentBookingPage = () => {
 
             <div className="flex justify-between pt-8 border-t border-gray-100">
               <button onClick={() => setStep(2)} className="text-slate-600 hover:bg-slate-100 px-6 py-2.5 rounded-xl font-bold transition-all">Back</button>
-              <button onClick={handleBook} disabled={!date || !time || loading} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-10 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">
-                {loading ? 'Processing...' : 'Confirm Booking'}
+              <button onClick={handleProceedToPayment} disabled={!date || !time || loading} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-10 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">
+                Proceed to Payment (₹{fees.total})
               </button>
             </div>
           </div>
         )}
 
+        {/* STEP 4: SECURE PAYMENT OR PROCESSING */}
         {step === 4 && (
-          <div className="animate-in zoom-in-95 duration-500 text-center py-10 space-y-6">
-            <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle size={48} />
+          loading ? (
+            <div className="text-center py-10 space-y-6 animate-fade-in">
+              <div className="relative w-20 h-20 mx-auto">
+                <div className="absolute inset-0 rounded-full border-4 border-slate-100 border-t-blue-600 animate-spin"></div>
+                <div className="absolute inset-2 bg-blue-50 rounded-full flex items-center justify-center">
+                  <ShieldCheck size={28} className="text-blue-600 animate-pulse" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-navy">Processing Secure Payment</h3>
+                <p className="text-slate-500 text-sm">{processingMessage}</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-3xl font-bold text-navy">Booking Confirmed!</h2>
-              <p className="text-slate-500 mt-2">Your appointment has been successfully scheduled.</p>
-            </div>
-            
-            <div className="max-w-sm mx-auto bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6 relative overflow-hidden">
-              <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full"></div>
-              <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full"></div>
+          ) : (
+            <div className="animate-in slide-in-from-right-4 duration-300 space-y-6">
+              <h2 className="text-xl font-bold text-navy">Consultation Secure Payment</h2>
               
-              <div className="flex items-center justify-center gap-2 mb-2 text-slate-400">
-                <Ticket size={16} />
-                <span className="text-xs font-bold uppercase tracking-widest">Queue Token</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* Left col: payment inputs */}
+                <div className="md:col-span-2 space-y-4">
+                  <div className="grid grid-cols-3 gap-2">
+                    {['upi', 'card', 'netbanking'].map(method => (
+                      <button
+                        key={method}
+                        type="button"
+                        onClick={() => setPaymentMethod(method)}
+                        className={`py-2 px-3 rounded-xl border font-bold text-xs capitalize transition-all ${
+                          paymentMethod === method ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-slate-500 hover:bg-slate-50'
+                        }`}
+                      >
+                        {method === 'upi' ? 'UPI / QR' : method === 'card' ? 'Debit/Credit' : 'Net Banking'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Form Container */}
+                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl min-h-[160px]">
+                    {paymentMethod === 'upi' && (
+                      <div className="space-y-3 animate-fade-in">
+                        <div className="flex flex-col sm:flex-row items-center gap-4">
+                          <div className="bg-white p-2 rounded-lg border border-gray-200 flex flex-col items-center">
+                            <QrCode size={96} className="text-slate-800" />
+                            <span className="text-[9px] text-gray-400 mt-1 font-bold">Scan to Pay</span>
+                          </div>
+                          <div className="flex-1 w-full space-y-2">
+                            <p className="text-xs text-slate-500">Scan QR code using GPay, Paytm, PhonePe or enter UPI ID below:</p>
+                            <div>
+                              <input
+                                type="text"
+                                placeholder="username@bank"
+                                value={upiId}
+                                onChange={(e) => setUpiId(e.target.value)}
+                                className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-semibold"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {paymentMethod === 'card' && (
+                      <div className="space-y-3 animate-fade-in">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Cardholder Name</label>
+                          <input
+                            type="text"
+                            placeholder="John Doe"
+                            value={cardData.name}
+                            onChange={(e) => setCardData(prev => ({ ...prev, name: e.target.value }))}
+                            className="w-full px-3 py-1.5 bg-white rounded-lg border border-gray-200 text-sm font-medium outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Card Number</label>
+                          <input
+                            type="text"
+                            placeholder="4111 2222 3333 4444"
+                            value={cardData.number}
+                            onChange={handleCardNumberChange}
+                            className="w-full px-3 py-1.5 bg-white rounded-lg border border-gray-200 text-sm font-mono outline-none"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Expiry</label>
+                            <input
+                              type="text"
+                              placeholder="MM/YY"
+                              value={cardData.expiry}
+                              onChange={handleExpiryChange}
+                              maxLength={5}
+                              className="w-full px-3 py-1.5 bg-white rounded-lg border border-gray-200 text-sm font-mono text-center outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">CVV</label>
+                            <input
+                              type="password"
+                              placeholder="•••"
+                              value={cardData.cvv}
+                              onChange={(e) => setCardData(prev => ({ ...prev, cvv: e.target.value.replace(/\D/g, '').substring(0, 3) }))}
+                              className="w-full px-3 py-1.5 bg-white rounded-lg border border-gray-200 text-sm font-mono text-center outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {paymentMethod === 'netbanking' && (
+                      <div className="space-y-3 animate-fade-in">
+                        <label className="block text-xs font-bold text-gray-600 mb-1">Select Bank</label>
+                        <select
+                          value={selectedBank}
+                          onChange={(e) => setSelectedBank(e.target.value)}
+                          className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm outline-none"
+                        >
+                          <option value="">-- Select Bank --</option>
+                          <option value="SBI">State Bank of India</option>
+                          <option value="HDFC">HDFC Bank</option>
+                          <option value="ICICI">ICICI Bank</option>
+                          <option value="AXIS">Axis Bank</option>
+                          <option value="PNB">Punjab National Bank</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 p-2.5 bg-emerald-50 rounded-lg text-emerald-800 text-[10px]">
+                    <ShieldCheck size={16} className="text-emerald-600 flex-shrink-0" />
+                    <span>Your session is protected with secure 256-bit bank-grade encryption.</span>
+                  </div>
+                </div>
+
+                {/* Right col: fee break down */}
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-4 h-fit">
+                  <h3 className="text-sm font-bold text-slate-800">Fees Summary</h3>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between text-slate-500">
+                      <span>Consultation</span>
+                      <span>₹{fees.consultation.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-500">
+                      <span>GST (18%)</span>
+                      <span>₹{fees.gst.toFixed(2)}</span>
+                    </div>
+                    <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm font-bold text-slate-800">
+                      <span>Total Amount</span>
+                      <span className="text-emerald-600">₹{fees.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
-              <div className="text-5xl font-black text-blue-600 tracking-tighter">
-                {bookedToken}
+
+              {error && <p className="text-xs font-bold text-rose-600">{error}</p>}
+
+              <div className="flex justify-between pt-6 border-t border-gray-100">
+                <button onClick={() => setStep(3)} className="text-slate-600 hover:bg-slate-100 px-6 py-2.5 rounded-xl font-bold transition-all">Back</button>
+                <button onClick={handleBook} className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95">
+                  Pay & Confirm Booking
+                </button>
               </div>
-              <div className="mt-4 pt-4 border-t border-slate-200 text-xs text-slate-400 font-medium">
-                Please present this token at the reception desk.
+            </div>
+          )
+        )}
+
+        {/* STEP 5: SUCCESS CONFIRMATION RECEIPT */}
+        {step === 5 && (
+          <div className="animate-in zoom-in-95 duration-500 text-center py-6 space-y-6">
+            
+            <div id="printable-booking-receipt" className="max-w-md mx-auto bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="bg-emerald-600 text-white p-6 space-y-2">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto">
+                  <Check className="text-white" size={24} />
+                </div>
+                <h3 className="text-xl font-black">Booking Confirmed!</h3>
+                <p className="text-emerald-100 text-xs">Payment received successfully.</p>
+              </div>
+
+              {/* Token Number */}
+              <div className="p-6 bg-slate-50 border-b border-gray-100 flex flex-col items-center">
+                <div className="flex items-center gap-1.5 text-slate-400 mb-1">
+                  <Ticket size={14} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Queue Token</span>
+                </div>
+                <div className="text-4xl font-black text-blue-600 tracking-tighter">
+                  {bookedToken}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1 font-medium">Please check in with this token at the clinic.</p>
+              </div>
+
+              {/* Receipt details */}
+              <div className="p-6 text-left space-y-3 text-xs border-b border-gray-100">
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-medium">Patient</span>
+                  <span className="font-bold text-slate-800">{selectedPatient?.full_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-medium">Doctor</span>
+                  <span className="font-bold text-slate-800">{selectedDoctor ? `Dr. ${selectedDoctor.user?.full_name || selectedDoctor.user?.first_name}` : ''}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-medium">Date & Time</span>
+                  <span className="font-bold text-slate-800">{date} at {time}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-medium">Location</span>
+                  <span className="font-bold text-slate-800">{selectedLocation?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-medium">Transaction ID</span>
+                  <span className="font-mono font-bold text-slate-800">{transactionId}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-medium">Paid Amount</span>
+                  <span className="font-extrabold text-emerald-600">₹{fees.total.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50 text-[9px] text-slate-400">
+                Please present this card or receipt upon arrival.
               </div>
             </div>
 
-            <button 
-              onClick={() => navigate(user?.role === 'doctor' ? '/dashboard/doctor' : '/dashboard/patient')}
-              className="bg-navy text-white px-10 py-3 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg mt-8"
-            >
-              Go to Dashboard
-            </button>
+            <div className="max-w-md mx-auto flex gap-3">
+              <button
+                onClick={handlePrint}
+                className="flex-1 py-2.5 bg-white border border-gray-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5"
+              >
+                <Printer size={16} />
+                Print Receipt
+              </button>
+              <button 
+                onClick={() => navigate(user?.role === 'doctor' ? '/dashboard/doctor' : '/dashboard/patient')}
+                className="flex-1 bg-navy text-white py-2.5 rounded-xl font-bold hover:bg-slate-800 text-xs transition-all shadow-lg"
+              >
+                Go to Dashboard
+              </button>
+            </div>
+
+            {/* Print style block specific to this page */}
+            <style>{`
+              @media print {
+                body * {
+                  visibility: hidden !important;
+                }
+                #printable-booking-receipt, #printable-booking-receipt * {
+                  visibility: visible !important;
+                }
+                #printable-booking-receipt {
+                  position: absolute !important;
+                  left: 50% !important;
+                  top: 50% !important;
+                  transform: translate(-50%, -50%) !important;
+                  width: 100% !important;
+                  max-width: 450px !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                }
+              }
+            `}</style>
           </div>
         )}
 
