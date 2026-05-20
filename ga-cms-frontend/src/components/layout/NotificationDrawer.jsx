@@ -86,11 +86,12 @@ export const NotificationDrawer = () => {
     markAsRead,
     toggleReadStatus,
     markAllAsRead,
-    deleteNotification
+    deleteNotification,
+    loading,
+    fetchNotifications
   } = useNotificationStore();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const dropdownRef = useRef(null);
 
@@ -115,11 +116,10 @@ export const NotificationDrawer = () => {
   // Handle toggle dropdown with loading state
   const handleToggleDropdown = () => {
     if (!isOpen) {
-      setLoading(true);
       setExpandedId(null);
-      setTimeout(() => {
-        setLoading(false);
-      }, 350);
+      if (user) {
+        fetchNotifications(user);
+      }
     }
     setIsOpen(!isOpen);
   };
@@ -285,7 +285,7 @@ export const NotificationDrawer = () => {
                       >
                         <div className="flex items-center gap-1.5 mb-0.5">
                           <span className="text-[11px] font-bold text-slate-700 truncate max-w-[150px]">
-                            {item.sender.split('@')[0]}
+                            {(item.sender || '').split('@')[0] || 'System'}
                           </span>
                           <span className="text-slate-300">•</span>
                           <span className="text-[10px] text-slate-400 font-medium">

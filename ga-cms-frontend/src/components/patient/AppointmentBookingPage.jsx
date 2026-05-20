@@ -343,7 +343,7 @@ const AppointmentBookingPage = () => {
                         onClick={() => setTime(slot)}
                         className={`py-3 px-2 rounded-xl text-sm font-bold transition-all ${time === slot ? 'bg-blue-600 text-white shadow-lg scale-105' : 'border border-gray-200 text-slate-600 hover:bg-blue-50 hover:border-blue-200 bg-white'}`}
                       >
-                        {slot.substring(0,5)}
+                        {slot?.substring(0, 5) || slot}
                       </button>
                     )) : !loading && <p className="text-sm text-slate-400 italic py-4">No slots available for this date.</p>}
                   </div>

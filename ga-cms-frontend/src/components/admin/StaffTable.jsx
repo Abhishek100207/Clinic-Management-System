@@ -26,42 +26,53 @@ const StaffTable = ({ staff = [] }) => {
           </thead>
           <tbody className="divide-y divide-gray-50">
             {staff.length > 0 ? (
-              staff.map((member, i) => (
-                <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-sm">
-                        {member.name.split(' ').map(n => n[0]).join('')}
+              staff.map((member, i) => {
+                const displayName = String(member.name || member.email || 'Staff Member');
+                const initials = displayName
+                  .split(' ')
+                  .filter(Boolean)
+                  .map(n => n[0])
+                  .join('')
+                  .slice(0, 2)
+                  .toUpperCase() || 'SM';
+
+                return (
+                  <tr key={i} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-sm">
+                          {initials}
+                        </div>
+                        <div>
+                          <p className="font-bold text-navy text-sm">{displayName}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{member.role}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-navy text-sm">{member.name}</p>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{member.role}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors cursor-pointer">
+                        <Mail size={14} />
+                        <span className="text-xs font-medium">{member.email}</span>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors cursor-pointer">
-                      <Mail size={14} />
-                      <span className="text-xs font-medium">{member.email}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
-                      member.status === 'Online' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                    }`}>
-                      {member.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-xs text-slate-400">
-                    {member.lastActive}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-all">
-                      <MoreHorizontal size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+                        member.status === 'Online' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {member.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-xs text-slate-400">
+                      {member.lastActive}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-all">
+                        <MoreHorizontal size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td colSpan="5" className="px-6 py-12 text-center text-slate-400 italic">

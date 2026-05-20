@@ -49,7 +49,7 @@ const PatientAppointmentTable = ({ appointments, onAction }) => {
                     </div>
                     <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
                       <Clock size={12} />
-                      {appt.time.substring(0, 5)}
+                      {appt.time?.substring(0, 5) || 'N/A'}
                     </div>
                   </div>
                 </td>

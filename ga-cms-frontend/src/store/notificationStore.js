@@ -1,146 +1,265 @@
 import { create } from 'zustand';
-
-// Helper to generate mock email notifications based on the user's role
-const getMockEmails = (role, userFullName) => {
-  const common = [
-    {
-      id: 'welcome',
-      title: 'Welcome to Antigravity Clinic Portal!',
-      preview: 'We are thrilled to welcome you to our advanced digital healthcare system.',
-      body: `Hello ${userFullName || 'User'},\n\nWelcome to your Clinic-Management-System portal. You can now manage appointments, consultations, invoices, and view medical reports directly online.\n\nBest regards,\nClinic Admin & Support Team`,
-      sender: 'admin@gaclinic.com',
-      timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-      isRead: true,
-    }
-  ];
-
-  if (role === 'patient') {
-    return [
-      {
-        id: 'scan-ready',
-        title: 'MRI Brain Scan Report Available',
-        preview: 'The diagnostic imaging department has uploaded your brain MRI results.',
-        body: `Dear ${userFullName || 'Patient'},\n\nYour MRI Brain Scan report requested by Dr. Abhishek has been reviewed and uploaded to your clinic medical records.\n\nYou can view and download the PDF report and view scanning queues directly from your patient dashboard.\n\nBest regards,\nImaging Scan Lab Team`,
-        sender: 'scans@gaclinic.com',
-        timestamp: new Date(Date.now() - 45 * 60 * 1000).toISOString(), // 45 mins ago
-        isRead: false,
-      },
-      {
-        id: 'presc-update',
-        title: 'Prescription Refill Update: Dr. Abhishek',
-        preview: 'A new prescription has been added to your medical records.',
-        body: `Dear ${userFullName || 'Patient'},\n\nDr. Abhishek has updated your prescription dosage instructions for Neuro-Tonic (take 10ml twice daily after meals). Please view detailed prescriptions in your account dashboard.\n\nBest regards,\nDr. Abhishek`,
-        sender: 'prescriptions@gaclinic.com',
-        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
-        isRead: false,
-      },
-      {
-        id: 'appt-conf',
-        title: 'Appointment Booking Confirmed',
-        preview: 'Your appointment for 22nd May at 10:20 AM with Dr. Abhishek is confirmed.',
-        body: `Dear ${userFullName || 'Patient'},\n\nYour booking request with Dr. Abhishek has been confirmed for May 22nd at 10:20 AM. Please arrive 15 minutes early and show your queue token at the reception desk.\n\nBest regards,\nAppointments Team`,
-        sender: 'appointments@gaclinic.com',
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-        isRead: true,
-      },
-      ...common
-    ];
-  } else if (role === 'doctor' || role === 'senior_doctor') {
-    return [
-      {
-        id: 'scan-uploaded',
-        title: 'New MRI Scan Uploaded: Sarah Smith',
-        preview: 'Technician has uploaded MRI scans for patient #PAT-491.',
-        body: `Dr. ${userFullName || 'Doctor'},\n\nPatient Sarah Smith (#PAT-491) has finished their MRI scan. The report and images are now available under patient medical files.\n\nBest regards,\nImaging Lab`,
-        sender: 'lab@gaclinic.com',
-        timestamp: new Date(Date.now() - 25 * 60 * 1000).toISOString(), // 25 mins ago
-        isRead: false,
-      },
-      {
-        id: 'appt-cancelled',
-        title: 'Appointment Cancelled: Patient John Doe',
-        preview: 'John Doe cancelled his appointment scheduled for tomorrow at 11:40 AM.',
-        body: `Dr. ${userFullName || 'Doctor'},\n\nPatient John Doe has cancelled their appointment on May 21st, 11:40 AM due to travel. The slot has been released back to availability.\n\nBest regards,\nReception Desk`,
-        sender: 'receptionist@gaclinic.com',
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-        isRead: false,
-      },
-      {
-        id: 'audit-alert',
-        title: 'Monthly Security Audit Log Ready',
-        preview: 'The system has compiled the audit logs for access verification.',
-        body: `Hello Dr. ${userFullName || 'Doctor'},\n\nThe system monthly security audit report is ready. 24 new staff logins were verified. Please check the logs dashboard.\n\nBest regards,\nSecurity Auditor`,
-        sender: 'security@gaclinic.com',
-        timestamp: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(), // 1.5 days ago
-        isRead: true,
-      },
-      ...common
-    ];
-  } else if (role === 'receptionist') {
-    return [
-      {
-        id: 'new-patient',
-        title: 'New Patient Portal Registration',
-        preview: 'A new patient has submitted registration details online.',
-        body: `Hello Team,\n\nPatient Robert Downey has registered via the clinic portal. Please review and verify the demographic/insurance information in patient records.\n\nBest regards,\nPortal Admin`,
-        sender: 'support@gaclinic.com',
-        timestamp: new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 mins ago
-        isRead: false,
-      },
-      {
-        id: 'bill-paid',
-        title: 'Online Payment Received: Invoice #INV-882',
-        preview: 'Online payment of ₹590.00 received for Sarah Smith.',
-        body: `Hello Reception,\n\nSarah Smith has paid ₹590.00 online for their consultation appointment with Dr. Abhishek. Invoice marked as settled.\n\nBest regards,\nBilling Gateway`,
-        sender: 'billing@gaclinic.com',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-        isRead: false,
-      },
-      ...common
-    ];
-  } else if (role === 'technician') {
-    return [
-      {
-        id: 'scan-ordered',
-        title: 'Scan Order Requested: Patient Sarah Smith',
-        preview: 'Dr. Abhishek ordered a Brain MRI for patient #PAT-491.',
-        body: `Hello Scan Lab,\n\nDr. Abhishek has ordered an urgent Brain MRI for patient Sarah Smith (#PAT-491). Please schedule and prepare the scanning bay.\n\nBest regards,\nDoctor Team`,
-        sender: 'doctor@gaclinic.com',
-        timestamp: new Date(Date.now() - 15 * 60 * 1000).toISOString(), // 15 mins ago
-        isRead: false,
-      },
-      ...common
-    ];
-  }
-  return common;
-};
+import api from '../api/axios';
 
 export const useNotificationStore = create((set, get) => ({
   notifications: [],
   searchQuery: '',
   filter: 'all', // 'all', 'unread', 'read'
   userId: null,
+  loading: false,
 
   init: (user) => {
     if (!user) return;
-    const storageKey = `notifications_user_${user.id}`;
-    let saved = localStorage.getItem(storageKey);
-    let list = [];
+    set({ userId: user.id });
+    get().fetchNotifications(user);
+  },
 
-    if (saved) {
-      try {
-        list = JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse notifications", e);
-        list = getMockEmails(user.role, user.full_name);
-        localStorage.setItem(storageKey, JSON.stringify(list));
+  fetchNotifications: async (user) => {
+    if (!user) return;
+    set({ loading: true });
+    const userId = user.id;
+    const role = user.role;
+
+    // Load local storage read/deleted states
+    const storageKey = `notifications_state_user_${userId}`;
+    let savedState = { readIds: {}, deletedIds: {} };
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        savedState = JSON.parse(saved);
       }
-    } else {
-      list = getMockEmails(user.role, user.full_name);
-      localStorage.setItem(storageKey, JSON.stringify(list));
+    } catch (e) {
+      console.error("Failed to parse notifications interaction state", e);
     }
 
-    set({ notifications: list, userId: user.id });
+    const readIds = savedState.readIds || {};
+    const deletedIds = savedState.deletedIds || {};
+    let rawNotifications = [];
+
+    try {
+      if (role === 'patient') {
+        // 1. Fetch appointments
+        try {
+          const apptRes = await api.get('/api/appointments/appointments/');
+          const appts = Array.isArray(apptRes.data) ? apptRes.data : (apptRes.data.results || []);
+          appts.forEach(appt => {
+            const id = `appt-${appt.id}`;
+            rawNotifications.push({
+              id,
+              title: `Appointment ${appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}`,
+              preview: `Your appointment with Dr. ${appt.doctor_name} is ${appt.status}.`,
+              body: `Dear Patient,\n\nYour appointment request with Dr. ${appt.doctor_name} (${appt.doctor_specialty || 'General'}) is ${appt.status.toUpperCase()}.\n\nDate: ${appt.date}\nTime: ${appt.time?.substring(0, 5) || 'N/A'}\nType: ${appt.appointment_type === 'in_person' ? 'In-Person' : 'Virtual'}\n\nPlease arrive 15 minutes before your scheduled slot.`,
+              sender: 'appointments@gaclinic.com',
+              timestamp: appt.created_at || `${appt.date}T${appt.time}`,
+              isRead: !!readIds[id]
+            });
+          });
+        } catch (err) {
+          console.error("Failed to fetch patient appointments", err);
+        }
+
+        // 2. Fetch prescriptions
+        try {
+          const prescRes = await api.get('/api/medical_records/prescriptions/');
+          const prescs = Array.isArray(prescRes.data) ? prescRes.data : (prescRes.data.results || []);
+          prescs.forEach(presc => {
+            const id = `presc-${presc.id}`;
+            const medsBody = (presc.medications || []).map(m => 
+              `- ${m.drug_details?.name || 'Medication'}: ${m.dosage} (${m.frequency}) for ${m.duration}`
+            ).join('\n');
+            rawNotifications.push({
+              id,
+              title: `New Prescription Issued`,
+              preview: `A new prescription has been added to your medical records.`,
+              body: `Dear Patient,\n\nDr. ${presc.doctor || 'Staff'} has uploaded a new prescription for your treatment plan.\n\nNotes: ${presc.notes || 'N/A'}\n\nMedications:\n${medsBody || 'No medications listed.'}`,
+              sender: 'prescriptions@gaclinic.com',
+              timestamp: presc.created_at,
+              isRead: !!readIds[id]
+            });
+          });
+        } catch (err) {
+          console.error("Failed to fetch prescriptions", err);
+        }
+
+        // 3. Fetch Lab Results
+        try {
+          const labRes = await api.get('/api/medical_records/lab-results/');
+          const labs = Array.isArray(labRes.data) ? labRes.data : (labRes.data.results || []);
+          labs.forEach(lab => {
+            const id = `lab-${lab.id}`;
+            rawNotifications.push({
+              id,
+              title: `Lab Results Available: ${lab.test_name}`,
+              preview: `Your lab results for ${lab.test_name} are ready.`,
+              body: `Dear Patient,\n\nYour laboratory test results for "${lab.test_name}" reported by ${lab.reported_by || 'Clinic Lab'} are now ${lab.status || 'Available'}.\n\nYou can access the full report on your medical records dashboard.`,
+              sender: 'lab@gaclinic.com',
+              timestamp: lab.uploaded_at,
+              isRead: !!readIds[id]
+            });
+          });
+        } catch (err) {
+          console.error("Failed to fetch lab results", err);
+        }
+
+        // 4. Fetch Scan Results
+        try {
+          const scanRes = await api.get('/api/medical_records/scan-results/');
+          const scans = Array.isArray(scanRes.data) ? scanRes.data : (scanRes.data.results || []);
+          scans.forEach(scan => {
+            const id = `scan-${scan.id}`;
+            const findingsStr = Array.isArray(scan.findings) ? scan.findings.join(', ') : (scan.findings || 'Completed');
+            rawNotifications.push({
+              id,
+              title: `Imaging Scan Ready: ${scan.scan_type}`,
+              preview: `The scan report for ${scan.scan_type} is now uploaded.`,
+              body: `Dear Patient,\n\nYour diagnostic scan results for "${scan.scan_type}" requested by ${scan.requesting_doctor || 'Dr. Specialist'} are ready.\n\nReported By: ${scan.reported_by || 'Radiology Department'}\nFindings: ${findingsStr}`,
+              sender: 'scans@gaclinic.com',
+              timestamp: scan.uploaded_at,
+              isRead: !!readIds[id]
+            });
+          });
+        } catch (err) {
+          console.error("Failed to fetch scan results", err);
+        }
+
+      } else if (role === 'doctor' || role === 'senior_doctor') {
+        // 1. Fetch appointments
+        try {
+          const apptRes = await api.get('/api/appointments/appointments/');
+          const appts = Array.isArray(apptRes.data) ? apptRes.data : (apptRes.data.results || []);
+          appts.forEach(appt => {
+            const id = `appt-${appt.id}`;
+            rawNotifications.push({
+              id,
+              title: `Appointment ${appt.status.charAt(0).toUpperCase() + appt.status.slice(1)}: ${appt.patient_name}`,
+              preview: `${appt.patient_name} scheduled for ${appt.date} at ${appt.time?.substring(0, 5) || 'N/A'} is ${appt.status}.`,
+              body: `Dr. ${user.full_name || 'Doctor'},\n\nAn appointment has been updated for patient ${appt.patient_name}.\n\nDate: ${appt.date}\nTime: ${appt.time?.substring(0, 5) || 'N/A'}\nType: ${appt.appointment_type === 'in_person' ? 'In-Person' : 'Virtual'}\nStatus: ${appt.status.toUpperCase()}`,
+              sender: 'appointments@gaclinic.com',
+              timestamp: appt.created_at || `${appt.date}T${appt.time}`,
+              isRead: !!readIds[id]
+            });
+          });
+        } catch (err) {
+          console.error("Failed to fetch doctor appointments", err);
+        }
+
+        // 2. Fetch Scan Results
+        try {
+          const scanRes = await api.get('/api/medical_records/scan-results/');
+          const scans = Array.isArray(scanRes.data) ? scanRes.data : (scanRes.data.results || []);
+          scans.forEach(scan => {
+            const id = `scan-${scan.id}`;
+            const findingsStr = Array.isArray(scan.findings) ? scan.findings.join(', ') : (scan.findings || 'Completed');
+            rawNotifications.push({
+              id,
+              title: `New Scan Uploaded: Patient ID #${scan.patient}`,
+              preview: `Scan result for ${scan.scan_type} has been uploaded to patient files.`,
+              body: `Hello Dr. ${user.full_name || 'Doctor'},\n\nDiagnostic scan results of type "${scan.scan_type}" have been uploaded for Patient ID #${scan.patient}.\n\nReported By: ${scan.reported_by || 'Radiologist'}\nFindings: ${findingsStr}`,
+              sender: 'lab@gaclinic.com',
+              timestamp: scan.uploaded_at,
+              isRead: !!readIds[id]
+            });
+          });
+        } catch (err) {
+          console.error("Failed to fetch doctor scan reports", err);
+        }
+
+        // 3. Fetch security audit logs (senior doctor only)
+        if (role === 'senior_doctor') {
+          try {
+            const auditRes = await api.get('/api/users/audit-logs/');
+            const audits = Array.isArray(auditRes.data) ? auditRes.data : (auditRes.data.results || []);
+            audits.forEach(audit => {
+              const id = `audit-${audit.id}`;
+              rawNotifications.push({
+                id,
+                title: `Security Log Alert: ${audit.action}`,
+                preview: `${audit.user_name} performed action: ${audit.action}`,
+                body: `Attention Senior Doctor,\n\nA new system action has been audited.\n\nUser: ${audit.user_name}\nAction: ${audit.action}\nDetails: ${audit.details || 'N/A'}\nIP Address: ${audit.ip_address || 'Internal'}\nTimestamp: ${new Date(audit.timestamp).toLocaleString()}`,
+                sender: 'security@gaclinic.com',
+                timestamp: audit.timestamp,
+                isRead: !!readIds[id]
+              });
+            });
+          } catch (err) {
+            console.error("Failed to fetch audit logs", err);
+          }
+        }
+
+      } else if (role === 'receptionist') {
+        // 1. Fetch appointments
+        try {
+          const apptRes = await api.get('/api/appointments/appointments/');
+          const appts = Array.isArray(apptRes.data) ? apptRes.data : (apptRes.data.results || []);
+          appts.forEach(appt => {
+            const id = `appt-${appt.id}`;
+            rawNotifications.push({
+              id,
+              title: `Appointment Booked: ${appt.patient_name}`,
+              preview: `${appt.patient_name} with Dr. ${appt.doctor_name} is ${appt.status}.`,
+              body: `Hello Reception,\n\nA new appointment booking is registered.\n\nPatient Name: ${appt.patient_name}\nDoctor: Dr. ${appt.doctor_name}\nDate: ${appt.date}\nTime: ${appt.time?.substring(0, 5) || 'N/A'}\nType: ${appt.appointment_type === 'in_person' ? 'In-Person' : 'Virtual'}\nStatus: ${appt.status.toUpperCase()}`,
+              sender: 'appointments@gaclinic.com',
+              timestamp: appt.created_at || `${appt.date}T${appt.time}`,
+              isRead: !!readIds[id]
+            });
+          });
+        } catch (err) {
+          console.error("Failed to fetch receptionist appointments", err);
+        }
+
+        // 2. Fetch Patients (new registrations)
+        try {
+          const patientRes = await api.get('/api/users/patients/');
+          const patients = Array.isArray(patientRes.data) ? patientRes.data : (patientRes.data.results || []);
+          patients.forEach(pat => {
+            const id = `pat-reg-${pat.id}`;
+            const timestamp = pat.user?.date_joined || pat.user?.created_at || new Date(Date.now() - (patients.length - pat.id) * 3600000).toISOString();
+            rawNotifications.push({
+              id,
+              title: `New Patient Registered: ${pat.full_name}`,
+              preview: `${pat.full_name} registered via online portal.`,
+              body: `Hello Reception,\n\nA new patient has registered online.\n\nName: ${pat.full_name}\nEmail: ${pat.email || 'N/A'}\nMobile: ${pat.mobile_number || 'N/A'}\nPatient ID: #PAT-${pat.id}\n\nPlease review and verify their medical profile records.`,
+              sender: 'support@gaclinic.com',
+              timestamp,
+              isRead: !!readIds[id]
+            });
+          });
+        } catch (err) {
+          console.error("Failed to fetch receptionist patients", err);
+        }
+
+      } else if (role === 'technician') {
+        // 1. Fetch scan orders
+        try {
+          const orderRes = await api.get('/api/medical_records/scan-orders/');
+          const orders = Array.isArray(orderRes.data) ? orderRes.data : (orderRes.data.results || []);
+          orders.forEach(ord => {
+            const id = `scan-ord-${ord.id}`;
+            rawNotifications.push({
+              id,
+              title: `Scan Ordered: ${ord.scan_type}`,
+              preview: `Dr. ${ord.doctorName} requested ${ord.scan_type} for ${ord.patientName}.`,
+              body: `Hello Scan Technician,\n\nDr. ${ord.doctorName} has ordered a diagnostic imaging scan.\n\nPatient Name: ${ord.patientName}\nScan Type: ${ord.scan_type}\nStatus: ${ord.status.toUpperCase()}\nNotes: ${ord.notes || 'None'}\n\nPlease prepare the scan bay and update the status when complete.`,
+              sender: 'doctor@gaclinic.com',
+              timestamp: ord.ordered_at,
+              isRead: !!readIds[id]
+            });
+          });
+        } catch (err) {
+          console.error("Failed to fetch technician scan orders", err);
+        }
+      }
+    } catch (err) {
+      console.error("Dynamic notification fetch error", err);
+    }
+
+    // Filter out deleted notifications
+    const activeNotifications = rawNotifications.filter(n => !deletedIds[n.id]);
+
+    // Sort by timestamp desc
+    activeNotifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    set({ notifications: activeNotifications, userId, loading: false });
   },
 
   setSearchQuery: (query) => set({ searchQuery: query }),
@@ -155,7 +274,17 @@ export const useNotificationStore = create((set, get) => ({
       n.id === id ? { ...n, isRead: true } : n
     );
 
-    localStorage.setItem(`notifications_user_${userId}`, JSON.stringify(updated));
+    const storageKey = `notifications_state_user_${userId}`;
+    let savedState = { readIds: {}, deletedIds: {} };
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) savedState = JSON.parse(saved);
+    } catch (e) {}
+    
+    savedState.readIds = savedState.readIds || {};
+    savedState.readIds[id] = true;
+    localStorage.setItem(storageKey, JSON.stringify(savedState));
+
     set({ notifications: updated });
   },
 
@@ -167,7 +296,17 @@ export const useNotificationStore = create((set, get) => ({
       n.id === id ? { ...n, isRead: !n.isRead } : n
     );
 
-    localStorage.setItem(`notifications_user_${userId}`, JSON.stringify(updated));
+    const storageKey = `notifications_state_user_${userId}`;
+    let savedState = { readIds: {}, deletedIds: {} };
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) savedState = JSON.parse(saved);
+    } catch (e) {}
+    
+    savedState.readIds = savedState.readIds || {};
+    savedState.readIds[id] = !savedState.readIds[id];
+    localStorage.setItem(storageKey, JSON.stringify(savedState));
+
     set({ notifications: updated });
   },
 
@@ -176,7 +315,20 @@ export const useNotificationStore = create((set, get) => ({
     if (!userId) return;
 
     const updated = notifications.map(n => ({ ...n, isRead: true }));
-    localStorage.setItem(`notifications_user_${userId}`, JSON.stringify(updated));
+
+    const storageKey = `notifications_state_user_${userId}`;
+    let savedState = { readIds: {}, deletedIds: {} };
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) savedState = JSON.parse(saved);
+    } catch (e) {}
+    
+    savedState.readIds = savedState.readIds || {};
+    notifications.forEach(n => {
+      savedState.readIds[n.id] = true;
+    });
+    localStorage.setItem(storageKey, JSON.stringify(savedState));
+
     set({ notifications: updated });
   },
 
@@ -185,7 +337,19 @@ export const useNotificationStore = create((set, get) => ({
     if (!userId) return;
 
     const updated = notifications.filter(n => n.id !== id);
-    localStorage.setItem(`notifications_user_${userId}`, JSON.stringify(updated));
+
+    const storageKey = `notifications_state_user_${userId}`;
+    let savedState = { readIds: {}, deletedIds: {} };
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) savedState = JSON.parse(saved);
+    } catch (e) {}
+    
+    savedState.deletedIds = savedState.deletedIds || {};
+    savedState.deletedIds[id] = true;
+    localStorage.setItem(storageKey, JSON.stringify(savedState));
+
     set({ notifications: updated });
   }
 }));
+

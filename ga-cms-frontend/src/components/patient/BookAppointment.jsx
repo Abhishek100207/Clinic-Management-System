@@ -432,7 +432,7 @@ const BookAppointment = ({ onBack }) => {
                   ) : formData.doctor_id && formData.date ? (
                     (() => {
                       const filteredSlots = availableSlots.filter(s => {
-                        const hour = parseInt(s.time.substring(0, 2));
+                        const hour = parseInt((s.time || '').substring(0, 2) || '0');
                         if (formData.appointment_type === 'in_person') {
                           return hour >= 9 && hour < 13;
                         } else {
@@ -457,7 +457,7 @@ const BookAppointment = ({ onBack }) => {
                                       : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed opacity-50'
                                   }`}
                               >
-                                {s.time.substring(0, 5)}
+                                {s.time?.substring(0, 5) || s.time}
                               </button>
                             ))}
                           </div>

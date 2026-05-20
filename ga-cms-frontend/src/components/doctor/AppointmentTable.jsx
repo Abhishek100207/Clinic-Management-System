@@ -33,7 +33,7 @@ const AppointmentTable = ({ appointments, onAction }) => {
                 <td className="px-6 py-4">
                   <div className="flex items-center">
                     <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold mr-3">
-                      {appt.token_number || `#${appt.id.toString().slice(-2)}`}
+                      {appt.token_number || `#${appt.id?.toString().slice(-2) || '00'}`}
                     </div>
                     <div>
                       <p className="font-bold text-navy">{appt.patient_name || 'Anonymous'}</p>
@@ -49,7 +49,7 @@ const AppointmentTable = ({ appointments, onAction }) => {
                     </div>
                     <div className="flex items-center text-slate-500 text-xs">
                       <Clock size={12} className="mr-2 text-slate-400" />
-                      {appt.time.substring(0, 5)}
+                      {appt.time?.substring(0, 5) || 'N/A'}
                     </div>
                   </div>
                 </td>

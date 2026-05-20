@@ -95,8 +95,15 @@ const PatientDashboard = () => {
   };
 
   const now = new Date();
-  const upcomingAppointments = appointments.filter(a => new Date(`${a.date}T${a.time}`) >= now && a.status !== 'completed' && a.status !== 'cancelled');
-  const previousVisits = appointments.filter(a => new Date(`${a.date}T${a.time}`) < now || a.status === 'completed');
+  const upcomingAppointments = appointments.filter(a => {
+    if (!a.date || !a.time) return false;
+    return new Date(`${a.date}T${a.time}`) >= now && a.status !== 'completed' && a.status !== 'cancelled';
+  });
+  const previousVisits = appointments.filter(a => {
+    if (a.status === 'completed') return true;
+    if (!a.date || !a.time) return false;
+    return new Date(`${a.date}T${a.time}`) < now;
+  });
   
   const statsData = {
     upcoming: upcomingAppointments.length,
@@ -131,7 +138,7 @@ const PatientDashboard = () => {
                 <div>
                   <h4 className="font-bold text-amber-900 text-sm">Action Required: Rescheduled</h4>
                   <p className="text-amber-700 text-xs mt-1">
-                    Dr. {appt.doctor_name} moved your appointment to <span className="font-bold">{appt.date}</span> at <span className="font-bold">{appt.time.substring(0, 5)}</span>.
+                    Dr. {appt.doctor_name} moved your appointment to <span className="font-bold">{appt.date}</span> at <span className="font-bold">{appt.time?.substring(0, 5) || 'N/A'}</span>.
                   </p>
                 </div>
               </div>
@@ -300,7 +307,7 @@ const AppointmentItem = ({ appt, onAction }) => (
       <div>
         <h4 className="font-bold text-navy text-lg">{appt.doctor_name}</h4>
         <p className="text-xs text-slate-500 flex items-center gap-2 mt-1">
-          <Clock size={14} className="text-blue-500" /> {appt.time.substring(0, 5)} • <span className="capitalize">{appt.appointment_type}</span>
+          <Clock size={14} className="text-blue-500" /> {appt.time?.substring(0, 5) || 'N/A'} • <span className="capitalize">{appt.appointment_type}</span>
         </p>
       </div>
     </div>

@@ -12,6 +12,13 @@ import ErrorBoundary from '../ErrorBoundary';
 const StaffChatPage = () => {
   const { user } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [tabUnreadCounts, setTabUnreadCounts] = useState({
+    'Patients': 0,
+    'Doctors': 0,
+    'Senior Doctor': 0,
+    'Technicians': 0,
+    'Receptionists': 0
+  });
   
   // Dynamic tabs based on user role and restrictions
   const getTabsForRole = (role) => {

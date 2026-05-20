@@ -67,7 +67,7 @@ const ReceptionistDashboard = () => {
         });
         
         const mappedQueue = inQueueAppts.map((a, index) => ({
-          token: a.id.toString(),
+          token: a.id?.toString() || String(index + 1),
           patientName: a.patient_name || `Patient ${a.patient}`,
           doctorName: a.doctor_name || `Doctor ${a.doctor}`,
           waitTime: (index + 1) * 5

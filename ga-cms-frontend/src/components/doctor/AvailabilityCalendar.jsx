@@ -21,7 +21,7 @@ const AvailabilityCalendar = ({ availabilities = [] }) => {
                 <div className="flex flex-col gap-1 min-h-[100px]">
                   {dayAvails.length > 0 ? dayAvails.map((avail, i) => (
                     <div key={i} className="bg-blue-50 border border-blue-100 p-2 rounded-[6px] text-[10px] text-blue-800">
-                      <div className="font-bold">{avail.start_time.substring(0,5)} - {avail.end_time.substring(0,5)}</div>
+                      <div className="font-bold">{avail.start_time?.substring(0, 5) || 'N/A'} - {avail.end_time?.substring(0, 5) || 'N/A'}</div>
                       <div className="opacity-75">{avail.appointment_type === 'in_person' ? '🏥 Clinic' : '💻 Virtual'}</div>
                     </div>
                   )) : (
