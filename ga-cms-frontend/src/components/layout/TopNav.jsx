@@ -83,7 +83,7 @@ const TopNav = () => {
       } else {
         document.documentElement.classList.remove('dark');
       }
-      alert("Preferences saved successfully!");
+      alert("Settings saved successfully!");
       setIsSettingsOpen(false);
     }
   };
@@ -282,7 +282,7 @@ const TopNav = () => {
                       className="w-full flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all"
                     >
                       <Settings size={18} />
-                      Settings & Preferences
+                      Settings
                     </button>
                   </div>
                   
@@ -326,7 +326,7 @@ const TopNav = () => {
         </div>
       )}
 
-      {/* Settings & Preferences Modal Overlay */}
+      {/* Settings Modal Overlay */}
       {isSettingsOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
@@ -335,7 +335,7 @@ const TopNav = () => {
             <div className="px-6 py-5 border-b border-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Settings className="text-blue-600" size={22} />
-                <h3 className="text-lg font-bold text-slate-800">Settings & Preferences</h3>
+                <h3 className="text-lg font-bold text-slate-800">Settings</h3>
               </div>
               <button 
                 onClick={() => setIsSettingsOpen(false)}
@@ -355,7 +355,7 @@ const TopNav = () => {
                 <div className="grid grid-cols-2 gap-4">
                   {/* Theme Selector */}
                   <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2">
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase">Theme Preference</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase">Theme Setting</label>
                     <div className="flex bg-slate-200 p-0.5 rounded-full">
                       <button
                         type="button"

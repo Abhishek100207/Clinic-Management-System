@@ -266,7 +266,7 @@ const PatientDashboard = () => {
                 <ChevronRight size={14} />
               </li>
               <li className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors">
-                <span className="flex items-center gap-3"><Bell size={16} /> Notification Preferences</span>
+                <span className="flex items-center gap-3"><Bell size={16} /> Notification Settings</span>
                 <ChevronRight size={14} />
               </li>
               <li className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors">
