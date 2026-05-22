@@ -20,17 +20,28 @@ import {
   Loader2,
   Printer,
   Building2,
-  Ticket
+  Ticket,
+  DollarSign,
+  FileText,
+  Download,
+  Eye,
+  X
 } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
+import { billingStorage } from '../../utils/billingStorage';
+import { queueStorage } from '../../utils/queueStorage';
 
 const BookAppointment = ({ onBack }) => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   
   // Core States
   const [step, setStep] = useState('booking'); // 'booking', 'payment', 'processing', 'success'
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [createdInvoice, setCreatedInvoice] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
 
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -49,7 +60,9 @@ const BookAppointment = ({ onBack }) => {
   });
 
   // Payment-specific States
-  const [paymentMethod, setPaymentMethod] = useState('upi'); // 'upi', 'card', 'netbanking'
+  const [paymentMethod, setPaymentMethod] = useState(
+    (user?.role === 'receptionist' || user?.role === 'senior_doctor') ? 'cash' : 'upi'
+  ); // 'upi', 'card', 'netbanking', 'cash', 'pay_later'
   const [upiId, setUpiId] = useState('');
   const [cardData, setCardData] = useState({ number: '', expiry: '', cvv: '', name: '' });
   const [selectedBank, setSelectedBank] = useState('');
@@ -203,12 +216,19 @@ const BookAppointment = ({ onBack }) => {
     setLoading(true);
 
     // Mock progress message sequence
-    const messages = [
-      "Initiating secure payment gateway...",
-      "Verifying payment transaction details...",
-      "Authorizing amount of ₹" + fees.total.toFixed(2) + " with your bank...",
-      "Payment approved! Booking your appointment slot..."
-    ];
+    const messages = paymentMethod === 'pay_later'
+      ? [
+          "Creating appointment record...",
+          "Generating clinic queue token...",
+          "Creating billing invoice (PENDING status)...",
+          "Appointment registered successfully!"
+        ]
+      : [
+          "Initiating secure payment gateway...",
+          "Verifying payment transaction details...",
+          "Authorizing amount of ₹" + fees.total.toFixed(2) + " with your bank...",
+          "Payment approved! Booking your appointment slot..."
+        ];
 
     for (let i = 0; i < messages.length; i++) {
       setProcessingMessage(messages[i]);
@@ -230,13 +250,55 @@ const BookAppointment = ({ onBack }) => {
       const response = await api.post('/api/appointments/appointments/', payload);
       
       // Generate a mock Transaction ID
-      const generatedTxn = 'TXN' + Math.floor(100000000 + Math.random() * 900000000);
+      const generatedTxn = paymentMethod === 'pay_later' ? '' : 'TXN' + Math.floor(100000000 + Math.random() * 900000000);
       setTransactionId(generatedTxn);
-      setBookedToken(response.data.token_number || `T-${Math.floor(Math.random() * 900) + 100}`);
+      // Create local billing record
+      const patientObj = patients.find(p => p.id === parseInt(formData.patient_id));
+      const doctorObj = doctors.find(d => d.id === parseInt(formData.doctor_id));
+      const status = paymentMethod === 'pay_later' ? 'PENDING' : 'PAID';
+
+      let token = response.data.token_number || `T-${Math.floor(Math.random() * 900) + 100}`;
+
+      // Auto check-in patient in queueStorage if PAID
+      if (status === 'PAID') {
+        const queueItem = queueStorage.checkInPatient({
+          patientId: formData.patient_id,
+          patientName: patientObj?.full_name || 'Walk-in Patient',
+          doctorId: formData.doctor_id,
+          doctorName: doctorObj ? `Dr. ${doctorObj.user?.full_name || doctorObj.user?.first_name}` : 'Clinic Doctor',
+          doctorRoom: formData.doctor_id?.toString() === '2' ? 'Room 102' : 'Room 101',
+          type: 'scheduled'
+        });
+        if (queueItem) {
+          token = queueItem.token;
+        }
+      }
+      setBookedToken(token);
+
+      const inv = billingStorage.addInvoice({
+        appointmentId: response.data.id || `APP-${Math.floor(100000 + Math.random() * 900000)}`,
+        patientId: formData.patient_id,
+        patientName: patientObj?.full_name || 'Walk-in Patient',
+        doctorId: formData.doctor_id,
+        doctorName: doctorObj ? `Dr. ${doctorObj.user?.full_name || doctorObj.user?.first_name}` : 'Clinic Doctor',
+        doctorSpecialty: doctorObj?.specialty || 'General Physician',
+        appointmentDate: formData.date,
+        appointmentTime: formData.time,
+        appointmentType: formData.appointment_type,
+        consultationFee: fees.consultation,
+        tax: fees.gst,
+        totalAmount: fees.total,
+        paymentStatus: status,
+        paymentMode: paymentMethod === 'pay_later' ? '' : paymentMethod.toUpperCase(),
+        transactionId: generatedTxn,
+        tokenNumber: token
+      });
+      setCreatedInvoice(inv);
+
       setStep('success');
     } catch (err) {
       console.error("Booking payment error:", err);
-      const errMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to book appointment after authorization. Refund initiated.';
+      const errMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to book appointment. Please try again.';
       setNotification({ type: 'error', message: errMsg });
       setStep('payment');
     } finally {
@@ -246,6 +308,53 @@ const BookAppointment = ({ onBack }) => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadInvoice = (invoice) => {
+    if (!invoice) return;
+    const txtContent = `
+==================================================
+              GA MEDICAL CLINIC RECEIPT
+==================================================
+Invoice ID      : ${invoice.invoiceId}
+Generated Date  : ${new Date(invoice.dateGenerated).toLocaleString('en-IN')}
+Token Number    : ${invoice.tokenNumber || 'N/A'}
+Appointment Date: ${invoice.appointmentDate} at ${invoice.appointmentTime}
+--------------------------------------------------
+PATIENT DETAILS
+Name            : ${invoice.patientName}
+Patient ID      : PAT-${invoice.patientId}
+
+DOCTOR DETAILS
+Name            : ${invoice.doctorName}
+Department      : ${invoice.doctorSpecialty}
+Visit Type      : ${invoice.appointmentType === 'virtual' ? 'Virtual (Video)' : 'In-Person (Clinic)'}
+--------------------------------------------------
+BILLING BREAKDOWN
+Consultation Fee: INR ${invoice.consultationFee.toFixed(2)}
+Tax (GST 18%)   : INR ${invoice.tax.toFixed(2)}
+--------------------------------------------------
+GRAND TOTAL     : INR ${invoice.totalAmount.toFixed(2)}
+--------------------------------------------------
+PAYMENT INFORMATION
+Status          : ${invoice.paymentStatus}
+Payment Mode    : ${invoice.paymentMode || 'N/A'}
+Transaction ID  : ${invoice.transactionId || 'N/A'}
+==================================================
+Thank you for choosing GA Medical Clinic.
+For support, email: support@gacms.com
+==================================================
+`;
+
+    const blob = new Blob([txtContent.trim()], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Receipt_${invoice.invoiceId}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const selectedPatient = patients.find(p => p.id === parseInt(formData.patient_id));
@@ -525,7 +634,7 @@ const BookAppointment = ({ onBack }) => {
               {/* Payment Methods tabs */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">Choose Payment Method</label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className={`grid ${user?.role === 'receptionist' || user?.role === 'senior_doctor' ? 'grid-cols-5' : 'grid-cols-3'} gap-3`}>
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('upi')}
@@ -556,12 +665,66 @@ const BookAppointment = ({ onBack }) => {
                     <Building2 size={24} className="mb-2" />
                     <span className="text-xs font-bold">Net Banking</span>
                   </button>
+                  {(user?.role === 'receptionist' || user?.role === 'senior_doctor') && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('cash')}
+                        className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                          paymentMethod === 'cash' ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
+                        }`}
+                      >
+                        <DollarSign size={24} className="mb-2" />
+                        <span className="text-xs font-bold">Cash at Desk</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('pay_later')}
+                        className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                          paymentMethod === 'pay_later' ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
+                        }`}
+                      >
+                        <FileText size={24} className="mb-2" />
+                        <span className="text-xs font-bold">Pay Later</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
               {/* Payment Form Fields based on selection */}
               <div className="p-6 bg-slate-50 rounded-xl border border-slate-100 min-h-[200px]">
                 
+                {/* Cash Flow */}
+                {paymentMethod === 'cash' && (
+                  <div className="space-y-4 animate-fade-in py-6 text-center">
+                    <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto text-emerald-500 border border-emerald-100 shadow-sm">
+                      <DollarSign size={32} />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-slate-800 text-lg">Receive Cash Payment</h4>
+                      <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
+                        Please collect <span className="font-black text-slate-900">₹{fees.total}</span> in cash from the patient. Once received, click the button below to finalize booking and mark the invoice as PAID.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pay Later Flow */}
+                {paymentMethod === 'pay_later' && (
+                  <div className="space-y-4 animate-fade-in py-6 text-center">
+                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto text-blue-500 border border-blue-100 shadow-sm">
+                      <FileText size={32} />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-slate-800 text-lg">Generate Pending Invoice</h4>
+                      <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
+                        This appointment will be booked immediately, and an invoice of <span className="font-black text-slate-900">₹{fees.total}</span> will be generated in <span className="text-amber-600 font-bold">PENDING</span> status.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* UPI Flow */}
                 {paymentMethod === 'upi' && (
                   <div className="space-y-4 animate-fade-in">
@@ -810,12 +973,16 @@ const BookAppointment = ({ onBack }) => {
           <div id="printable-receipt" className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             
             {/* Success Header banner */}
-            <div className="bg-emerald-600 text-white p-8 text-center space-y-3">
+            <div className={`p-8 text-center space-y-3 text-white ${paymentMethod === 'pay_later' ? 'bg-blue-600' : 'bg-emerald-600'}`}>
               <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                <Check size={36} className="text-white" />
+                {paymentMethod === 'pay_later' ? <FileText size={36} className="text-white" /> : <Check size={36} className="text-white" />}
               </div>
-              <h2 className="text-3xl font-extrabold tracking-tight">Payment Successful!</h2>
-              <p className="text-emerald-100 text-sm">Your appointment is booked and confirmed.</p>
+              <h2 className="text-3xl font-extrabold tracking-tight">
+                {paymentMethod === 'pay_later' ? 'Appointment Booked!' : 'Payment Successful!'}
+              </h2>
+              <p className={`${paymentMethod === 'pay_later' ? 'text-blue-100' : 'text-emerald-100'} text-sm`}>
+                {paymentMethod === 'pay_later' ? 'Your appointment is booked. Payment invoice generated.' : 'Your appointment is booked and confirmed.'}
+              </p>
             </div>
 
             {/* Token Dashboard */}
@@ -840,9 +1007,13 @@ const BookAppointment = ({ onBack }) => {
                   <InvoiceRow label="Consultation" value={formData.appointment_type === 'virtual' ? 'Virtual (Video)' : 'In-Person (Clinic)'} />
                   <InvoiceRow label="Clinic Location" value={fixedLocation} />
                   <InvoiceRow label="Scheduled Time" value={`${formData.date} at ${formData.time}`} />
-                  <InvoiceRow label="Transaction ID" value={transactionId} />
-                  <InvoiceRow label="Payment Status" value="SUCCESS" valueClass="text-emerald-600 font-extrabold" />
-                  <InvoiceRow label="Payment Mode" value={paymentMethod.toUpperCase()} />
+                  <InvoiceRow label="Transaction ID" value={transactionId || 'N/A (Pending Payment)'} />
+                  <InvoiceRow 
+                    label="Payment Status" 
+                    value={paymentMethod === 'pay_later' ? 'PENDING' : 'SUCCESS'} 
+                    valueClass={paymentMethod === 'pay_later' ? 'text-amber-600 font-extrabold' : 'text-emerald-600 font-extrabold'} 
+                  />
+                  <InvoiceRow label="Payment Mode" value={paymentMethod === 'pay_later' ? 'PAY LATER' : paymentMethod.toUpperCase()} />
                 </div>
               </div>
 
@@ -874,14 +1045,31 @@ const BookAppointment = ({ onBack }) => {
           </div>
 
           {/* Action buttons */}
-          <div className="flex gap-4">
-            <button
-              onClick={handlePrint}
-              className="flex-1 py-3 bg-white border border-gray-200 hover:bg-slate-50 rounded-xl font-bold text-slate-700 transition-all flex items-center justify-center gap-2"
-            >
-              <Printer size={18} />
-              Print Receipt
-            </button>
+          <div className="space-y-4 w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                onClick={() => setShowViewModal(true)}
+                className="py-3 bg-white border border-gray-200 hover:bg-slate-50 rounded-xl font-bold text-slate-700 transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
+              >
+                <Eye size={18} />
+                View Invoice
+              </button>
+              <button
+                onClick={() => handleDownloadInvoice(createdInvoice)}
+                className="py-3 bg-white border border-gray-200 hover:bg-slate-50 rounded-xl font-bold text-slate-700 transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
+              >
+                <Download size={18} />
+                Download Receipt
+              </button>
+              <button
+                onClick={handlePrint}
+                className="py-3 bg-white border border-gray-200 hover:bg-slate-50 rounded-xl font-bold text-slate-700 transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
+              >
+                <Printer size={18} />
+                Print Receipt
+              </button>
+            </div>
+
             <button
               onClick={() => {
                 if (onBack) {
@@ -890,10 +1078,164 @@ const BookAppointment = ({ onBack }) => {
                   navigate('/my-appointments');
                 }
               }}
-              className="flex-1 py-3 bg-navy hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg mt-0 transition-all text-center"
+              className="w-full py-3.5 bg-navy hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg transition-all text-center text-sm"
             >
               Go to Dashboard
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- DETAILED VIEW INVOICE MODAL --- */}
+      {showViewModal && createdInvoice && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col text-slate-700">
+            
+            {/* Modal Head */}
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <span className="text-sm font-bold text-slate-500 uppercase tracking-widest font-bold">Patient Invoice Details</span>
+              <button 
+                onClick={() => setShowViewModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1.5 hover:bg-slate-200 rounded-full transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Printable Invoice Container */}
+            <div className="flex-1 overflow-y-auto p-8" id="printable-invoice">
+              <div className="flex flex-col md:flex-row justify-between items-start border-b border-slate-200 pb-6 mb-6 gap-4">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">GA MEDICAL CLINIC</h2>
+                  <p className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-wider">Comprehensive Clinic Management</p>
+                  <p className="text-xs text-slate-500 mt-2">12, Green Avenue, Sector 5, Mumbai</p>
+                  <p className="text-xs text-slate-500">Support: support@gacms.com | Tel: +91 22 928374</p>
+                </div>
+                <div className="text-left md:text-right">
+                  <div className="bg-slate-100 px-3 py-1.5 rounded-lg inline-block mb-3">
+                    <span className="font-mono text-xs font-extrabold text-slate-900">INV ID: {createdInvoice.invoiceId}</span>
+                  </div>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Date Generated</p>
+                  <p className="text-xs text-slate-600 font-bold mt-0.5">{new Date(createdInvoice.dateGenerated).toLocaleString('en-IN')}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase tracking-widest font-black block mb-1">Billing To:</span>
+                  <p className="text-sm font-bold text-slate-900">{createdInvoice.patientName}</p>
+                  <p className="text-xs text-slate-500 mt-1">Patient ID: #PAT-{createdInvoice.patientId}</p>
+                  <p className="text-xs text-slate-500">Token Number: <span className="font-bold text-blue-600">{createdInvoice.tokenNumber || 'N/A'}</span></p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase tracking-widest font-black block mb-1">Consultation With:</span>
+                  <p className="text-sm font-bold text-slate-900">{createdInvoice.doctorName}</p>
+                  <p className="text-xs text-slate-500 mt-1">Department: {createdInvoice.doctorSpecialty}</p>
+                  <p className="text-xs text-slate-500">Visit Type: <span className="capitalize">{createdInvoice.appointmentType === 'virtual' ? 'Virtual (Video)' : 'In-Person (Clinic)'}</span></p>
+                </div>
+              </div>
+
+              {/* Fee Breakdown */}
+              <div className="mb-8 font-medium">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-400 font-bold text-xs uppercase tracking-wider">
+                      <th className="py-2">Item Description</th>
+                      <th className="py-2 text-right">Fee Rate</th>
+                      <th className="py-2 text-right">CGST (9%)</th>
+                      <th className="py-2 text-right">SGST (9%)</th>
+                      <th className="py-2 text-right">Total Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-slate-100 text-slate-900">
+                      <td className="py-4">
+                        <span className="font-bold">Consultation Service</span>
+                        <p className="text-[10px] text-slate-400 font-medium">Scheduled on {createdInvoice.appointmentDate} at {createdInvoice.appointmentTime}</p>
+                      </td>
+                      <td className="py-4 text-right">₹{createdInvoice.consultationFee.toFixed(2)}</td>
+                      <td className="py-4 text-right">₹{(createdInvoice.tax / 2).toFixed(2)}</td>
+                      <td className="py-4 text-right">₹{(createdInvoice.tax / 2).toFixed(2)}</td>
+                      <td className="py-4 text-right font-black">₹{createdInvoice.totalAmount.toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Total Summary */}
+              <div className="flex flex-col items-end border-t border-slate-200 pt-6 gap-2">
+                <div className="w-64 space-y-2 text-sm text-slate-600 font-medium">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>₹{createdInvoice.consultationFee.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tax (GST 18%)</span>
+                    <span>₹{createdInvoice.tax.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between pt-3 border-t border-slate-100 text-base font-extrabold text-slate-900">
+                    <span>Grand Total</span>
+                    <span className="text-lg font-black text-emerald-600">₹{createdInvoice.totalAmount.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Section */}
+              <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="text-center md:text-left">
+                  <span className="text-[10px] text-slate-400 uppercase tracking-widest font-black block mb-1">Receipt Status</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                      createdInvoice.paymentStatus === 'PAID'
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : 'bg-amber-100 text-amber-800 border border-amber-200'
+                    }`}>
+                      {createdInvoice.paymentStatus}
+                    </span>
+                    {createdInvoice.paymentStatus === 'PAID' && (
+                      <span className="text-xs text-slate-500 font-medium">via {createdInvoice.paymentMode}</span>
+                    )}
+                  </div>
+                </div>
+                {createdInvoice.paymentStatus === 'PAID' && createdInvoice.transactionId && (
+                  <div className="text-center md:text-right">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-widest font-black block mb-1">Transaction Ref ID</span>
+                    <span className="font-mono text-xs font-extrabold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg inline-block">
+                      {createdInvoice.transactionId}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-[10px] text-slate-400 italic mt-12 text-center border-t border-dashed border-slate-200 pt-6">
+                This is a system generated print invoice. No physical signature is required.
+              </p>
+            </div>
+
+            {/* Modal Buttons */}
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 print:hidden">
+              <button 
+                onClick={() => setShowViewModal(false)}
+                className="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 rounded-xl font-bold text-sm border border-slate-200 transition-colors"
+              >
+                Close View
+              </button>
+              <button 
+                onClick={() => handleDownloadInvoice(createdInvoice)}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all active:scale-95"
+              >
+                <Download size={16} />
+                Download Receipt
+              </button>
+              <button 
+                onClick={handlePrint}
+                className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all active:scale-95"
+              >
+                <Printer size={16} />
+                Print Invoice
+              </button>
+            </div>
+
           </div>
         </div>
       )}
@@ -904,7 +1246,7 @@ const BookAppointment = ({ onBack }) => {
           body * {
             visibility: hidden !important;
           }
-          #printable-receipt, #printable-receipt * {
+          ${showViewModal ? '#printable-invoice, #printable-invoice *' : '#printable-receipt, #printable-receipt *'} {
             visibility: visible !important;
           }
           #printable-receipt {
@@ -914,6 +1256,18 @@ const BookAppointment = ({ onBack }) => {
             width: 100% !important;
             box-shadow: none !important;
             border: none !important;
+          }
+          #printable-invoice {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: white !important;
+            color: black !important;
+            padding: 0 !important;
+            margin: 0 !important;
           }
         }
       `}</style>

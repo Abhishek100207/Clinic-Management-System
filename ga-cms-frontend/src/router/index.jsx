@@ -150,9 +150,27 @@ const AppRouter = () => {
           } 
         />
         <Route path="/performance" element={<ComingSoonPage />} />
-        <Route path="/queue" element={<QueuePage />} />
-        <Route path="/billing" element={<BillingPage />} />
-        <Route path="/upload-results" element={<UploadResultsPage />} />
+        <Route path="/queue" 
+          element={
+            <AuthGuard allowedRoles={['patient', 'receptionist', 'doctor', 'senior_doctor']}>
+              <QueuePage />
+            </AuthGuard>
+          } 
+        />
+        <Route path="/billing" 
+          element={
+            <AuthGuard allowedRoles={['patient', 'receptionist', 'doctor', 'senior_doctor']}>
+              <BillingPage />
+            </AuthGuard>
+          } 
+        />
+        <Route path="/upload-results" 
+          element={
+            <AuthGuard allowedRoles={['technician', 'senior_doctor', 'doctor']}>
+              <UploadResultsPage />
+            </AuthGuard>
+          } 
+        />
         <Route path="/test-results" 
           element={
             <AuthGuard allowedRoles={['doctor', 'senior_doctor', 'technician']}>

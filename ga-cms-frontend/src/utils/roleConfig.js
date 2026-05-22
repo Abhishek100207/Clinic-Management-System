@@ -7,6 +7,7 @@ export const ROLE_CONFIG = {
       { name: 'Appointments (All Doctors)', path: '/appointments', icon: 'CalendarDays' },
       { name: 'Patient Records', path: '/patients', icon: 'Users' },
       { name: 'Revenue', path: '/revenue', icon: 'IndianRupee' },
+      { name: 'Billing & Invoices', path: '/billing', icon: 'CreditCard' },
       { name: 'Staff Performance', path: '/performance/staff', icon: 'LineChart' },
       { name: 'Doctors',         path: '/doctors',          icon: 'Stethoscope' },
       { name: 'Add Staff',       path: '/staff/add',        icon: 'UserPlus' },
@@ -22,6 +23,7 @@ export const ROLE_CONFIG = {
     navLinks: [
       { name: 'Dashboard',       path: '/dashboard/doctor', icon: 'LayoutDashboard' },
       { name: 'My Appointments', path: '/my-appointments',  icon: 'CalendarDays' },
+      { name: 'Live Queue',      path: '/queue',            icon: 'ListOrdered' },
       { name: 'My Patients',     path: '/my-patients',      icon: 'Users' },
       { name: 'Consultations',   path: '/consultations',    icon: 'Stethoscope' },
       { name: 'Chat',            path: '/chat',             icon: 'MessageSquare' },
@@ -57,7 +59,9 @@ export const ROLE_CONFIG = {
     navLinks: [
       { name: 'Dashboard', path: '/dashboard/patient', icon: 'LayoutDashboard' },
       { name: 'My Appointments', path: '/my-appointments', icon: 'CalendarDays' },
+      { name: 'Live Queue', path: '/queue', icon: 'ListOrdered' },
       { name: 'Medical Records', path: '/medical-records', icon: 'Clipboard' },
+      { name: 'Billing & Invoices', path: '/billing', icon: 'CreditCard' },
       { name: 'Chat', path: '/chat', icon: 'MessageSquare' },
     ],
     badgeColor: 'bg-blue-100 text-blue-800'

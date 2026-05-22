@@ -1,7 +1,7 @@
 import React from 'react';
 import { User, Clock, ArrowRight } from 'lucide-react';
 
-const QueueTable = ({ queue = [] }) => {
+const QueueTable = ({ queue = [], onCallNext }) => {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="p-6 border-b border-gray-100 flex items-center justify-between">
@@ -48,9 +48,16 @@ const QueueTable = ({ queue = [] }) => {
                     {item.waitTime} mins
                   </td>
                   <td className="px-6 py-4">
-                    <button className="text-blue-600 hover:text-blue-700 font-bold text-sm flex items-center gap-1 group">
-                      Call Next <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                    </button>
+                    {item.status === 'active' ? (
+                      <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full animate-pulse">Serving</span>
+                    ) : (
+                      <button 
+                        onClick={() => onCallNext && onCallNext(item.token)}
+                        className="text-blue-600 hover:text-blue-700 font-bold text-sm flex items-center gap-1 group"
+                      >
+                        Call Next <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

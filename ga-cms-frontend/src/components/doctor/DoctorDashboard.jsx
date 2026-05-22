@@ -9,6 +9,7 @@ import EmergencyRescheduler from './EmergencyRescheduler';
 import RescheduleModal from '../shared/appointments/RescheduleModal';
 import ConsultationModal from './ConsultationModal';
 import { Badge } from '../shared/Badge';
+import { queueStorage } from '../../utils/queueStorage';
 import { 
   Bell, 
   Settings, 
@@ -21,7 +22,11 @@ import {
   Search,
   Users,
   ChevronRight,
-  Stethoscope
+  Stethoscope,
+  ListOrdered,
+  Play,
+  Check,
+  Clock
 } from 'lucide-react';
 
 const DoctorDashboard = () => {
@@ -42,6 +47,42 @@ const DoctorDashboard = () => {
   const [isConfirmedForToday, setIsConfirmedForToday] = useState(false);
   const [rescheduleData, setRescheduleData] = useState({ isOpen: false, appointment: null });
   const [consultationData, setConsultationData] = useState({ isOpen: false, appointment: null });
+
+  // Live Queue states & handlers
+  const [queue, setQueue] = useState([]);
+
+  const refreshQueue = () => {
+    const docName = user?.full_name || 'Dr. Sarah Johnson';
+    const data = queueStorage.getQueueForDoctor(docName);
+    setQueue(data);
+  };
+
+  useEffect(() => {
+    refreshQueue();
+    // Storage sync
+    window.addEventListener('storage', refreshQueue);
+    // Periodical fallback polling
+    const interval = setInterval(refreshQueue, 3000);
+    return () => {
+      window.removeEventListener('storage', refreshQueue);
+      clearInterval(interval);
+    };
+  }, [user]);
+
+  const handleCallPatient = (token) => {
+    queueStorage.updatePatientStatus(token, 'active');
+    refreshQueue();
+  };
+
+  const handleFinalizeConsult = (token) => {
+    queueStorage.updatePatientStatus(token, 'completed');
+    refreshQueue();
+  };
+
+  const handleMissedPatient = (token) => {
+    queueStorage.updatePatientStatus(token, 'missed');
+    refreshQueue();
+  };
 
   useEffect(() => {
     fetchDoctorDashboardData();
@@ -97,6 +138,16 @@ const DoctorDashboard = () => {
     // Here you would typically call an API to save the consultation
     alert("Consultation finalized successfully!");
   };
+
+  const activeWaitingQueue = queue.filter(item => ['waiting', 'active', 'delayed'].includes(item.status))
+    .sort((a, b) => {
+      if (a.status === 'active') return -1;
+      if (b.status === 'active') return 1;
+      return a.priority - b.priority || new Date(a.checkInTime) - new Date(b.checkInTime);
+    });
+
+  const currentServing = activeWaitingQueue.find(item => item.status === 'active');
+  const waitingList = activeWaitingQueue.filter(item => item.status !== 'active');
 
   return (
     <div className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in">
@@ -157,6 +208,140 @@ const DoctorDashboard = () => {
         
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
+          {/* Live Queue Widget */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                  <ListOrdered size={18} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-navy text-lg">Patient Call & Queue Control</h3>
+                  <p className="text-xs text-slate-400">Manage real-time consulting calls and token announcements</p>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => navigate('/queue')}
+                className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 transition-all flex items-center gap-1 group"
+              >
+                Full Queue Screen
+                <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Active patient consult */}
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+                  Now in Room Consultation
+                </h4>
+
+                {currentServing ? (
+                  <div className="bg-gradient-to-r from-slate-50 to-blue-50/30 border border-blue-100/50 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-5 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black text-xl font-mono shadow-md shadow-blue-500/10">
+                        {currentServing.token}
+                      </div>
+                      <div>
+                        <h5 className="font-extrabold text-navy text-base leading-snug">{currentServing.patientName}</h5>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                          Check-in: <span className="capitalize">{currentServing.type}</span> • Status: <span className="font-bold text-blue-600 uppercase">{currentServing.status}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                      <button 
+                        onClick={() => handleFinalizeConsult(currentServing.token)}
+                        className="flex-1 sm:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/10 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Check size={14} /> Finalize Consult
+                      </button>
+                      <button 
+                        onClick={() => handleMissedPatient(currentServing.token)}
+                        className="flex-1 sm:flex-none px-4 py-2.5 bg-white border border-slate-200 hover:bg-rose-50 hover:border-rose-100 text-rose-600 font-bold text-xs rounded-xl transition-all"
+                      >
+                        Mark Absent
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border border-dashed border-slate-200 rounded-2xl p-8 text-center text-slate-400">
+                    <Clock size={24} className="mx-auto mb-2 text-slate-300" />
+                    <p className="text-sm font-bold">No Active Consultation</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Select the next patient from your waiting line to call them in.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Waiting list */}
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
+                  Upcoming Waiting Patients ({waitingList.length})
+                </h4>
+
+                <div className="space-y-3">
+                  {waitingList.slice(0, 3).map((item, idx) => (
+                    <div 
+                      key={item.token} 
+                      className="flex items-center justify-between p-3.5 border border-slate-100 hover:border-slate-200 rounded-xl bg-slate-50/50 hover:bg-slate-50/80 transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono font-bold bg-white border border-slate-100 text-slate-600 px-2 py-0.5 rounded text-xs">
+                          {item.token}
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-navy text-sm">{item.patientName}</span>
+                            {item.priority === 1 && (
+                              <span className="text-[8px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse">Emergency</span>
+                            )}
+                            {item.status === 'delayed' && (
+                              <span className="text-[8px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Delayed</span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400 font-medium">Checked in {new Date(item.checkInTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handleCallPatient(item.token)}
+                          className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] rounded-lg shadow-sm transition-all flex items-center gap-1 uppercase"
+                        >
+                          <Play size={10} fill="currentColor" /> Call to Room
+                        </button>
+                        <button 
+                          onClick={() => handleMissedPatient(item.token)}
+                          className="px-2.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-rose-600 font-bold text-[10px] rounded-lg transition-all uppercase"
+                        >
+                          Absent
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {waitingList.length === 0 && (
+                    <div className="text-center py-6 border border-dashed border-slate-100 rounded-xl">
+                      <p className="text-xs text-slate-400 italic">No patients waiting in queue.</p>
+                    </div>
+                  )}
+
+                  {waitingList.length > 3 && (
+                    <button 
+                      onClick={() => navigate('/queue')}
+                      className="w-full py-2 bg-slate-50 hover:bg-slate-100 text-slate-500 font-bold text-xs rounded-xl border border-slate-100 transition-all text-center block"
+                    >
+                      View remaining {waitingList.length - 3} waiting patients
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <AvailabilityCalendar availabilities={user?.doctor_profile?.availabilities || []} />
         </div>
 

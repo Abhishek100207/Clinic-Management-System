@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '../shared/Badge';
 import ReceptionistStats from './ReceptionistStats';
 import QueueTable from './QueueTable';
+import { queueStorage } from '../../utils/queueStorage';
+import { billingStorage } from '../../utils/billingStorage';
 import { 
   UserPlus, 
   CreditCard, 
@@ -21,19 +23,62 @@ const ReceptionistDashboard = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   
-  // Mock data for demonstration - in a real app, this would come from an API/Store
   const [stats, setStats] = useState({
     totalPatients: 1250,
-    inQueue: 8,
-    appointmentsToday: 24,
-    revenue: 12500
+    inQueue: 0,
+    appointmentsToday: 0,
+    revenue: 0
   });
 
-  const [queueData, setQueueData] = useState([
-    { token: '101', patientName: 'Arjun Mehra', doctorName: 'Dr. Sarah Johnson', waitTime: 15 },
-    { token: '102', patientName: 'Priya Sharma', doctorName: 'Dr. Robert Chen', waitTime: 10 },
-    { token: '103', patientName: 'Vikram Singh', doctorName: 'Dr. Sarah Johnson', waitTime: 5 },
-  ]);
+  const [queueData, setQueueData] = useState([]);
+
+  const refreshDashboardData = () => {
+    const queue = queueStorage.getQueue();
+    const activeQueue = queue.filter(item => ['waiting', 'active', 'delayed'].includes(item.status));
+    
+    const sortedQueue = [...activeQueue].sort((a, b) => {
+      if (a.status === 'active') return -1;
+      if (b.status === 'active') return 1;
+      return a.priority - b.priority || new Date(a.checkInTime) - new Date(b.checkInTime);
+    });
+
+    setQueueData(sortedQueue);
+
+    const invoices = billingStorage.getInvoices();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayInvoices = invoices.filter(inv => inv.appointmentDate === todayStr);
+    
+    // Fallbacks to keep dashboard populated if empty
+    const todayAppointments = todayInvoices.length || 24;
+    const todayRevenue = todayInvoices
+      .filter(inv => inv.paymentStatus === 'PAID')
+      .reduce((sum, inv) => sum + inv.totalAmount, 0) || 12500;
+
+    setStats({
+      totalPatients: 1250,
+      inQueue: activeQueue.length,
+      appointmentsToday: todayAppointments,
+      revenue: todayRevenue
+    });
+  };
+
+  useEffect(() => {
+    refreshDashboardData();
+    window.addEventListener('storage', refreshDashboardData);
+    
+    // Dynamic polling fallback for other tabs sync
+    const interval = setInterval(refreshDashboardData, 3000);
+    
+    return () => {
+      window.removeEventListener('storage', refreshDashboardData);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleCallNext = (token) => {
+    queueStorage.updatePatientStatus(token, 'active');
+    refreshDashboardData();
+  };
 
   return (
     <div className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in">
@@ -68,7 +113,7 @@ const ReceptionistDashboard = () => {
         
         {/* Main Content (Left 2/3) */}
         <div className="lg:col-span-2 space-y-8">
-          <QueueTable queue={queueData} />
+          <QueueTable queue={queueData} onCallNext={handleCallNext} />
           
           {/* Quick Tasks / Pending Actions */}
           <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
