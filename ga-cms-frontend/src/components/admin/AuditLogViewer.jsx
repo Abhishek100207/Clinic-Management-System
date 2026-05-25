@@ -10,7 +10,7 @@ const AuditLogViewer = () => {
     const fetchLogs = async () => {
       try {
         const response = await api.get('/api/users/audit-logs/');
-        setLogs(response.data);
+        setLogs(response.data.results || response.data);
         setLoading(false);
       } catch (err) {
         console.error('Error fetching audit logs:', err);

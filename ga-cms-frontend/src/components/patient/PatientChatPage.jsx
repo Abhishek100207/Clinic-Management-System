@@ -14,8 +14,8 @@ const PatientChatPage = () => {
         const convRes = await api.get('/api/chat/messages/conversations/');
         const docRes = await api.get('/api/users/doctors/');
         
-        const conversations = convRes.data;
-        const doctorsData = docRes.data.results || docRes.data;
+        const conversations = Array.isArray(convRes?.data) ? convRes.data : (convRes?.data?.results ?? []);
+        const doctorsData = Array.isArray(docRes?.data) ? docRes.data : (docRes?.data?.results ?? []);
         
         const convMap = {};
         conversations.forEach(c => {

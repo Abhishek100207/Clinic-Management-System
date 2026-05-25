@@ -15,6 +15,22 @@ import {
   Check,
   Loader2
 } from 'lucide-react';
+import SearchableSelect from '../common/SearchableSelect';
+
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 const AppointmentBookingPage = () => {
   const { user } = useAuthStore();
@@ -63,7 +79,7 @@ const AppointmentBookingPage = () => {
   const fetchDoctors = useCallback(async () => {
     try {
       const res = await api.get('/api/users/doctors/');
-      setDoctors(Array.isArray(res.data) ? res.data : (res.data.results ?? []));
+      setDoctors(Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []));
     } catch (err) {
       console.error("Failed to fetch doctors", err);
     }
@@ -72,7 +88,7 @@ const AppointmentBookingPage = () => {
   const fetchPatients = useCallback(async () => {
     try {
       const res = await api.get('/api/users/patients/');
-      const patientList = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+      const patientList = Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []);
       setPatients(patientList);
       
       if (user && user.role === 'patient' && patientList.length > 0) {
@@ -155,39 +171,96 @@ const AppointmentBookingPage = () => {
     setLoading(true);
     setError(null);
 
-    // Mock progress message sequence
-    const messages = [
-      "Initiating secure payment gateway...",
-      "Verifying payment transaction details...",
-      "Authorizing amount of ₹" + fees.total.toFixed(2) + " with your bank...",
-      "Payment approved! Booking your appointment slot..."
-    ];
-
-    for (let i = 0; i < messages.length; i++) {
-      setProcessingMessage(messages[i]);
-      await new Promise(resolve => setTimeout(resolve, 800));
-    }
-
     try {
-      const res = await api.post('/api/appointments/appointments/', {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        alert("Razorpay SDK failed to load. Please check your internet connection.");
+        setLoading(false);
+        return;
+      }
+
+      // 1. Create a dynamic Razorpay order in backend
+      const orderPayload = {
         patient: patientId,
         doctor: doctorId,
         date: date,
         time: time,
         appointment_type: appointmentType,
-        location: location
-      });
-      
-      const token = res.data.token_number || `T-${Math.floor(Math.random() * 900) + 100}`;
-      const generatedTxn = 'TXN' + Math.floor(100000000 + Math.random() * 900000000);
-      setTransactionId(generatedTxn);
-      setBookedToken(token);
-      setStep(5); // Success step
+        patient_location: '',
+        reason: ''
+      };
+
+      const orderRes = await api.post('/api/appointments/appointments/create-razorpay-order/', orderPayload);
+      const { razorpay_order_id, amount, razorpay_key_id, appointment_id } = orderRes.data;
+
+      // Find patient & doctor objects for prefilling
+      const patientObj = patients.find(p => p.id === parseInt(patientId));
+      const doctorObj = doctors.find(d => d.id === parseInt(doctorId));
+
+      // 2. Open Razorpay unified checkout widget
+      const options = {
+        key: razorpay_key_id,
+        amount: amount,
+        currency: "INR",
+        name: "GA Medical Clinic",
+        description: `Appointment with Dr. ${doctorObj?.user?.full_name || 'Clinic Doctor'}`,
+        order_id: razorpay_order_id,
+        prefill: {
+          name: patientObj?.full_name || "",
+          email: patientObj?.user?.email || "",
+          contact: patientObj?.user?.phone || "",
+          method: paymentMethod // prefill matching the tab selection
+        },
+        theme: {
+          color: "#1e3a8a" // navy theme color
+        },
+        modal: {
+          ondismiss: function() {
+            setLoading(false);
+            setStep(4);
+          }
+        },
+        handler: async function (response) {
+          setLoading(true);
+          setProcessingMessage("Verifying payment transaction details...");
+
+          try {
+            // 3. Verify signature on the backend
+            const verifyRes = await api.post('/api/appointments/appointments/verify-razorpay-payment/', {
+              appointment_id: appointment_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature
+            });
+
+            setProcessingMessage("Payment approved! Booking your appointment slot...");
+            await new Promise(resolve => setTimeout(resolve, 850));
+
+            const verifiedAppt = verifyRes.data.appointment;
+            const txnId = response.razorpay_payment_id;
+            setTransactionId(txnId);
+
+            const token = verifiedAppt.token_number || `T-${Math.floor(Math.random() * 900) + 100}`;
+            setBookedToken(token);
+            setStep(5); // Success step
+
+          } catch (verifyErr) {
+            console.error("Signature verification failed:", verifyErr);
+            setError(verifyErr.response?.data?.error || verifyErr.response?.data?.detail || 'Signature verification failed. Please try again.');
+            setStep(4);
+          } finally {
+            setLoading(false);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+
     } catch (err) {
-      console.error(err);
-      setError("Failed to book appointment. Please try again.");
-      setStep(4); // Keep in payment step
-    } finally {
+      console.error("Order creation failed:", err);
+      setError(err.response?.data?.error || err.response?.data?.detail || 'Failed to initiate secure payment checkout. Please try again.');
+      setStep(4);
       setLoading(false);
     }
   };
@@ -237,14 +310,13 @@ const AppointmentBookingPage = () => {
             <h2 className="text-xl font-bold text-navy">Select Patient</h2>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Patient Search</label>
-              <select 
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
+              <SearchableSelect 
+                className="w-full"
                 value={patientId}
-                onChange={(e) => setPatientId(e.target.value)}
-              >
-                <option value="" disabled>-- Select a Patient --</option>
-                {patients.map(p => <option key={p.id} value={p.id}>{p.full_name} ({p.patient_id})</option>)}
-              </select>
+                onChange={(val) => setPatientId(val)}
+                options={patients.map(p => ({ value: p.id, label: `${p.full_name} (${p.patient_id})` }))}
+                placeholder="-- Select a Patient --"
+              />
             </div>
             <div className="flex justify-end pt-4">
               <button 
@@ -266,14 +338,13 @@ const AppointmentBookingPage = () => {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2">Select Doctor</label>
-                <select 
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-sm"
+                <SearchableSelect 
+                  className="w-full"
                   value={doctorId}
-                  onChange={(e) => setDoctorId(e.target.value)}
-                >
-                  <option value="" disabled>-- Choose a Doctor --</option>
-                  {doctors.map(d => <option key={d.id} value={d.id}>Dr. {d.user?.full_name || d.user?.first_name} ({d.specialty})</option>)}
-                </select>
+                  onChange={(val) => setDoctorId(val)}
+                  options={doctors.map(d => ({ value: d.id, label: `Dr. ${d.user?.full_name || d.user?.first_name} (${d.specialty})` }))}
+                  placeholder="-- Choose a Doctor --"
+                />
               </div>
 
               <div>

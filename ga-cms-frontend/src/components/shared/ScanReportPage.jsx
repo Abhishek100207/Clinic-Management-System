@@ -53,7 +53,7 @@ const ScanReportPage = () => {
         // 2. Fetch Scan Result by matching patient and scan_type
         try {
           const resultsResponse = await api.get(`/api/medical_records/scan-results/`);
-          const resultsData = Array.isArray(resultsResponse.data) ? resultsResponse.data : (resultsResponse.data.results || []);
+          const resultsData = Array.isArray(resultsResponse?.data) ? resultsResponse.data : (resultsResponse?.data?.results || []);
           
           const matchingResult = resultsData.find(res => 
             res.patient === orderData.patient && res.scan_type === orderData.scan_type

@@ -8,12 +8,14 @@ import { useAuthStore } from '../../store/authStore';
 import { queueStorage } from '../../utils/queueStorage';
 import api from '../../api/axios';
 import { Badge } from '../shared/Badge';
+import SearchableSelect from '../common/SearchableSelect';
 
 const QueuePage = () => {
   const { user } = useAuthStore();
   const [queue, setQueue] = useState([]);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
+  const [confirmedToday, setConfirmedToday] = useState([]); // Today's confirmed appts not yet checked-in
   
   // View states
   const [isTvMode, setIsTvMode] = useState(false);
@@ -40,8 +42,8 @@ const QueuePage = () => {
   const [flashActiveCard, setFlashActiveCard] = useState(false);
 
   // Load initial queue data
-  const refreshQueue = () => {
-    const data = queueStorage.getQueue();
+  const refreshQueue = async () => {
+    const data = await queueStorage.getQueue();
     setQueue(data);
     
     // Check if new token was called (status === 'active') to trigger flash on TV mode
@@ -54,14 +56,42 @@ const QueuePage = () => {
     }
   };
 
+  // Fetch today's confirmed (paid/scheduled) appointments not yet in queue
+  const fetchConfirmedToday = async () => {
+    try {
+      const res = await api.get('/api/appointments/appointments/');
+      const today = new Date();
+      const confirmed = res.data.filter(item => {
+        if (!item.date) return false;
+        const [year, month, day] = item.date.split('-').map(Number);
+        const d = new Date(year, month - 1, day);
+        const isToday = d.getDate() === today.getDate() &&
+                        d.getMonth() === today.getMonth() &&
+                        d.getFullYear() === today.getFullYear();
+        // Show confirmed appointments that haven't been given a token yet, and exclude virtual meetings (they don't physically check-in)
+        return isToday && item.status === 'confirmed' && !item.queue_token && item.appointment_type !== 'virtual';
+      });
+      setConfirmedToday(confirmed);
+    } catch (err) {
+      console.error('Failed to fetch confirmed appointments:', err);
+    }
+  };
+
   useEffect(() => {
     refreshQueue();
+    fetchConfirmedToday();
     
     // Periodically sync from localStorage to simulate real-time updates
-    const interval = setInterval(refreshQueue, 3000);
+    const interval = setInterval(() => {
+      refreshQueue();
+      fetchConfirmedToday();
+    }, 3000);
     
     // Listen to storage events from other tabs/dashboards
-    window.addEventListener('storage', refreshQueue);
+    window.addEventListener('storage', () => {
+      refreshQueue();
+      fetchConfirmedToday();
+    });
     
     return () => {
       clearInterval(interval);
@@ -78,13 +108,15 @@ const QueuePage = () => {
             api.get('/api/users/patients/'),
             api.get('/api/users/doctors/')
           ]);
-          setPatients(patientRes.data || []);
-          setDoctors(doctorRes.data || []);
+          const patientsArray = Array.isArray(patientRes?.data) ? patientRes.data : (patientRes?.data?.results ?? []);
+          const doctorsArray = Array.isArray(doctorRes?.data) ? doctorRes.data : (doctorRes?.data?.results ?? []);
+          setPatients(patientsArray);
+          setDoctors(doctorsArray);
           
-          if (doctorRes.data?.length > 0) {
+          if (doctorsArray.length > 0) {
             setCheckInForm(prev => ({
               ...prev,
-              doctorId: doctorRes.data[0].id.toString()
+              doctorId: doctorsArray[0].id.toString()
             }));
           }
         } catch (e) {
@@ -96,7 +128,7 @@ const QueuePage = () => {
   }, [user]);
 
   // Handle patient check-in
-  const handleCheckIn = (e) => {
+  const handleCheckIn = async (e) => {
     e.preventDefault();
     if (!checkInForm.patientId) {
       alert("Please select a patient.");
@@ -116,46 +148,59 @@ const QueuePage = () => {
       type: checkInForm.type
     };
     
-    const newItem = queueStorage.checkInPatient(checkInData);
+    const newItem = await queueStorage.checkInPatient(checkInData);
     if (newItem) {
-      alert(`Success! Generated Token ${newItem.token} for ${checkInData.patientName}.`);
       setCheckInForm(prev => ({ ...prev, patientId: '' }));
       refreshQueue();
     }
   };
 
+  // Check-in a confirmed (pre-booked) appointment directly into the queue
+  const handleCheckInConfirmed = async (appointmentId, patientName) => {
+    try {
+      await api.patch(`/api/appointments/appointments/${appointmentId}/`, {
+        status: 'checked_in',
+        queue_type: 'scheduled'
+      });
+      refreshQueue();
+      fetchConfirmedToday();
+    } catch (err) {
+      console.error('Failed to check-in confirmed appointment:', err);
+      alert('Failed to check-in. Please try again.');
+    }
+  };
+
   // Queue actions
-  const handleCall = (token) => {
-    queueStorage.updatePatientStatus(token, 'active');
+  const handleCall = async (token) => {
+    await queueStorage.updatePatientStatus(token, 'active');
     refreshQueue();
   };
 
-  const handleComplete = (token) => {
-    queueStorage.updatePatientStatus(token, 'completed');
+  const handleComplete = async (token) => {
+    await queueStorage.updatePatientStatus(token, 'completed');
     refreshQueue();
   };
 
-  const handleMissed = (token) => {
-    queueStorage.updatePatientStatus(token, 'missed');
+  const handleMissed = async (token) => {
+    await queueStorage.updatePatientStatus(token, 'missed');
     refreshQueue();
   };
 
-  const handleToggleEmergency = (token, currentIsEmergency) => {
-    queueStorage.setEmergency(token, !currentIsEmergency);
+  const handleToggleEmergency = async (token, currentIsEmergency) => {
+    await queueStorage.setEmergency(token, !currentIsEmergency);
     refreshQueue();
   };
 
-  const handleSetDelay = (token) => {
-    queueStorage.setDelay(token, delayMinutes);
+  const handleSetDelay = async (token) => {
+    await queueStorage.setDelay(token, delayMinutes);
     setActiveDelayToken(null);
     refreshQueue();
   };
 
-  const handleReschedule = (token) => {
+  const handleReschedule = async (token) => {
     // Put back to queue
-    queueStorage.rescheduleMissed(token);
+    await queueStorage.rescheduleMissed(token);
     refreshQueue();
-    alert(`Token ${token} has been re-queued.`);
   };
 
   // Filter queues
@@ -394,7 +439,7 @@ const QueuePage = () => {
 
   // A. PATIENT QUEUE VIEWPORT
   const renderPatientView = () => {
-    const patientQueueItems = queueStorage.getQueueForPatient(user.id);
+    const patientQueueItems = queue.filter(item => item.patientId?.toString() === user?.id?.toString());
     const activeToken = patientQueueItems.find(item => ['waiting', 'active', 'delayed'].includes(item.status));
     
     // Calculate stats
@@ -482,37 +527,52 @@ const QueuePage = () => {
           </div>
         )}
 
-        {/* Live Queue tracking list */}
-        {activeToken && (
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h3 className="font-extrabold text-navy text-lg">Lounge Queue tracking</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Real-time upcoming patients queue for your doctor</p>
-              </div>
-              <span className="text-xs font-black bg-blue-50 text-blue-700 px-3 py-1 rounded-full">
-                {queueListForDoc.length} Active in List
-              </span>
+        {/* Active Clinic Queue (Read-Only) */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mt-8">
+          <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="font-extrabold text-navy text-lg">Active Clinic Queue</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Real-time status of all patients waiting across the clinic</p>
             </div>
             
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100">
-                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Token</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Patient ID/Name</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Position</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {queueListForDoc.map((item, idx) => {
-                    const isOwnToken = item.token === activeToken.token;
+            <div className="flex gap-2">
+              <SearchableSelect
+                className="w-48"
+                value={selectedDoctorFilter}
+                onChange={(val) => setSelectedDoctorFilter(val)}
+                options={[
+                  { value: 'all', label: 'All Doctors' },
+                  ...doctors.map(d => ({ value: d.id, label: `Dr. ${d.user?.full_name || d.user?.first_name}` }))
+                ]}
+              />
+            </div>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Token</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Patient ID/Name</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Assigned Doctor</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {activeWaitingList.length > 0 ? (
+                  activeWaitingList.map(item => {
+                    const isOwnToken = item.token === activeToken?.token;
                     return (
-                      <tr key={item.token} className={`transition-colors ${isOwnToken ? 'bg-blue-50/50' : 'hover:bg-slate-50/30'}`}>
+                      <tr key={item.token} className={`transition-colors ${
+                        isOwnToken ? 'bg-blue-50/50' : 
+                        item.priority === 1 ? 'bg-rose-50/30 hover:bg-rose-50/50' : 
+                        'hover:bg-slate-50/30'
+                      }`}>
                         <td className="px-6 py-4">
                           <span className={`font-mono font-bold px-2 py-1 rounded ${
-                            isOwnToken ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                            isOwnToken ? 'bg-blue-600 text-white' : 
+                            item.priority === 1 ? 'bg-rose-100 text-rose-700' : 
+                            'bg-slate-100 text-slate-600'
                           }`}>
                             {item.token}
                           </span>
@@ -523,21 +583,21 @@ const QueuePage = () => {
                               <User size={14} />
                             </div>
                             <div>
-                              <p className={`text-sm font-bold ${isOwnToken ? 'text-blue-600' : 'text-slate-800'}`}>
-                                {isOwnToken ? item.patientName : item.patientName.replace(/^(.).*?\s+(.).*$/, '$1*** $2***')}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className={`text-sm font-bold ${isOwnToken ? 'text-blue-600' : 'text-slate-800'}`}>
+                                  {isOwnToken ? item.patientName : item.patientName.replace(/^(.).*?\s+(.).*$/, '$1*** $2***')}
+                                </p>
+                                {item.priority === 1 && (
+                                  <span className="text-[8px] font-black bg-rose-100 border border-rose-200 text-rose-700 px-1 rounded uppercase">EMERGENCY</span>
+                                )}
+                              </div>
                               <p className="text-[10px] text-slate-400">Checked in {new Date(item.checkInTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          {item.status === 'active' ? (
-                            <span className="text-xs font-bold text-emerald-600 animate-pulse flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> Serving
-                            </span>
-                          ) : (
-                            <span className="text-sm font-semibold font-mono text-slate-700">#{idx + 1}</span>
-                          )}
+                          <span className="text-sm font-semibold text-slate-700">{item.doctorName}</span>
+                          <span className="block text-[10px] text-slate-400">{item.doctorRoom}</span>
                         </td>
                         <td className="px-6 py-4">
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${
@@ -545,17 +605,23 @@ const QueuePage = () => {
                             item.status === 'delayed' ? 'bg-amber-50 border-amber-200 text-amber-700' :
                             'bg-slate-100 border-slate-200 text-slate-600'
                           }`}>
-                            {item.status}
+                            {item.status} {item.status === 'delayed' && `(${item.delayOffset}m)`}
                           </span>
                         </td>
                       </tr>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="4" className="px-6 py-12 text-center text-slate-400 italic">
+                      No active patients in clinic queue.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
+        </div>
       </div>
     );
   };
@@ -563,7 +629,10 @@ const QueuePage = () => {
   // B. DOCTOR QUEUE VIEWPORT
   const renderDoctorView = () => {
     const docName = user?.full_name || 'Dr. Sarah Johnson';
-    const docQueue = queueStorage.getQueueForDoctor(docName);
+    const docQueue = queue.filter(item => 
+      item.doctorId?.toString() === user?.id?.toString() || 
+      item.doctorName?.toLowerCase().includes(docName?.toString().toLowerCase())
+    );
     
     // Sort doctor queue: active first, then waiting (emergency highest priority), then delayed
     const sortedDocQueue = [...docQueue].filter(item => ['waiting', 'active', 'delayed'].includes(item.status))
@@ -762,6 +831,61 @@ const QueuePage = () => {
           
           {/* Active Queue Table (Left 2/3) */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Scheduled Today — Pending Check-in */}
+            {confirmedToday.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden shadow-sm">
+                <div className="p-4 border-b border-amber-200 flex items-center gap-2">
+                  <Calendar size={18} className="text-amber-600" />
+                  <div>
+                    <h3 className="font-extrabold text-amber-900 text-sm">Scheduled Today — Pending Check-in</h3>
+                    <p className="text-[10px] text-amber-700">These patients have a confirmed appointment for today but haven't been checked in yet.</p>
+                  </div>
+                  <span className="ml-auto text-[10px] font-black bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full">{confirmedToday.length} pending</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-amber-100/60">
+                        <th className="px-5 py-3 text-[10px] font-bold text-amber-700 uppercase tracking-widest">Patient Name</th>
+                        <th className="px-5 py-3 text-[10px] font-bold text-amber-700 uppercase tracking-widest">Assigned Doctor</th>
+                        <th className="px-5 py-3 text-[10px] font-bold text-amber-700 uppercase tracking-widest">Appt Time</th>
+                        <th className="px-5 py-3 text-[10px] font-bold text-amber-700 uppercase tracking-widest">Type</th>
+                        <th className="px-5 py-3 text-[10px] font-bold text-amber-700 uppercase tracking-widest text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-amber-100">
+                      {confirmedToday.map(appt => (
+                        <tr key={appt.id} className="hover:bg-amber-100/30 transition-colors">
+                          <td className="px-5 py-3">
+                            <span className="font-bold text-navy text-sm">{appt.patient_name}</span>
+                          </td>
+                          <td className="px-5 py-3 text-sm text-slate-700 font-medium">{appt.doctor_name || 'Dr. Arjun'}</td>
+                          <td className="px-5 py-3">
+                            <span className="font-mono text-xs text-slate-600 bg-white border border-amber-100 px-2 py-0.5 rounded">
+                              {appt.time ? appt.time.slice(0, 5) : '—'}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3">
+                            <span className="text-[9px] font-black bg-blue-50 border border-blue-100 text-blue-700 px-1.5 py-0.5 rounded uppercase">
+                              {appt.appointment_type === 'in_person' ? 'In-Person' : appt.appointment_type}
+                            </span>
+                          </td>
+                          <td className="px-5 py-3 text-right">
+                            <button
+                              onClick={() => handleCheckInConfirmed(appt.id, appt.patient_name)}
+                              className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] rounded-lg shadow-sm transition-all uppercase flex items-center gap-1 ml-auto"
+                            >
+                              <CheckCircle size={12} /> Check-In Now
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
               <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -770,16 +894,15 @@ const QueuePage = () => {
                 </div>
                 
                 <div className="flex gap-2">
-                  <select 
+                  <SearchableSelect
+                    className="w-48"
                     value={selectedDoctorFilter}
-                    onChange={(e) => setSelectedDoctorFilter(e.target.value)}
-                    className="text-xs font-bold border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-none"
-                  >
-                    <option value="all">All Doctors</option>
-                    {doctors.map(d => (
-                      <option key={d.id} value={d.id}>Dr. {d.user?.full_name || d.user?.first_name}</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setSelectedDoctorFilter(val)}
+                    options={[
+                      { value: 'all', label: 'All Doctors' },
+                      ...doctors.map(d => ({ value: d.id, label: `Dr. ${d.user?.full_name || d.user?.first_name}` }))
+                    ]}
+                  />
                 </div>
               </div>
 
@@ -994,29 +1117,24 @@ const QueuePage = () => {
               <form onSubmit={handleCheckIn} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase">Select Registered Patient</label>
-                  <select 
+                  <SearchableSelect
+                    className="w-full"
                     value={checkInForm.patientId}
-                    onChange={(e) => setCheckInForm(prev => ({ ...prev, patientId: e.target.value }))}
-                    className="w-full border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white"
-                  >
-                    <option value="">-- Choose Patient --</option>
-                    {patients.map(p => (
-                      <option key={p.id} value={p.id}>{p.user?.full_name || p.user?.first_name} (ID: {p.patient_id})</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setCheckInForm(prev => ({ ...prev, patientId: val }))}
+                    options={patients.map(p => ({ value: p.id, label: `${p.user?.full_name || p.user?.first_name} (ID: ${p.patient_id})` }))}
+                    placeholder="-- Choose Patient --"
+                  />
                 </div>
                 
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase">Select Doctor Room</label>
-                  <select 
+                  <SearchableSelect
+                    className="w-full"
                     value={checkInForm.doctorId}
-                    onChange={(e) => setCheckInForm(prev => ({ ...prev, doctorId: e.target.value }))}
-                    className="w-full border border-slate-200 px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white"
-                  >
-                    {doctors.map(d => (
-                      <option key={d.id} value={d.id}>Dr. {d.user?.full_name || d.user?.first_name} ({d.specialty || 'General'})</option>
-                    ))}
-                  </select>
+                    onChange={(val) => setCheckInForm(prev => ({ ...prev, doctorId: val }))}
+                    options={doctors.map(d => ({ value: d.id, label: `Dr. ${d.user?.full_name || d.user?.first_name} (${d.specialty || 'General'})` }))}
+                    placeholder="-- Select Doctor --"
+                  />
                 </div>
                 
                 <div className="space-y-1.5">

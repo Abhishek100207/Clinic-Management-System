@@ -21,20 +21,35 @@ export const useAppointmentStore = create(
         // In a real scenario, these would be actual endpoints
         // Mocking for now to ensure UI functionality
         const res = await api.get('/api/appointments/appointments/');
-        const appointments = res.data || [];
-        
+        const appointments = Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []);
+
+        // Sort by date DESC, then time DESC — latest appointment at the top
+        const sorted = [...appointments].sort((a, b) => {
+          const dateA = new Date(`${a.date}T${a.time || '00:00:00'}`);
+          const dateB = new Date(`${b.date}T${b.time || '00:00:00'}`);
+          return dateB - dateA;
+        });
+
         // Calculate basic stats from appointments for now
-        const today = new Date().toISOString().split('T')[0];
-        const todayAppointments = appointments.filter(a => a.date === today).length;
-        const pendingApprovals = appointments.filter(a => a.status === 'pending').length;
+        // Calculate basic stats from appointments for now using robust timezone match
+        const todayAppointments = sorted.filter(a => {
+          if (!a.date) return false;
+          const [year, month, day] = a.date.split('-').map(Number);
+          const d = new Date(year, month - 1, day);
+          const today = new Date();
+          return d.getDate() === today.getDate() &&
+                 d.getMonth() === today.getMonth() &&
+                 d.getFullYear() === today.getFullYear();
+        }).length;
+        const pendingApprovals = sorted.filter(a => a.status === 'pending').length;
         
         set({ 
-          appointments, 
+          appointments: sorted, 
           stats: {
-            totalPatients: new Set(appointments.map(a => a.patient)).size,
+            totalPatients: new Set(sorted.map(a => a.patient)).size,
             todayAppointments,
             pendingApprovals,
-            revisitCount: appointments.length // Mocking revisit as total count for now
+            revisitCount: sorted.length
           },
           loading: false 
         });

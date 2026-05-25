@@ -34,12 +34,12 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStaff = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await authApi.listStaff();
-        
-        setStaffData(data.map(member => ({
+        // Fetch staff list for table
+        const staffList = await authApi.listStaff();
+        setStaffData(staffList.map(member => ({
           name: member.full_name || member.username,
           role: member.role || 'Staff',
           email: member.email,
@@ -47,17 +47,20 @@ const AdminDashboard = () => {
           lastActive: 'Now'
         })));
         
-        setStats(prev => ({
-          ...prev,
-          staffCount: data.length
-        }));
+        // Fetch admin summary for stats
+        const summaryRes = await authApi.client.get('/api/users/admin-summary/');
+        setStats({
+          staffCount: summaryRes.data.staffCount,
+          growth: summaryRes.data.growth,
+          revenue: summaryRes.data.revenue
+        });
       } catch (err) {
-        console.error("Failed to fetch staff for admin dashboard:", err);
+        console.error("Failed to fetch admin data:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchStaff();
+    fetchData();
   }, []);
 
   return (

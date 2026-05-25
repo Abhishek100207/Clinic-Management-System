@@ -26,7 +26,7 @@ const TechnicianDashboard = () => {
       try {
 
         const res = await api.get('/api/medical_records/scan-orders/');
-        const data = Array.isArray(res.data) ? res.data : (res.data.results || []);
+        const data = Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []);
         
         const pending = data.filter(o => o.status === 'pending');
         const inProgress = data.filter(o => o.status === 'in_progress' || o.status === 'In Progress');

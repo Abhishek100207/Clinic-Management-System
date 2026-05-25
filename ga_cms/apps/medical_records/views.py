@@ -318,6 +318,16 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         for med_data in medications_data:
             PrescribedMedication.objects.create(prescription=prescription, **med_data)
             
+        # Mark appointment as completed since prescription is generated
+        if appointment.status != 'completed':
+            appointment.status = 'completed'
+            appointment.save(update_fields=['status'])
+            
+            # Send review email
+            from apps.appointments.utils.email_service import send_review_request_email
+            import threading
+            threading.Thread(target=send_review_request_email, args=(appointment,)).start()
+
         AuditLog.objects.create(
             user=self.request.user,
             action='Created Prescription' if created else 'Updated Prescription',

@@ -33,9 +33,37 @@ from django.dispatch import receiver
 
 @receiver(post_save, sender=CustomUser)
 def create_staff_profile(sender, instance, created, **kwargs):
-    if instance.role == 'receptionist':
+    from django.contrib.auth.models import Group
+
+    # Create associated profile if needed
+    if instance.role in ['doctor', 'senior_doctor']:
+        from apps.users.models import Doctor
+        Doctor.objects.get_or_create(
+            user=instance,
+            defaults={
+                'specialty': 'General',
+                'registration_number': f'REG-{instance.id}'
+            }
+        )
+    elif instance.role == 'receptionist':
         from apps.users.models import Receptionist
         Receptionist.objects.get_or_create(user=instance)
     elif instance.role == 'technician':
         from apps.users.models import Technician
         Technician.objects.get_or_create(user=instance)
+
+    # Automatically assign the user to the correct permission Group
+    role_to_group = {
+        'doctor': 'Doctor',
+        'senior_doctor': 'Doctor',
+        'receptionist': 'Receptionist',
+        'technician': 'Technician'
+    }
+    
+    group_name = role_to_group.get(instance.role)
+    if group_name:
+        # Get or create the group in case it doesn't exist
+        group, _ = Group.objects.get_or_create(name=group_name)
+        # Clear existing groups to ensure they only have their respective permissions
+        instance.groups.clear()
+        instance.groups.add(group)

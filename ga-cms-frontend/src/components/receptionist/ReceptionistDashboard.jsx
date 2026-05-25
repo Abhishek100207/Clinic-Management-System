@@ -30,7 +30,7 @@ const ReceptionistDashboard = () => {
     totalPatients: 0,
     inQueue: 0,
     appointmentsToday: 0,
-    revenue: 12500
+    revenue: 0
   });
 
   const [queueData, setQueueData] = useState([]);
@@ -46,44 +46,71 @@ const ReceptionistDashboard = () => {
   }, [queueData, debouncedSearchTerm]); // PERF: Memoize filtered list
 
   const refreshDashboardData = async () => {
-    const queue = queueStorage.getQueue();
-    const activeQueue = queue.filter(item => ['waiting', 'active', 'delayed'].includes(item.status));
-    
-    const sortedQueue = [...activeQueue].sort((a, b) => {
-      if (a.status === 'active') return -1;
-      if (b.status === 'active') return 1;
-      return a.priority - b.priority || new Date(a.checkInTime) - new Date(b.checkInTime);
-    });
-
-    setQueueData(sortedQueue);
-
-    const invoices = billingStorage.getInvoices();
-    const todayStr = new Date().toISOString().split('T')[0];
-    const todayInvoices = invoices.filter(inv => inv.appointmentDate === todayStr);
-    
-    // Fallbacks to keep dashboard populated if empty
-    const todayAppointments = todayInvoices.length || 24;
-    const todayRevenue = todayInvoices
-      .filter(inv => inv.paymentStatus === 'PAID')
-      .reduce((sum, inv) => sum + inv.totalAmount, 0) || 12500;
-
-    let apiTotalPatients = 1250;
     try {
-      const pRes = await api.get('/api/users/patients/');
-      const patients = Array.isArray(pRes.data) ? pRes.data : (pRes.data.results || []);
-      if (patients.length > 0) {
-        apiTotalPatients = patients.length;
-      }
-    } catch (err) {
-      console.error("Failed to fetch patients count from API:", err);
-    }
+      const queue = await queueStorage.getQueue();
+      const activeQueue = queue ? queue.filter(item => ['waiting', 'active', 'delayed'].includes(item.status)) : [];
+      
+      const sortedQueue = [...activeQueue].sort((a, b) => {
+        if (a.status === 'active') return -1;
+        if (b.status === 'active') return 1;
+        return a.priority - b.priority || new Date(a.checkInTime) - new Date(b.checkInTime);
+      });
 
-    setStats({
-      totalPatients: apiTotalPatients,
-      inQueue: activeQueue.length,
-      appointmentsToday: todayAppointments,
-      revenue: todayRevenue
-    });
+      setQueueData(sortedQueue);
+
+      let invoices = [];
+      try {
+        invoices = await billingStorage.getInvoices();
+      } catch (err) {
+        console.error("Failed to fetch invoices in dashboard:", err);
+      }
+
+      // Timezone-robust local date helper matching BillingPage.jsx
+      const getInvoiceDate = (inv) => {
+        if (inv.dateGenerated) return new Date(inv.dateGenerated);
+        if (inv.appointmentDate) {
+          const [year, month, day] = inv.appointmentDate.split('-').map(Number);
+          return new Date(year, month - 1, day);
+        }
+        return new Date();
+      };
+
+      const isToday = (inv) => {
+        const d = getInvoiceDate(inv);
+        const today = new Date();
+        return d.getDate() === today.getDate() &&
+               d.getMonth() === today.getMonth() &&
+               d.getFullYear() === today.getFullYear();
+      };
+
+      const todayInvoices = Array.isArray(invoices) ? invoices.filter(isToday) : [];
+      
+      // Retrieve true dynamic statistics from current invoices and database
+      const todayAppointments = todayInvoices.length;
+      const todayRevenue = todayInvoices
+        .filter(inv => inv.paymentStatus === 'PAID')
+        .reduce((sum, inv) => sum + inv.totalAmount, 0);
+
+      let apiTotalPatients = 0;
+      try {
+        const pRes = await api.get('/api/users/patients/');
+        const patients = Array.isArray(pRes?.data) ? pRes.data : (pRes?.data?.results || []);
+        if (patients.length > 0) {
+          apiTotalPatients = patients.length;
+        }
+      } catch (err) {
+        console.error("Failed to fetch patients count from API:", err);
+      }
+
+      setStats({
+        totalPatients: apiTotalPatients,
+        inQueue: activeQueue.length,
+        appointmentsToday: todayAppointments,
+        revenue: todayRevenue
+      });
+    } catch (err) {
+      console.error("Critical error in refreshDashboardData:", err);
+    }
   };
 
   useEffect(() => {
@@ -99,8 +126,8 @@ const ReceptionistDashboard = () => {
     };
   }, []);
 
-  const handleCallNext = (token) => {
-    queueStorage.updatePatientStatus(token, 'active');
+  const handleCallNext = async (token) => {
+    await queueStorage.updatePatientStatus(token, 'active');
     refreshDashboardData();
   };
 
@@ -190,15 +217,17 @@ const ReceptionistDashboard = () => {
                 <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </button>
               <button 
+                onClick={() => navigate('/billing')}
                 className="w-full flex items-center justify-between p-4 bg-emerald-50 text-emerald-700 rounded-2xl font-bold hover:bg-emerald-100 transition-colors group"
               >
                 <span className="flex items-center gap-3"><CreditCard size={20} /> Collect Payment</span>
                 <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </button>
               <button 
+                onClick={() => navigate('/appointments')}
                 className="w-full flex items-center justify-between p-4 bg-purple-50 text-purple-700 rounded-2xl font-bold hover:bg-purple-100 transition-colors group"
               >
-                <span className="flex items-center gap-3"><Calendar size={20} /> Bulk Booking</span>
+                <span className="flex items-center gap-3"><Calendar size={20} /> Book Appointment</span>
                 <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
@@ -211,15 +240,15 @@ const ReceptionistDashboard = () => {
             </div>
             <div className="relative z-10">
               <h3 className="font-bold text-2xl mb-2 leading-tight">Shift Overview</h3>
-              <p className="text-slate-300 text-sm mb-6 opacity-80">You've registered 12 new patients today. Great job!</p>
+              <p className="text-slate-300 text-sm mb-6 opacity-80">Today's live stats from the system.</p>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white/10 rounded-2xl p-4">
-                  <p className="text-[10px] text-slate-300 font-bold uppercase mb-1">Morning</p>
-                  <p className="text-xl font-bold">18 Appts</p>
+                  <p className="text-[10px] text-slate-300 font-bold uppercase mb-1">In Queue</p>
+                  <p className="text-xl font-bold">{stats.inQueue} Active</p>
                 </div>
                 <div className="bg-white/10 rounded-2xl p-4">
-                  <p className="text-[10px] text-slate-300 font-bold uppercase mb-1">Afternoon</p>
-                  <p className="text-xl font-bold">6 Appts</p>
+                  <p className="text-[10px] text-slate-300 font-bold uppercase mb-1">Today Revenue</p>
+                  <p className="text-xl font-bold">₹{stats.revenue.toFixed(0)}</p>
                 </div>
               </div>
             </div>
@@ -229,12 +258,18 @@ const ReceptionistDashboard = () => {
           <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">System Console</h4>
             <ul className="space-y-4">
-              <li className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors">
-                <span className="flex items-center gap-3"><Bell size={16} /> Notification Center</span>
+              <li 
+                onClick={() => navigate('/queue')}
+                className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors"
+              >
+                <span className="flex items-center gap-3"><Bell size={16} /> Queue Monitor</span>
                 <ChevronRight size={14} />
               </li>
-              <li className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors">
-                <span className="flex items-center gap-3"><Settings size={16} /> Terminal Settings</span>
+              <li 
+                onClick={() => navigate('/billing')}
+                className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors"
+              >
+                <span className="flex items-center gap-3"><Settings size={16} /> Billing Console</span>
                 <ChevronRight size={14} />
               </li>
             </ul>

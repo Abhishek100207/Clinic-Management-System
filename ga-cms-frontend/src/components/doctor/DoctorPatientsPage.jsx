@@ -32,9 +32,9 @@ const DoctorPatientsPage = () => {
         api.get(`/api/medical_records/scan-orders/?patient=${patientId}`)
       ]);
       
-      const notes = Array.isArray(notesRes.data) ? notesRes.data : (notesRes.data.results || []);
-      const prescriptions = Array.isArray(prescriptionsRes.data) ? prescriptionsRes.data : (prescriptionsRes.data.results || []);
-      const scanOrders = Array.isArray(scanOrdersRes.data) ? scanOrdersRes.data : (scanOrdersRes.data.results || []);
+      const notes = Array.isArray(notesRes?.data) ? notesRes.data : (notesRes?.data?.results || []);
+      const prescriptions = Array.isArray(prescriptionsRes?.data) ? prescriptionsRes.data : (prescriptionsRes?.data?.results || []);
+      const scanOrders = Array.isArray(scanOrdersRes?.data) ? scanOrdersRes.data : (scanOrdersRes?.data?.results || []);
 
       const grouped = {};
       
@@ -75,7 +75,7 @@ const DoctorPatientsPage = () => {
     const fetchPatients = async () => {
       try {
         const res = await api.get('/api/users/patients/');
-        setPatients(Array.isArray(res.data) ? res.data : (res.data.results || []));
+        setPatients(Array.isArray(res?.data) ? res.data : (res?.data?.results || []));
       } catch (err) {
         console.error("Failed to fetch patients", err);
         setPatients([]);

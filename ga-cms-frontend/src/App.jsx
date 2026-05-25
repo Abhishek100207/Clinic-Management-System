@@ -39,7 +39,16 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AppRouter />
-          <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+          <ToastContainer
+            position="bottom-right"
+            autoClose={4000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            pauseOnHover
+            draggable
+            theme="light"
+          />
         </BrowserRouter>
       </QueryClientProvider>
     </GoogleOAuthProvider>

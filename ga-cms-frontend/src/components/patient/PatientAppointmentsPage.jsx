@@ -6,6 +6,7 @@ import { Calendar, RefreshCw, Plus, X } from 'lucide-react';
 import RescheduleModal from '../shared/appointments/RescheduleModal';
 import BookAppointment from './BookAppointment';
 import api from '../../api/axios';
+import { toast } from 'react-toastify';
 
 const PatientAppointmentsPage = () => {
 
@@ -34,9 +35,9 @@ const PatientAppointmentsPage = () => {
       await api.post(`/api/appointments/appointments/${rescheduleData.appointment.id}/reschedule/`, data);
       setRescheduleData({ isOpen: false, appointment: null });
       fetchDoctorDashboardData();
-      alert("Appointment rescheduled successfully.");
+      toast.success('Appointment rescheduled successfully!');
     } catch (err) {
-      alert("Failed to reschedule: " + (err.response?.data?.error || ""));
+      toast.error('Failed to reschedule: ' + (err.response?.data?.error || 'Please try again.'));
     }
   };
 

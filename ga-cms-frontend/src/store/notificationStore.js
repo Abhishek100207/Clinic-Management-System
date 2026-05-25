@@ -168,7 +168,7 @@ export const useNotificationStore = create((set, get) => ({
         if (role === 'senior_doctor') {
           try {
             const auditRes = await api.get('/api/users/audit-logs/');
-            const audits = Array.isArray(auditRes.data) ? auditRes.data : (auditRes.data.results || []);
+            const audits = Array.isArray(auditRes?.data) ? auditRes.data : (auditRes?.data?.results || []);
             audits.forEach(audit => {
               const id = `audit-${audit.id}`;
               rawNotifications.push({
@@ -190,7 +190,7 @@ export const useNotificationStore = create((set, get) => ({
         // 1. Fetch appointments
         try {
           const apptRes = await api.get('/api/appointments/appointments/');
-          const appts = Array.isArray(apptRes.data) ? apptRes.data : (apptRes.data.results || []);
+          const appts = Array.isArray(apptRes?.data) ? apptRes.data : (apptRes?.data?.results || []);
           appts.forEach(appt => {
             const id = `appt-${appt.id}`;
             rawNotifications.push({
@@ -210,7 +210,7 @@ export const useNotificationStore = create((set, get) => ({
         // 2. Fetch Patients (new registrations)
         try {
           const patientRes = await api.get('/api/users/patients/');
-          const patients = Array.isArray(patientRes.data) ? patientRes.data : (patientRes.data.results || []);
+          const patients = Array.isArray(patientRes?.data) ? patientRes.data : (patientRes?.data?.results || []);
           patients.forEach(pat => {
             const id = `pat-reg-${pat.id}`;
             const timestamp = pat.user?.date_joined || pat.user?.created_at || new Date(Date.now() - (patients.length - pat.id) * 3600000).toISOString();
@@ -232,7 +232,7 @@ export const useNotificationStore = create((set, get) => ({
         // 1. Fetch scan orders
         try {
           const orderRes = await api.get('/api/medical_records/scan-orders/');
-          const orders = Array.isArray(orderRes.data) ? orderRes.data : (orderRes.data.results || []);
+          const orders = Array.isArray(orderRes?.data) ? orderRes.data : (orderRes?.data?.results || []);
           orders.forEach(ord => {
             const id = `scan-ord-${ord.id}`;
             rawNotifications.push({

@@ -10,6 +10,7 @@ export const ROLE_CONFIG = {
       { name: 'Billing & Invoices', path: '/billing', icon: 'CreditCard' },
       { name: 'Staff Performance', path: '/performance/staff', icon: 'LineChart' },
       { name: 'Doctors',         path: '/doctors',          icon: 'Stethoscope' },
+      { name: 'Patient Reviews', path: '/reviews',          icon: 'Star' },
       { name: 'Add Staff',       path: '/staff/add',        icon: 'UserPlus' },
       { name: 'Audit Logs',      path: '/logs',             icon: 'ClipboardList' },
       { name: 'Settings', path: '/settings', icon: 'Settings' },

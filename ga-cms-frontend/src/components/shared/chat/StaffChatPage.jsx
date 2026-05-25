@@ -55,7 +55,8 @@ const StaffChatPage = () => {
         'Receptionists': 0
       };
       
-      convsRes.data.forEach(c => {
+      const convsList = Array.isArray(convsRes?.data) ? convsRes.data : (convsRes?.data?.results ?? []);
+      convsList.forEach(c => {
         conversationsMap[c.id] = c;
         if (c.role === 'patient') unreadCounts['Patients'] += c.unread;
         else if (c.role === 'doctor') unreadCounts['Doctors'] += c.unread;
@@ -67,7 +68,7 @@ const StaffChatPage = () => {
       
       if (activeTab === 'Patients') {
         const res = await api.get('/api/users/patients/');
-        const patientsArray = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+        const patientsArray = Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []);
         data = patientsArray.map(p => {
           const uid = p.user?.id || p.id;
           const conv = conversationsMap[uid] || {};
@@ -85,7 +86,7 @@ const StaffChatPage = () => {
         });
       } else if (user?.role === 'patient' && activeTab === 'Doctors') {
         const res = await api.get('/api/users/doctors/');
-        const doctorsArray = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+        const doctorsArray = Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []);
         data = doctorsArray.map(d => {
           const uid = d.user?.id || d.id;
           const conv = conversationsMap[uid] || {};
@@ -103,6 +104,7 @@ const StaffChatPage = () => {
         });
       } else {
         const staff = await authApi.listStaff();
+        const staffList = Array.isArray(staff) ? staff : [];
         
         const roleMap = {
           'Doctors': 'doctor',
@@ -113,7 +115,7 @@ const StaffChatPage = () => {
         
         const targetRole = roleMap[activeTab];
         
-        data = staff
+        data = staffList
           .filter(member => {
             if (member.id === user?.id || member.email === user?.email) return false;
             if (member.role !== targetRole) return false;

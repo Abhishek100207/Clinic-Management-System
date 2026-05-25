@@ -5,6 +5,7 @@ import {
   User,
   MapPin,
   Stethoscope,
+  Star,
   Calendar,
   Clock,
   CheckCircle2,
@@ -28,8 +29,25 @@ import {
   X
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import SearchableSelect from '../common/SearchableSelect';
 import { billingStorage } from '../../utils/billingStorage';
 import { queueStorage } from '../../utils/queueStorage';
+import { toast } from 'react-toastify';
+
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 const BookAppointment = ({ onBack }) => {
   const navigate = useNavigate();
@@ -107,8 +125,8 @@ const BookAppointment = ({ onBack }) => {
           api.get('/api/users/patients/'),
           api.get('/api/users/doctors/')
         ]);
-        const patientData = Array.isArray(pRes.data) ? pRes.data : (pRes.data.results ?? []);
-        const doctorData = Array.isArray(dRes.data) ? dRes.data : (dRes.data.results ?? []);
+        const patientData = Array.isArray(pRes?.data) ? pRes.data : (pRes?.data?.results ?? []);
+        const doctorData = Array.isArray(dRes?.data) ? dRes.data : (dRes?.data?.results ?? []);
         setPatients(patientData);
         setDoctors(doctorData);
 
@@ -155,9 +173,10 @@ const BookAppointment = ({ onBack }) => {
           const { latitude, longitude } = position.coords;
           const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
           const data = await response.json();
-          const address = data.address?.city || data.address?.town || data.address?.suburb || data.address?.state || 'Unknown Location';
+          const area = data.address?.neighbourhood || data.address?.suburb || data.address?.residential || '';
+          const city = data.address?.city || data.address?.town || data.address?.state || '';
+          const address = [area, city].filter(Boolean).join(', ') || 'Unknown Location';
           setFormData(prev => ({ ...prev, patient_location: address }));
-          setNotification({ type: 'success', message: `Location detected: ${address}` });
         } catch (err) {
           console.error("Geocoding error:", err);
           setNotification({ type: 'error', message: 'Failed to detect address. Please enter it manually.' });
@@ -173,7 +192,6 @@ const BookAppointment = ({ onBack }) => {
             if (data.city) {
               const locationStr = [data.city, data.region].filter(Boolean).join(', ');
               setFormData(prev => ({ ...prev, patient_location: locationStr }));
-              setNotification({ type: 'success', message: `Location detected (via IP): ${locationStr}` });
             } else {
               setNotification({ type: 'error', message: 'Location access denied or unavailable.' });
             }
@@ -201,109 +219,254 @@ const BookAppointment = ({ onBack }) => {
   const handlePayAndBook = async () => {
     // Basic Payment Validations
     if (paymentMethod === 'upi' && !upiId.trim() && !upiId.includes('@')) {
-      alert("Please enter a valid UPI ID (e.g. name@bank)");
+      toast.error('Please enter a valid UPI ID (e.g. name@bank)');
       return;
     }
     if (paymentMethod === 'card' && (cardData.number.replace(/\s/g, '').length !== 16 || cardData.expiry.length < 5 || cardData.cvv.length < 3 || !cardData.name.trim())) {
-      alert("Please fill in correct Card details.");
+      toast.error('Please fill in correct Card details.');
       return;
     }
     if (paymentMethod === 'netbanking' && !selectedBank) {
-      alert("Please select your bank.");
+      toast.error('Please select your bank.');
       return;
     }
 
-    setStep('processing');
     setLoading(true);
+    setNotification(null);
 
-    // Mock progress message sequence
-    const messages = paymentMethod === 'pay_later'
-      ? [
-          "Creating appointment record...",
-          "Generating clinic queue token...",
-          "Creating billing invoice (PENDING status)...",
-          "Appointment registered successfully!"
-        ]
-      : [
-          "Initiating secure payment gateway...",
-          "Verifying payment transaction details...",
-          "Authorizing amount of ₹" + fees.total.toFixed(2) + " with your bank...",
-          "Payment approved! Booking your appointment slot..."
-        ];
+    // If payment method is an online method (upi, card, netbanking), use Razorpay
+    if (['upi', 'card', 'netbanking'].includes(paymentMethod)) {
+      try {
+        const scriptLoaded = await loadRazorpayScript();
+        if (!scriptLoaded) {
+          toast.error('Razorpay SDK failed to load. Please check your internet connection.');
+          setLoading(false);
+          return;
+        }
 
-    for (let i = 0; i < messages.length; i++) {
-      setProcessingMessage(messages[i]);
-      await new Promise(resolve => setTimeout(resolve, 800));
-    }
+        // 1. Create dynamic Razorpay order in backend
+        const orderPayload = {
+          patient: formData.patient_id,
+          doctor: formData.doctor_id,
+          date: formData.date,
+          time: formData.time,
+          appointment_type: formData.appointment_type,
+          patient_location: formData.patient_location,
+          reason: formData.reason
+        };
 
-    try {
-      const payload = {
-        patient: formData.patient_id,
-        doctor: formData.doctor_id,
-        date: formData.date,
-        time: formData.time,
-        appointment_type: formData.appointment_type,
-        location: fixedLocation,
-        patient_location: formData.patient_location,
-        reason: formData.reason
-      };
+        const orderRes = await api.post('/api/appointments/appointments/create-razorpay-order/', orderPayload);
+        const { razorpay_order_id, amount, razorpay_key_id, appointment_id } = orderRes.data;
 
-      const response = await api.post('/api/appointments/appointments/', payload);
+        // Find patient & doctor objects for prefilling
+        const patientObj = patients.find(p => p.id === parseInt(formData.patient_id));
+        const doctorObj = doctors.find(d => d.id === parseInt(formData.doctor_id));
+
+        // 2. Open Razorpay unified checkout
+        const options = {
+          key: razorpay_key_id,
+          amount: amount,
+          currency: "INR",
+          name: "GA Medical Clinic",
+          description: `Appointment with Dr. ${doctorObj?.user?.full_name || 'Clinic Doctor'}`,
+          order_id: razorpay_order_id,
+          prefill: {
+            name: patientObj?.full_name || "",
+            email: patientObj?.user?.email || "",
+            contact: patientObj?.user?.phone || "",
+            method: paymentMethod // prefill payment mode matching tab choice
+          },
+          theme: {
+            color: "#1e3a8a" // Sleek Navy Brand Theme color
+          },
+          modal: {
+            ondismiss: function() {
+              setLoading(false);
+              setStep('payment');
+            }
+          },
+          handler: async function (response) {
+            setStep('processing');
+            setProcessingMessage("Verifying payment transaction details...");
+
+            try {
+              // 3. Verify signature on the backend
+              const verifyRes = await api.post('/api/appointments/appointments/verify-razorpay-payment/', {
+                appointment_id: appointment_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature
+              });
+
+              setProcessingMessage("Payment approved! Booking your appointment slot...");
+              await new Promise(resolve => setTimeout(resolve, 800));
+
+              const verifiedAppt = verifyRes.data.appointment;
+              const txnId = response.razorpay_payment_id;
+              setTransactionId(txnId);
+
+              let token = verifiedAppt.token_number || `T-${Math.floor(Math.random() * 900) + 100}`;
+
+              const todayStr = (() => {
+                const d = new Date();
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+              })();
+
+              if (formData.date === todayStr && formData.appointment_type !== 'virtual') {
+                try {
+                  const patchRes = await api.patch(`/api/appointments/appointments/${verifiedAppt.id}/`, {
+                    status: 'checked_in',
+                    queue_type: 'scheduled'
+                  });
+                  token = patchRes.data.queue_token || token;
+                } catch (e) {
+                  console.error("Failed to auto check-in:", e);
+                }
+              }
+              setBookedToken(token);
+
+              const inv = await billingStorage.addInvoice({
+                appointmentId: verifiedAppt.id,
+                patientId: formData.patient_id,
+                patientName: patientObj?.full_name || 'Walk-in Patient',
+                doctorId: formData.doctor_id,
+                doctorName: doctorObj ? `Dr. ${doctorObj.user?.full_name || doctorObj.user?.first_name}` : 'Clinic Doctor',
+                doctorSpecialty: doctorObj?.specialty || 'General Physician',
+                appointmentDate: formData.date,
+                appointmentTime: formData.time,
+                appointmentType: formData.appointment_type,
+                consultationFee: fees.consultation,
+                tax: fees.gst,
+                totalAmount: fees.total,
+                paymentStatus: 'PAID',
+                paymentMode: paymentMethod.toUpperCase(),
+                transactionId: txnId,
+                tokenNumber: token
+              });
+              setCreatedInvoice(inv);
+              setStep('success');
+
+            } catch (verifyErr) {
+              console.error("Signature verification failed:", verifyErr);
+              const errMsg = verifyErr.response?.data?.error || verifyErr.response?.data?.detail || 'Signature verification failed. Please try again.';
+              setNotification({ type: 'error', message: errMsg });
+              setStep('payment');
+            } finally {
+              setLoading(false);
+            }
+          }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+
+      } catch (err) {
+        console.error("Order creation failed:", err);
+        const errMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to start payment transaction. Please try again.';
+        setNotification({ type: 'error', message: errMsg });
+        setStep('payment');
+        setLoading(false);
+      }
+
+    } else {
+      // CASH / PAY LATER Flow (Bypasses Razorpay checkout modal)
+      setStep('processing');
+      const isPendingPayment = paymentMethod === 'pay_later' || (paymentMethod === 'cash' && user?.role !== 'receptionist' && user?.role !== 'senior_doctor');
       
-      // Generate a mock Transaction ID
-      const generatedTxn = paymentMethod === 'pay_later' ? '' : 'TXN' + Math.floor(100000000 + Math.random() * 900000000);
-      setTransactionId(generatedTxn);
-      // Create local billing record
-      const patientObj = patients.find(p => p.id === parseInt(formData.patient_id));
-      const doctorObj = doctors.find(d => d.id === parseInt(formData.doctor_id));
-      const status = paymentMethod === 'pay_later' ? 'PENDING' : 'PAID';
+      const messages = isPendingPayment
+        ? [
+            "Creating appointment record...",
+            "Generating clinic queue token...",
+            "Creating billing invoice (PENDING status)...",
+            "Appointment registered successfully!"
+          ]
+        : [
+            "Initiating secure payment gateway...",
+            "Verifying payment transaction details...",
+            "Authorizing amount of ₹" + fees.total.toFixed(2) + " with your bank...",
+            "Payment approved! Booking your appointment slot..."
+          ];
 
-      let token = response.data.token_number || `T-${Math.floor(Math.random() * 900) + 100}`;
+      for (let i = 0; i < messages.length; i++) {
+        setProcessingMessage(messages[i]);
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
 
-      // Auto check-in patient in queueStorage if PAID
-      if (status === 'PAID') {
-        const queueItem = queueStorage.checkInPatient({
+      try {
+        const payload = {
+          patient: formData.patient_id,
+          doctor: formData.doctor_id,
+          date: formData.date,
+          time: formData.time,
+          appointment_type: formData.appointment_type,
+          location: fixedLocation,
+          patient_location: formData.patient_location,
+          reason: formData.reason
+        };
+
+        const response = await api.post('/api/appointments/appointments/', payload);
+        const generatedTxn = isPendingPayment ? '' : 'TXN' + Math.floor(100000000 + Math.random() * 900000000);
+        setTransactionId(generatedTxn);
+
+        const patientObj = patients.find(p => p.id === parseInt(formData.patient_id));
+        const doctorObj = doctors.find(d => d.id === parseInt(formData.doctor_id));
+        const status = isPendingPayment ? 'PENDING' : 'PAID';
+
+        let token = response.data.token_number || `T-${Math.floor(Math.random() * 900) + 100}`;
+
+        const todayStr = (() => {
+          const d = new Date();
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          return `${yyyy}-${mm}-${dd}`;
+        })();
+
+        if (formData.date === todayStr && formData.appointment_type !== 'virtual' && (status === 'PAID' || paymentMethod === 'cash')) {
+          try {
+            const patchRes = await api.patch(`/api/appointments/appointments/${response.data.id}/`, {
+              status: 'checked_in',
+              queue_type: 'scheduled'
+            });
+            token = patchRes.data.queue_token || token;
+          } catch (e) {
+            console.error("Failed to auto check-in:", e);
+          }
+        }
+        setBookedToken(token);
+
+        const inv = await billingStorage.addInvoice({
+          appointmentId: response.data.id || `APP-${Math.floor(100000 + Math.random() * 900000)}`,
           patientId: formData.patient_id,
           patientName: patientObj?.full_name || 'Walk-in Patient',
           doctorId: formData.doctor_id,
           doctorName: doctorObj ? `Dr. ${doctorObj.user?.full_name || doctorObj.user?.first_name}` : 'Clinic Doctor',
-          doctorRoom: formData.doctor_id?.toString() === '2' ? 'Room 102' : 'Room 101',
-          type: 'scheduled'
+          doctorSpecialty: doctorObj?.specialty || 'General Physician',
+          appointmentDate: formData.date,
+          appointmentTime: formData.time,
+          appointmentType: formData.appointment_type,
+          consultationFee: fees.consultation,
+          tax: fees.gst,
+          totalAmount: fees.total,
+          paymentStatus: status,
+          paymentMode: isPendingPayment ? '' : paymentMethod.toUpperCase(),
+          transactionId: generatedTxn,
+          tokenNumber: token
         });
-        if (queueItem) {
-          token = queueItem.token;
-        }
+        setCreatedInvoice(inv);
+        setStep('success');
+
+      } catch (err) {
+        console.error("Booking error:", err);
+        const errMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to book appointment. Please try again.';
+        setNotification({ type: 'error', message: errMsg });
+        setStep('payment');
+      } finally {
+        setLoading(false);
       }
-      setBookedToken(token);
-
-      const inv = billingStorage.addInvoice({
-        appointmentId: response.data.id || `APP-${Math.floor(100000 + Math.random() * 900000)}`,
-        patientId: formData.patient_id,
-        patientName: patientObj?.full_name || 'Walk-in Patient',
-        doctorId: formData.doctor_id,
-        doctorName: doctorObj ? `Dr. ${doctorObj.user?.full_name || doctorObj.user?.first_name}` : 'Clinic Doctor',
-        doctorSpecialty: doctorObj?.specialty || 'General Physician',
-        appointmentDate: formData.date,
-        appointmentTime: formData.time,
-        appointmentType: formData.appointment_type,
-        consultationFee: fees.consultation,
-        tax: fees.gst,
-        totalAmount: fees.total,
-        paymentStatus: status,
-        paymentMode: paymentMethod === 'pay_later' ? '' : paymentMethod.toUpperCase(),
-        transactionId: generatedTxn,
-        tokenNumber: token
-      });
-      setCreatedInvoice(inv);
-
-      setStep('success');
-    } catch (err) {
-      console.error("Booking payment error:", err);
-      const errMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to book appointment. Please try again.';
-      setNotification({ type: 'error', message: errMsg });
-      setStep('payment');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -414,19 +577,14 @@ For support, email: support@gacms.com
               {/* Patient Selection */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Select Patient</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 text-gray-400" size={18} />
-                  <select
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none appearance-none"
-                    value={formData.patient_id}
-                    onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
-                  >
-                    <option value="">Choose a patient</option>
-                    {patients.map(p => (
-                      <option key={p.id} value={p.id}>{p.full_name}</option>
-                    ))}
-                  </select>
-                </div>
+                <SearchableSelect
+                  options={patients.map(p => ({ value: p.id, label: p.full_name }))}
+                  value={formData.patient_id}
+                  onChange={(val) => setFormData({ ...formData, patient_id: val })}
+                  placeholder="Choose a patient"
+                  icon={User}
+                  className="w-full"
+                />
               </div>
 
               {/* Patient Location */}
@@ -460,28 +618,45 @@ For support, email: support@gacms.com
               {/* Doctor Selection */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Select Doctor</label>
-                <div className="relative">
-                  <Stethoscope className="absolute left-3 top-3 text-gray-400" size={18} />
-                  <select
-                    value={formData.doctor_id}
-                    onChange={(e) => setFormData({ ...formData, doctor_id: e.target.value, time: '' })}
-                    className="w-full bg-white border border-gray-200 p-4 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-gray-700"
-                    required
-                  >
-                    <option value="">Choose a doctor</option>
-                    {doctors.map(d => (
-                      <option key={d.id} value={d.id}>
-                        Dr. {d.user?.full_name || d.user?.first_name || 'Unknown'} ({d.specialty || 'General'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <SearchableSelect
+                  options={doctors.map(d => ({ 
+                    value: d.id, 
+                    label: `Dr. ${d.user?.full_name || d.user?.first_name || 'Unknown'} (${d.specialty || 'General'})`
+                  }))}
+                  value={formData.doctor_id}
+                  onChange={(val) => setFormData({ ...formData, doctor_id: val, time: '' })}
+                  placeholder="Choose a doctor"
+                  icon={Stethoscope}
+                  className="w-full"
+                />
+                
+                {/* Doctor Profile Card (Shows Ratings) */}
+                {selectedDoctor && (
+                  <div className="mt-4 p-4 rounded-xl border border-blue-100 bg-blue-50/50 flex items-center justify-between animate-in fade-in duration-300">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                        {selectedDoctor.user?.first_name?.[0] || 'D'}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">Dr. {selectedDoctor.user?.full_name || selectedDoctor.user?.first_name}</p>
+                        <p className="text-xs text-gray-500">{selectedDoctor.specialty}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-md shadow-sm border border-gray-100">
+                        <Star size={14} className="text-yellow-500 fill-yellow-500" />
+                        <span className="text-sm font-bold text-gray-800">{selectedDoctor.average_rating || 'NEW'}</span>
+                      </div>
+                      <span className="text-[10px] text-gray-400 mt-1">{selectedDoctor.total_reviews || 0} reviews</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Consultation Type */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">Consultation Type</label>
-                <div className="grid grid-cols-2 gap-4">
+                <div className={`grid ${user?.role === 'receptionist' ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
                   <button
                     type="button"
                     onClick={() => {
@@ -498,22 +673,24 @@ For support, email: support@gacms.com
                       <p className="text-[10px] opacity-70">9:00 AM - 1:00 PM</p>
                     </div>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormData({ ...formData, appointment_type: 'virtual', time: '' });
-                    }}
-                    className={`flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all ${formData.appointment_type === 'virtual'
-                      ? 'border-blue-600 bg-blue-50 text-blue-700'
-                      : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
-                      }`}
-                  >
-                    <Video size={20} />
-                    <div className="text-left">
-                      <p className="font-bold text-sm">Virtual</p>
-                      <p className="text-[10px] opacity-70">2:00 PM - 6:00 PM</p>
-                    </div>
-                  </button>
+                  {user?.role !== 'receptionist' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, appointment_type: 'virtual', time: '' });
+                      }}
+                      className={`flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all ${formData.appointment_type === 'virtual'
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
+                        }`}
+                    >
+                      <Video size={20} />
+                      <div className="text-left">
+                        <p className="font-bold text-sm">Virtual</p>
+                        <p className="text-[10px] opacity-70">2:00 PM - 6:00 PM</p>
+                      </div>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -540,13 +717,30 @@ For support, email: support@gacms.com
                     </div>
                   ) : formData.doctor_id && formData.date ? (
                     (() => {
+                      // Get today's date string in YYYY-MM-DD (local time)
+                      const todayStr = (() => {
+                        const d = new Date();
+                        const yyyy = d.getFullYear();
+                        const mm = String(d.getMonth() + 1).padStart(2, '0');
+                        const dd = String(d.getDate()).padStart(2, '0');
+                        return `${yyyy}-${mm}-${dd}`;
+                      })();
+                      const isToday = formData.date === todayStr;
+                      const nowMinutes = isToday
+                        ? new Date().getHours() * 60 + new Date().getMinutes()
+                        : 0;
+
                       const filteredSlots = availableSlots.filter(s => {
                         const hour = parseInt((s.time || '').substring(0, 2) || '0');
-                        if (formData.appointment_type === 'in_person') {
-                          return hour >= 9 && hour < 13;
-                        } else {
-                          return hour >= 14 && hour < 18;
-                        }
+                        const minute = parseInt((s.time || '00:00').substring(3, 5) || '0');
+                        // Filter by appointment type hour window
+                        const inWindow = formData.appointment_type === 'in_person'
+                          ? hour >= 9 && hour < 13
+                          : hour >= 14 && hour < 18;
+                        if (!inWindow) return false;
+                        // For today: hide slots that are already past
+                        if (isToday && (hour * 60 + minute) <= nowMinutes) return false;
+                        return true;
                       });
 
                       if (filteredSlots.length > 0) {
@@ -635,7 +829,7 @@ For support, email: support@gacms.com
               {/* Payment Methods tabs */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">Choose Payment Method</label>
-                <div className={`grid ${user?.role === 'receptionist' || user?.role === 'senior_doctor' ? 'grid-cols-5' : 'grid-cols-3'} gap-3`}>
+                <div className={`grid ${user?.role === 'receptionist' || user?.role === 'senior_doctor' ? 'grid-cols-5' : 'grid-cols-4'} gap-3`}>
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('upi')}
@@ -666,29 +860,27 @@ For support, email: support@gacms.com
                     <Building2 size={24} className="mb-2" />
                     <span className="text-xs font-bold">Net Banking</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('cash')}
+                    className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                      paymentMethod === 'cash' ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
+                    }`}
+                  >
+                    <DollarSign size={24} className="mb-2" />
+                    <span className="text-xs font-bold">Cash at Desk</span>
+                  </button>
                   {(user?.role === 'receptionist' || user?.role === 'senior_doctor') && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('cash')}
-                        className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
-                          paymentMethod === 'cash' ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
-                        }`}
-                      >
-                        <DollarSign size={24} className="mb-2" />
-                        <span className="text-xs font-bold">Cash at Desk</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('pay_later')}
-                        className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
-                          paymentMethod === 'pay_later' ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
-                        }`}
-                      >
-                        <FileText size={24} className="mb-2" />
-                        <span className="text-xs font-bold">Pay Later</span>
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('pay_later')}
+                      className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                        paymentMethod === 'pay_later' ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-sm' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'
+                      }`}
+                    >
+                      <FileText size={24} className="mb-2" />
+                      <span className="text-xs font-bold">Pay Later</span>
+                    </button>
                   )}
                 </div>
               </div>
@@ -703,9 +895,15 @@ For support, email: support@gacms.com
                       <DollarSign size={32} />
                     </div>
                     <div>
-                      <h4 className="font-extrabold text-slate-800 text-lg">Receive Cash Payment</h4>
+                      <h4 className="font-extrabold text-slate-800 text-lg">
+                        {(user?.role === 'receptionist' || user?.role === 'senior_doctor') ? 'Receive Cash Payment' : 'Pay at Clinic'}
+                      </h4>
                       <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">
-                        Please collect <span className="font-black text-slate-900">₹{fees.total}</span> in cash from the patient. Once received, click the button below to finalize booking and mark the invoice as PAID.
+                        {(user?.role === 'receptionist' || user?.role === 'senior_doctor') ? (
+                          <>Please collect <span className="font-black text-slate-900">₹{fees.total}</span> in cash from the patient. Once received, click the button below to finalize booking and mark the invoice as PAID.</>
+                        ) : (
+                          <>Please pay <span className="font-black text-slate-900">₹{fees.total}</span> in cash at the Reception Desk upon arrival. Click the button below to confirm your booking.</>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -974,15 +1172,15 @@ For support, email: support@gacms.com
           <div id="printable-receipt" className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             
             {/* Success Header banner */}
-            <div className={`p-8 text-center space-y-3 text-white ${paymentMethod === 'pay_later' ? 'bg-blue-600' : 'bg-emerald-600'}`}>
+            <div className={`p-8 text-center space-y-3 text-white ${createdInvoice?.paymentStatus === 'PENDING' ? 'bg-blue-600' : 'bg-emerald-600'}`}>
               <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
-                {paymentMethod === 'pay_later' ? <FileText size={36} className="text-white" /> : <Check size={36} className="text-white" />}
+                {createdInvoice?.paymentStatus === 'PENDING' ? <FileText size={36} className="text-white" /> : <Check size={36} className="text-white" />}
               </div>
               <h2 className="text-3xl font-extrabold tracking-tight">
-                {paymentMethod === 'pay_later' ? 'Appointment Booked!' : 'Payment Successful!'}
+                {createdInvoice?.paymentStatus === 'PENDING' ? 'Appointment Booked!' : 'Payment Successful!'}
               </h2>
-              <p className={`${paymentMethod === 'pay_later' ? 'text-blue-100' : 'text-emerald-100'} text-sm`}>
-                {paymentMethod === 'pay_later' ? 'Your appointment is booked. Payment invoice generated.' : 'Your appointment is booked and confirmed.'}
+              <p className={`${createdInvoice?.paymentStatus === 'PENDING' ? 'text-blue-100' : 'text-emerald-100'} text-sm`}>
+                {createdInvoice?.paymentStatus === 'PENDING' ? 'Your appointment is booked. Payment invoice generated.' : 'Your appointment is booked and confirmed.'}
               </p>
             </div>
 
@@ -1011,10 +1209,10 @@ For support, email: support@gacms.com
                   <InvoiceRow label="Transaction ID" value={transactionId || 'N/A (Pending Payment)'} />
                   <InvoiceRow 
                     label="Payment Status" 
-                    value={paymentMethod === 'pay_later' ? 'PENDING' : 'SUCCESS'} 
-                    valueClass={paymentMethod === 'pay_later' ? 'text-amber-600 font-extrabold' : 'text-emerald-600 font-extrabold'} 
+                    value={createdInvoice?.paymentStatus === 'PENDING' ? 'PENDING' : 'SUCCESS'} 
+                    valueClass={createdInvoice?.paymentStatus === 'PENDING' ? 'text-amber-600 font-extrabold' : 'text-emerald-600 font-extrabold'} 
                   />
-                  <InvoiceRow label="Payment Mode" value={paymentMethod === 'pay_later' ? 'PAY LATER' : paymentMethod.toUpperCase()} />
+                  <InvoiceRow label="Payment Mode" value={createdInvoice?.paymentStatus === 'PENDING' && paymentMethod === 'pay_later' ? 'PAY LATER' : paymentMethod.toUpperCase()} />
                 </div>
               </div>
 
@@ -1049,21 +1247,38 @@ For support, email: support@gacms.com
           <div className="space-y-4 w-full">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
-                onClick={() => setShowViewModal(true)}
-                className="py-3 bg-white border border-gray-200 hover:bg-slate-50 rounded-xl font-bold text-slate-700 transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
+                onClick={() => {
+                  if (!createdInvoice) {
+                    alert('Invoice not available yet. Please try again.');
+                    return;
+                  }
+                  setShowViewModal(true);
+                }}
+                disabled={!createdInvoice}
+                title={!createdInvoice ? 'Invoice not available' : 'View full invoice details'}
+                className="py-3 bg-white border border-gray-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl font-bold text-slate-700 transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
               >
                 <Eye size={18} />
                 View Invoice
               </button>
               <button
-                onClick={() => handleDownloadInvoice(createdInvoice)}
-                className="py-3 bg-white border border-gray-200 hover:bg-slate-50 rounded-xl font-bold text-slate-700 transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
+                onClick={() => {
+                  if (!createdInvoice) {
+                    alert('Receipt not available yet. Please try again.');
+                    return;
+                  }
+                  handleDownloadInvoice(createdInvoice);
+                }}
+                disabled={!createdInvoice}
+                title={!createdInvoice ? 'Receipt not available' : 'Download receipt as text file'}
+                className="py-3 bg-white border border-gray-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl font-bold text-slate-700 transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
               >
                 <Download size={18} />
                 Download Receipt
               </button>
               <button
                 onClick={handlePrint}
+                title="Print or save this receipt as PDF"
                 className="py-3 bg-white border border-gray-200 hover:bg-slate-50 rounded-xl font-bold text-slate-700 transition-all flex items-center justify-center gap-2 text-sm shadow-sm"
               >
                 <Printer size={18} />
@@ -1073,15 +1288,15 @@ For support, email: support@gacms.com
 
             <button
               onClick={() => {
-                if (onBack) {
-                  onBack();
-                } else {
-                  navigate('/my-appointments');
-                }
+                // Always call onBack first to reset the parent booking panel if embedded
+                if (onBack) onBack();
+                // Then navigate to the My Appointments page
+                navigate('/my-appointments');
               }}
-              className="w-full py-3.5 bg-navy hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg transition-all text-center text-sm"
+              className="w-full py-3.5 bg-navy hover:bg-slate-800 active:scale-95 text-white rounded-xl font-bold shadow-lg transition-all text-center text-sm flex items-center justify-center gap-2"
             >
-              Go to Dashboard
+              <Calendar size={16} />
+              Go to My Appointments
             </button>
           </div>
         </div>

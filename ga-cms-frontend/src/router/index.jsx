@@ -26,6 +26,7 @@ const AdminRevenuePage = lazy(() => import('../components/admin/AdminRevenuePage
 const AdminStaffPerformancePage = lazy(() => import('../components/admin/AdminStaffPerformancePage'));
 const AdminDoctorsPage = lazy(() => import('../components/admin/AdminDoctorsPage'));
 const AdminSettingsPage = lazy(() => import('../components/admin/AdminSettingsPage'));
+const AdminReviewsPage = lazy(() => import('../components/admin/AdminReviewsPage'));
 const ComingSoonPage = lazy(() => import('../components/shared/ComingSoonPage'));
 const BookAppointment = lazy(() => import('../components/patient/BookAppointment'));
 const DoctorAppointmentsPage = lazy(() => import('../components/doctor/DoctorAppointmentsPage'));
@@ -45,6 +46,7 @@ const MedicalRecordsPage = lazy(() => import('../components/patient/MedicalRecor
 const ScanReportPage = lazy(() => import('../components/shared/ScanReportPage'));
 const PatientChatPage = lazy(() => import('../components/patient/PatientChatPage'));
 const StaffChatPage = lazy(() => import('../components/shared/chat/StaffChatPage'));
+const ConsultationReviewForm = lazy(() => import('../components/patient/ConsultationReviewForm'));
 
 const ChatRouteWrapper = () => {
   return (
@@ -87,6 +89,7 @@ const AppRouter = () => {
         <Route path="/login" element={<SignInPage />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="/review/:appointmentId" element={<ConsultationReviewForm />} />
 
         <Route element={<AppShell />}>
           <Route path="/dashboard/admin"
@@ -111,6 +114,7 @@ const AppRouter = () => {
           <Route path="/revenue" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminRevenuePage /></AuthGuard>} />
           <Route path="/performance/staff" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminStaffPerformancePage /></AuthGuard>} />
           <Route path="/doctors" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminDoctorsPage /></AuthGuard>} />
+          <Route path="/reviews" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminReviewsPage /></AuthGuard>} />
           <Route path="/settings" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminSettingsPage /></AuthGuard>} />
           <Route path="/my-appointments" 
             element={

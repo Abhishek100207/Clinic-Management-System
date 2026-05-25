@@ -3,28 +3,44 @@ import { useAuthStore } from '../../store/authStore';
 import { billingStorage } from '../../utils/billingStorage';
 import api from '../../api/axios';
 import {
-  CreditCard,
-  Receipt,
-  Download,
   FileText,
   Search,
   Filter,
-  Plus,
-  CheckCircle,
-  Clock,
+  Eye,
+  Download,
   Printer,
   X,
-  QrCode,
+  CreditCard,
   Building2,
+  QrCode,
   ShieldCheck,
-  User,
+  Check,
   TrendingUp,
   IndianRupee,
   AlertCircle,
-  Check,
   DollarSign,
-  Eye
+  Receipt,
+  Plus,
+  CheckCircle,
+  Clock,
+  User
 } from 'lucide-react';
+import SearchableSelect from '../common/SearchableSelect';
+
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 const getInvoiceDate = (inv) => {
   if (inv.dateGenerated) return new Date(inv.dateGenerated);
@@ -163,47 +179,50 @@ const BillingPage = () => {
   };
 
   // Load Invoices and Statistics
-  const loadBillingData = () => {
-    let allInvoices = billingStorage.getInvoices();
-    
-    if (user?.role === 'patient') {
-      allInvoices = billingStorage.getInvoicesForPatient(user.id);
-    } else if (user?.role === 'receptionist') {
-      allInvoices = allInvoices.filter(isToday);
-    } else if (user?.role === 'senior_doctor') {
-      if (adminTimeframe === 'today') {
+  const loadBillingData = async () => {
+    let allInvoices = [];
+    try {
+      allInvoices = await billingStorage.getInvoices();
+      
+      if (user?.role === 'receptionist') {
         allInvoices = allInvoices.filter(isToday);
-      } else if (adminTimeframe === 'week') {
-        allInvoices = allInvoices.filter(isThisWeek);
-      } else if (adminTimeframe === 'month') {
-        allInvoices = allInvoices.filter(isThisMonth);
+      } else if (user?.role === 'senior_doctor') {
+        if (adminTimeframe === 'today') {
+          allInvoices = allInvoices.filter(isToday);
+        } else if (adminTimeframe === 'week') {
+          allInvoices = allInvoices.filter(isThisWeek);
+        } else if (adminTimeframe === 'month') {
+          allInvoices = allInvoices.filter(isThisMonth);
+        }
       }
-    }
-    
-    setInvoices(allInvoices);
-    
-    // Always compute statistics based on filtered invoices
-    if (user?.role === 'patient') {
-      // Re-calculate stats filtered just for this patient
-      let totalInvoiced = 0;
-      let totalCollected = 0;
-      let totalPending = 0;
-      allInvoices.forEach(inv => {
-        totalInvoiced += inv.totalAmount;
-        if (inv.paymentStatus === 'PAID') totalCollected += inv.totalAmount;
-        else if (inv.paymentStatus === 'PENDING') totalPending += inv.totalAmount;
-      });
-      setStats({
-        totalInvoiced,
-        totalCollected,
-        totalPending,
-        modeBreakdown: { UPI: 0, CARD: 0, NET_BANKING: 0, CASH: 0 },
-        statusBreakdown: { PAID: 0, PENDING: 0, FAILED: 0 },
-        invoiceCount: allInvoices.length
-      });
-    } else {
-      const calculated = calculateStats(allInvoices);
-      setStats(calculated);
+      
+      setInvoices(allInvoices);
+      
+      // Always compute statistics based on filtered invoices
+      if (user?.role === 'patient') {
+        // Re-calculate stats filtered just for this patient
+        let totalInvoiced = 0;
+        let totalCollected = 0;
+        let totalPending = 0;
+        allInvoices.forEach(inv => {
+          totalInvoiced += inv.totalAmount;
+          if (inv.paymentStatus === 'PAID') totalCollected += inv.totalAmount;
+          else if (inv.paymentStatus === 'PENDING') totalPending += inv.totalAmount;
+        });
+        setStats({
+          totalInvoiced,
+          totalCollected,
+          totalPending,
+          modeBreakdown: { UPI: 0, CARD: 0, NET_BANKING: 0, CASH: 0 },
+          statusBreakdown: { PAID: 0, PENDING: 0, FAILED: 0 },
+          invoiceCount: allInvoices.length
+        });
+      } else {
+        const calculated = calculateStats(allInvoices);
+        setStats(calculated);
+      }
+    } catch (err) {
+      console.error("Failed to load billing data:", err);
     }
   };
 
@@ -219,8 +238,8 @@ const BillingPage = () => {
           api.get('/api/users/patients/'),
           api.get('/api/users/doctors/')
         ]);
-        setPatientsList(pRes.data || []);
-        setDoctorsList(dRes.data || []);
+        setPatientsList(Array.isArray(pRes?.data) ? pRes.data : (pRes?.data?.results ?? []));
+        setDoctorsList(Array.isArray(dRes?.data) ? dRes.data : (dRes?.data?.results ?? []));
       } catch (err) {
         console.error("Error fetching dropdowns for billing", err);
       }
@@ -243,7 +262,7 @@ const BillingPage = () => {
   }, [manualBill.consultationFee]);
 
   // Submit manual invoice creation
-  const handleCreateManualInvoice = (e) => {
+  const handleCreateManualInvoice = async (e) => {
     e.preventDefault();
     if (!manualBill.patientId || !manualBill.doctorId) {
       alert("Please select a patient and a doctor.");
@@ -257,7 +276,7 @@ const BillingPage = () => {
       ? (manualBill.paymentMode === 'CASH' ? 'CASH-COUNTER-' + Math.floor(100 + Math.random() * 900) : 'TXN' + Math.floor(100000000 + Math.random() * 900000000))
       : '';
 
-    billingStorage.addInvoice({
+    await billingStorage.addInvoice({
       patientId: manualBill.patientId,
       patientName: patientObj?.full_name || 'Manual Patient',
       doctorId: manualBill.doctorId,
@@ -292,7 +311,7 @@ const BillingPage = () => {
   };
 
   // Submit payment settlement receptionist
-  const handleCollectPayment = (e) => {
+  const handleCollectPayment = async (e) => {
     e.preventDefault();
     if (!selectedInvoice) return;
 
@@ -300,7 +319,7 @@ const BillingPage = () => {
       ? 'CASH-SETTLE-' + Math.floor(100000 + Math.random() * 900000) 
       : collectTxnId || 'TXN' + Math.floor(100000000 + Math.random() * 900000000);
 
-    billingStorage.updateInvoiceStatus(
+    await billingStorage.updateInvoiceStatus(
       selectedInvoice.invoiceId,
       'PAID',
       collectMode,
@@ -330,32 +349,74 @@ const BillingPage = () => {
 
     setPayProcessing(true);
     setPaySuccess(false);
+    setProcessingMsg("Contacting secure payment server...");
 
-    const steps = [
-      "Contacting secure payment server...",
-      "Requesting authorization for ₹" + selectedInvoice.totalAmount + "...",
-      "Waiting for bank approval token...",
-      "Payment processed successfully!"
-    ];
+    try {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        alert('Razorpay SDK failed to load. Please check your internet connection.');
+        setPayProcessing(false);
+        return;
+      }
 
-    for (let i = 0; i < steps.length; i++) {
-      setProcessingMsg(steps[i]);
-      await new Promise(res => setTimeout(res, 600));
+      // 1. Create Razorpay order for this invoice
+      const orderRes = await api.post(`/api/appointments/invoices/${selectedInvoice.id}/create-razorpay-order/`);
+      const { razorpay_order_id, amount, razorpay_key_id } = orderRes.data;
+
+      // 2. Open Razorpay unified checkout
+      const options = {
+        key: razorpay_key_id,
+        amount: amount,
+        currency: "INR",
+        name: "GA Medical Clinic",
+        description: `Settlement for Invoice ${selectedInvoice.invoiceId}`,
+        order_id: razorpay_order_id,
+        prefill: {
+          name: selectedInvoice.patientName || "",
+          email: "",
+          contact: "",
+          method: patientPayMethod
+        },
+        theme: {
+          color: "#1e3a8a"
+        },
+        modal: {
+          ondismiss: function() {
+            setPayProcessing(false);
+          }
+        },
+        handler: async function (response) {
+          setProcessingMsg("Verifying payment transaction details...");
+          try {
+            // 3. Verify signature
+            await api.post(`/api/appointments/invoices/${selectedInvoice.id}/verify-razorpay-payment/`, {
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              payment_method: patientPayMethod
+            });
+
+            setProcessingMsg("Payment processed successfully!");
+            await new Promise(resolve => setTimeout(resolve, 800));
+            setPayProcessing(false);
+            setPaySuccess(true);
+            loadBillingData();
+          } catch (verifyErr) {
+            console.error("Signature verification failed:", verifyErr);
+            alert(verifyErr.response?.data?.error || 'Signature verification failed. Please try again.');
+            setPayProcessing(false);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+
+    } catch (err) {
+      console.error("Order creation failed:", err);
+      alert(err.response?.data?.error || 'Failed to start payment transaction. Please try again.');
+      setPayProcessing(false);
     }
-
-    const generatedTxn = 'TXN-ONL-' + Math.floor(100000000 + Math.random() * 900000000);
-    billingStorage.updateInvoiceStatus(
-      selectedInvoice.invoiceId,
-      'PAID',
-      patientPayMethod.toUpperCase(),
-      generatedTxn
-    );
-
-    setPayProcessing(false);
-    setPaySuccess(true);
-    
-    // Settle data
-    loadBillingData();
   };
 
   // Filter invoices based on status and search query
@@ -1065,33 +1126,25 @@ For support, email: support@gacms.com
               {/* Select Patient */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Select Patient</label>
-                <select
+                <SearchableSelect
+                  className="w-full"
                   value={manualBill.patientId}
-                  onChange={(e) => setManualBill({ ...manualBill, patientId: e.target.value })}
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-slate-700 bg-white"
-                  required
-                >
-                  <option value="">-- Select Patient --</option>
-                  {patientsList.map(p => (
-                    <option key={p.id} value={p.id}>{p.full_name} (#PAT-{p.id})</option>
-                  ))}
-                </select>
+                  onChange={(val) => setManualBill({ ...manualBill, patientId: val })}
+                  options={patientsList.map(p => ({ value: p.id, label: `${p.full_name} (#PAT-${p.id})` }))}
+                  placeholder="-- Select Patient --"
+                />
               </div>
 
               {/* Select Doctor */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Consultant Doctor</label>
-                <select
+                <SearchableSelect
+                  className="w-full"
                   value={manualBill.doctorId}
-                  onChange={(e) => setManualBill({ ...manualBill, doctorId: e.target.value })}
-                  className="w-full p-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-slate-700 bg-white"
-                  required
-                >
-                  <option value="">-- Select Doctor --</option>
-                  {doctorsList.map(d => (
-                    <option key={d.id} value={d.id}>Dr. {d.user?.full_name || d.user?.first_name} ({d.specialty})</option>
-                  ))}
-                </select>
+                  onChange={(val) => setManualBill({ ...manualBill, doctorId: val })}
+                  options={doctorsList.map(d => ({ value: d.id, label: `Dr. ${d.user?.full_name || d.user?.first_name} (${d.specialty})` }))}
+                  placeholder="-- Select Doctor --"
+                />
               </div>
 
               {/* Visit details & fee */}

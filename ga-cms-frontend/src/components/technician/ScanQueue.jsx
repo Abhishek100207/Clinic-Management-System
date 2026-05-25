@@ -45,7 +45,7 @@ const ScanQueue = ({ isTechnician }) => {
     try {
       setLoading(true);
       const response = await api.get(`/api/medical_records/scan-orders/?status=${statusFilter}`);
-      const data = Array.isArray(response.data) ? response.data : (response.data.results || []);
+      const data = Array.isArray(response?.data) ? response.data : (response?.data?.results || []);
       
       const mappedData = data.map(order => ({
         id: `SCAN-${order.id}`,
@@ -81,7 +81,7 @@ const ScanQueue = ({ isTechnician }) => {
       try {
         const response = await api.get('/api/users/patients/');
         const data = response.data;
-        setPatients(Array.isArray(data) ? data : (data.results || []));
+        setPatients(Array.isArray(data) ? data : (data?.results || []));
       } catch (err) {
         console.error('Error fetching patients:', err);
         // Fallback to queue patients if fetch fails

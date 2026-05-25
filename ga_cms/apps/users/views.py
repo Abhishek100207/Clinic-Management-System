@@ -51,7 +51,7 @@ class DoctorSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     class Meta:
         model = Doctor
-        fields = ['id', 'user', 'specialty', 'registration_number']
+        fields = ['id', 'user', 'specialty', 'registration_number', 'average_rating', 'total_reviews']
 
 class PatientSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
@@ -149,3 +149,29 @@ class ListStaffView(APIView):
         staff_users = User.objects.exclude(role='patient').order_by('-created_at')
         serializer = UserSerializer(staff_users, many=True)
         return Response(serializer.data)
+
+from django.db.models import Sum
+from apps.appointments.models import Invoice
+
+class AdminSummaryAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ['senior_doctor']:
+            return Response({'error': 'Access denied.'}, status=status.HTTP_403_FORBIDDEN)
+            
+        staff_count = User.objects.exclude(role='patient').count()
+        patient_count = Patient.objects.count()
+        
+        # Calculate revenue from paid invoices
+        revenue_agg = Invoice.objects.filter(payment_status='paid').aggregate(total=Sum('total_amount'))
+        total_revenue = revenue_agg['total'] or 0
+        
+        # We can mock growth or calculate it if needed
+        # For now, let's keep it simple
+        return Response({
+            'staffCount': staff_count,
+            'patientCount': patient_count,
+            'revenue': total_revenue,
+            'growth': 15  # Mocked growth metric
+        })

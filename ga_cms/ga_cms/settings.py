@@ -148,3 +148,8 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
 }
+
+# Razorpay Configuration
+RAZORPAY_KEY_ID = config('RAZORPAY_KEY_ID', default='rzp_test_dummykeyid')
+RAZORPAY_KEY_SECRET = config('RAZORPAY_KEY_SECRET', default='dummysignaturesecret')
+

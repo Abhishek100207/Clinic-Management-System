@@ -1,5 +1,6 @@
 import React from 'react';
 import { PlusCircle, Loader2, Save } from 'lucide-react';
+import SearchableSelect from '../common/SearchableSelect';
 
 // PERF: Extracted heavy modal component for lazy loading
 const UploadScanModal = ({ setIsModalOpen, uploadData, setUploadData, patients, uploading, handleUploadSubmit }) => {
@@ -45,17 +46,13 @@ const UploadScanModal = ({ setIsModalOpen, uploadData, setUploadData, patients, 
 
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Patient</label>
-            <select 
+            <SearchableSelect
+              className="w-full"
               value={uploadData.patient_id}
-              onChange={(e) => setUploadData({...uploadData, patient_id: e.target.value})}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:border-amber-500 outline-none transition-all"
-              required
-            >
-              <option value="">Select Patient</option>
-              {patients.map(p => (
-                <option key={p.id} value={p.id}>{p.full_name} ({p.patient_id || p.id})</option>
-              ))}
-            </select>
+              onChange={(val) => setUploadData({...uploadData, patient_id: val})}
+              options={patients.map(p => ({ value: p.id, label: `${p.full_name} (${p.patient_id || p.id})` }))}
+              placeholder="Select Patient"
+            />
           </div>
         </div>
 

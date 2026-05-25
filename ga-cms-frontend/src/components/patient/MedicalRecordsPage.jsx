@@ -38,10 +38,10 @@ const MedicalRecordsPage = () => {
           fetchScanResults()
         ]);
         setRecords({
-          prescriptions: Array.isArray(presReq) ? presReq : presReq.results ?? [],
-          soap_notes: Array.isArray(soapReq) ? soapReq : soapReq.results ?? [],
-          lab_results: Array.isArray(labReq) ? labReq : labReq.results ?? [],
-          scan_results: Array.isArray(scanReq) ? scanReq : scanReq.results ?? []
+          prescriptions: Array.isArray(presReq) ? presReq : (presReq?.results ?? (presReq?.data?.results ?? [])),
+          soap_notes: Array.isArray(soapReq) ? soapReq : (soapReq?.results ?? (soapReq?.data?.results ?? [])),
+          lab_results: Array.isArray(labReq) ? labReq : (labReq?.results ?? (labReq?.data?.results ?? [])),
+          scan_results: Array.isArray(scanReq) ? scanReq : (scanReq?.results ?? (scanReq?.data?.results ?? []))
         });
       } catch (error) {
         console.error("Failed to fetch medical records:", error);
@@ -53,8 +53,7 @@ const MedicalRecordsPage = () => {
 
   const categories = [
     { id: 'prescriptions', title: 'Prescriptions', icon: <Pill size={28} />, color: 'blue', desc: 'Active and past medication lists' },
-    { id: 'test_results', title: 'Test Results', icon: <Activity size={28} />, color: 'emerald', desc: 'View summary of diagnostic results' },
-    { id: 'soap_notes', title: 'Consultation Notes (SOAP)', icon: <Stethoscope size={28} />, color: 'purple', desc: 'Detailed clinical session notes' },
+    { id: 'soap_notes', title: 'Consultation Notes', icon: <Stethoscope size={28} />, color: 'purple', desc: 'Detailed clinical session notes' },
     { id: 'lab_results', title: 'Lab Results', icon: <Clipboard size={28} />, color: 'amber', desc: 'Detailed pathology & blood reports' },
     { id: 'scan_results', title: 'Scan Results', icon: <Layers size={28} />, color: 'rose', desc: 'Radiology images and reports' },
   ];
@@ -85,30 +84,7 @@ const MedicalRecordsPage = () => {
             ))}
           </div>
         );
-      case 'test_results':
-        return (
-          <div className="space-y-4">
-            {[
-              { name: 'Blood Culture', date: 'May 01, 2026', type: 'Laboratory', status: 'Available' },
-              { name: 'X-Ray Chest PA', date: 'April 28, 2026', type: 'Imaging', status: 'Available' },
-            ].map((report, i) => (
-              <div key={i} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
-                    <Activity size={20} />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-navy text-sm">{report.name}</h4>
-                    <p className="text-[11px] text-slate-500">{report.type} • {report.date}</p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold bg-emerald-200 text-emerald-800 px-2 py-1 rounded">
-                  {report.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        );
+
       case 'soap_notes':
         return (
           <div className="space-y-6">

@@ -10,6 +10,7 @@ import RescheduleModal from '../shared/appointments/RescheduleModal';
 import ConsultationModal from './ConsultationModal';
 import { Badge } from '../shared/Badge';
 import { queueStorage } from '../../utils/queueStorage';
+import { billingStorage } from '../../utils/billingStorage';
 import { 
   Bell, 
   Settings, 
@@ -51,13 +52,35 @@ const DoctorDashboard = () => {
   const [rescheduleData, setRescheduleData] = useState({ isOpen: false, appointment: null });
   const [consultationData, setConsultationData] = useState({ isOpen: false, appointment: null });
 
+  const [patients, setPatients] = useState([]);
+  const [patientSearch, setPatientSearch] = useState('');
+  const [todayRevenue, setTodayRevenue] = useState(0);
+
   // Live Queue states & handlers
   const [queue, setQueue] = useState([]);
 
-  const refreshQueue = () => {
+  const refreshQueue = async () => {
     const docName = user?.full_name || 'Dr. Sarah Johnson';
-    const data = queueStorage.getQueueForDoctor(docName);
+    const data = await queueStorage.getQueueForDoctor(docName);
     setQueue(data);
+
+    try {
+      const invoices = await billingStorage.getInvoices();
+      const today = new Date();
+      const todayRevenueVal = invoices
+        .filter(inv => {
+          if (!inv.dateGenerated) return false;
+          const d = new Date(inv.dateGenerated);
+          return d.getDate() === today.getDate() &&
+                 d.getMonth() === today.getMonth() &&
+                 d.getFullYear() === today.getFullYear() &&
+                 inv.paymentStatus === 'PAID';
+        })
+        .reduce((sum, inv) => sum + inv.totalAmount, 0);
+      setTodayRevenue(todayRevenueVal);
+    } catch (err) {
+      console.error("Failed to fetch doctor revenue:", err);
+    }
   };
 
   useEffect(() => {
@@ -72,23 +95,34 @@ const DoctorDashboard = () => {
     };
   }, [user]);
 
-  const handleCallPatient = (token) => {
-    queueStorage.updatePatientStatus(token, 'active');
+  const handleCallPatient = async (token) => {
+    await queueStorage.updatePatientStatus(token, 'active');
     refreshQueue();
   };
 
-  const handleFinalizeConsult = (token) => {
-    queueStorage.updatePatientStatus(token, 'completed');
+  const handleFinalizeConsult = async (token) => {
+    await queueStorage.updatePatientStatus(token, 'completed');
     refreshQueue();
   };
 
-  const handleMissedPatient = (token) => {
-    queueStorage.updatePatientStatus(token, 'missed');
+  const handleMissedPatient = async (token) => {
+    await queueStorage.updatePatientStatus(token, 'missed');
     refreshQueue();
   };
 
   useEffect(() => {
     fetchDoctorDashboardData();
+    
+    const fetchPatients = async () => {
+      try {
+        const res = await api.get('/api/users/patients/');
+        const data = Array.isArray(res?.data) ? res.data : (res?.data?.results || []);
+        setPatients(data);
+      } catch (err) {
+        console.error("Failed to fetch patients list:", err);
+      }
+    };
+    fetchPatients();
     
     // Logic for morning confirmation: Show if it's before 11 AM and not yet confirmed
     const hour = new Date().getHours();
@@ -411,24 +445,23 @@ const DoctorDashboard = () => {
                 <FileText size={18} className="text-blue-500" />
                 Activity Log
               </h3>
-              <button className="text-xs text-slate-400 hover:text-blue-600">View All</button>
+              <button onClick={() => navigate('/consultations')} className="text-xs text-slate-400 hover:text-blue-600">View All</button>
             </div>
             <div className="p-5 space-y-4">
-              {[
-                { type: 'prescription', text: 'Prescription generated for Rahul Verma', time: '10 mins ago', icon: <FileText size={14} /> },
-                { type: 'appointment', text: 'New appointment request: Anjali Sharma', time: '45 mins ago', icon: <Bell size={14} /> },
-                { type: 'system', text: 'Daily schedule confirmed successfully', time: '2 hours ago', icon: <CheckCircle size={14} /> },
-              ].map((log, i) => (
-                <div key={i} className="flex gap-3">
+              {appointments.slice(0, 3).map((appt, i) => (
+                <div key={appt.id || i} className="flex gap-3">
                   <div className="mt-1 w-7 h-7 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
-                    {log.icon}
+                    <FileText size={14} />
                   </div>
                   <div>
-                    <p className="text-sm text-navy font-medium leading-tight">{log.text}</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{log.time}</p>
+                    <p className="text-sm text-navy font-medium leading-tight">{appt.patient_name || 'Patient'} — {appt.status}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{appt.date} at {appt.time?.slice(0,5) || 'N/A'}</p>
                   </div>
                 </div>
               ))}
+              {appointments.length === 0 && (
+                <p className="text-xs text-slate-400 italic text-center py-2">No recent activity.</p>
+              )}
             </div>
           </div>
 
@@ -449,10 +482,13 @@ const DoctorDashboard = () => {
               </li>
               <li className="flex items-center justify-between text-sm opacity-90">
                 <span>Total Revenue (Today)</span>
-                <span className="font-bold text-emerald-400">₹4,500</span>
+                <span className="font-bold text-emerald-400">₹{todayRevenue.toLocaleString('en-IN')}</span>
               </li>
             </ul>
-            <button className="w-full mt-6 bg-white/10 hover:bg-white/20 py-2 rounded-lg font-bold text-sm transition-colors border border-white/10">
+            <button 
+              onClick={() => navigate('/change-password')}
+              className="w-full mt-6 bg-white/10 hover:bg-white/20 py-2 rounded-lg font-bold text-sm transition-colors border border-white/10"
+            >
               Update Profile
             </button>
           </div>
@@ -472,27 +508,28 @@ const DoctorDashboard = () => {
                  <input 
                    type="text" 
                    placeholder="Quick search..." 
+                   value={patientSearch}
+                   onChange={(e) => setPatientSearch(e.target.value)}
                    className="w-full bg-slate-50 border border-slate-100 pl-9 pr-3 py-2 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
                  />
                </div>
-               {[
-                 { name: 'Rahul Verma', id: '001', gender: 'M' },
-                 { name: 'Anjali Sharma', id: '002', gender: 'F' },
-                 { name: 'Vikram Singh', id: '003', gender: 'M' },
-               ].map((patient, i) => (
+               {patients.filter(p => 
+                 p.full_name?.toLowerCase().includes(patientSearch.toLowerCase()) ||
+                 p.patient_id?.toLowerCase().includes(patientSearch.toLowerCase())
+               ).slice(0, 5).map((patient, i) => (
                  <div key={i} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer group">
                    <div className="flex items-center gap-3">
                      <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs">
-                       {patient.name.charAt(0)}
+                       {patient.full_name?.charAt(0)}
                      </div>
                      <div>
-                       <p className="text-[13px] font-bold text-navy">{patient.name}</p>
-                       <p className="text-[10px] text-slate-400">ID: {patient.id} • {patient.gender}</p>
+                       <p className="text-[13px] font-bold text-navy">{patient.full_name}</p>
+                       <p className="text-[10px] text-slate-400">ID: {patient.patient_id} • {patient.gender || 'M'}</p>
                      </div>
                    </div>
                    <button 
                     onClick={() => {
-                      setConsultationData({ isOpen: true, appointment: { patient_name: patient.name, patient_id: patient.id } });
+                      setConsultationData({ isOpen: true, appointment: { patient_name: patient.full_name, patient_id: patient.id } });
                     }}
                     className="p-1.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                    >
@@ -500,6 +537,12 @@ const DoctorDashboard = () => {
                    </button>
                  </div>
                ))}
+               {patients.filter(p => 
+                 p.full_name?.toLowerCase().includes(patientSearch.toLowerCase()) ||
+                 p.patient_id?.toLowerCase().includes(patientSearch.toLowerCase())
+               ).length === 0 && (
+                 <p className="text-xs text-slate-400 text-center py-2 italic">No patients found</p>
+               )}
             </div>
           </div>
 

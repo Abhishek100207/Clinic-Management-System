@@ -93,7 +93,7 @@ const TopNav = () => {
       if (user?.role === 'patient') {
         try {
           const res = await api.get('/api/users/patients/');
-          const patientData = Array.isArray(res.data) ? res.data : (res.data.results ?? []);
+          const patientData = Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []);
           if (patientData.length > 0) {
             setPatientProfile(patientData[0]);
           }

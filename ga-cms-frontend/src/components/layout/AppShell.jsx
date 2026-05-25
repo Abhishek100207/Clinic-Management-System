@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import TopNav from './TopNav';
+import ErrorBoundary from '../shared/ErrorBoundary';
 
 const AppShell = () => {
   const location = useLocation();
@@ -11,7 +12,9 @@ const AppShell = () => {
       <TopNav />
       <main className={`flex-1 ${isChatPage ? '' : 'p-4 md:p-8'}`}>
         <div className={isChatPage ? 'h-[calc(100vh-70px)]' : 'max-w-7xl mx-auto'}>
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </div>
       </main>
     </div>

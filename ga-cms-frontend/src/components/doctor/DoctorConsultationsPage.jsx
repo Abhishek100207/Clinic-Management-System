@@ -35,14 +35,21 @@ const DoctorConsultationsPage = () => {
     const fetchOPAppointments = async () => {
       try {
         const res = await api.get('/api/appointments/appointments/');
-        const todayStr = new Date().toISOString().split('T')[0];
         
-        // Filter for OP (in-person) and confirmed for today
-        const opList = res.data.filter(a => 
-          (a.appointment_type === 'in_person' || a.appointment_type === 'in-person' || a.type === 'OP') &&
-          a.status === 'confirmed' &&
-          a.date === todayStr
-        );
+        // Filter for OP (in-person) and confirmed for today using robust timezone-aware match
+        const opList = res.data.filter(a => {
+          if (!a.date) return false;
+          const [year, month, day] = a.date.split('-').map(Number);
+          const d = new Date(year, month - 1, day);
+          const today = new Date();
+          const isToday = d.getDate() === today.getDate() &&
+                         d.getMonth() === today.getMonth() &&
+                         d.getFullYear() === today.getFullYear();
+          
+          return (a.appointment_type === 'in_person' || a.appointment_type === 'in-person' || a.appointment_type === 'virtual' || a.type === 'OP') &&
+                 a.status === 'confirmed' &&
+                 isToday;
+        });
         
         setAppointments(opList);
       } catch (err) {
@@ -151,8 +158,8 @@ const DoctorConsultationsPage = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-navy mb-2">Today's Consultations (OP)</h1>
-          <p className="text-slate-500">Manage outpatient appointments and clinical records for today.</p>
+          <h1 className="text-4xl font-extrabold tracking-tight text-navy mb-2">Today's Consultations</h1>
+          <p className="text-slate-500">Manage outpatient and virtual appointments for today.</p>
         </div>
         
         <div className="relative w-full md:w-96 group">
@@ -211,7 +218,7 @@ const DoctorConsultationsPage = () => {
                   onClick={() => handleTakeOP(appt)}
                   className="w-full md:w-auto px-10 py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-3 active:scale-95"
                 >
-                  <Stethoscope size={20} /> Take OP
+                  <Stethoscope size={20} /> Start Consultation
                 </button>
               </div>
             </div>

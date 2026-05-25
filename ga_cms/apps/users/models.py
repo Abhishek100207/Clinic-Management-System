@@ -8,6 +8,10 @@ class Doctor(models.Model):
     accepts_inperson = models.BooleanField(default=True)
     accepts_virtual = models.BooleanField(default=False)
     is_visible_to_patients = models.BooleanField(default=True)
+    
+    # Rating fields
+    average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00, help_text="Average consultation rating")
+    total_reviews = models.IntegerField(default=0, help_text="Total number of consultation reviews")
 
     def __str__(self):
         return f"Dr. {self.user.get_full_name()} ({self.specialty})"

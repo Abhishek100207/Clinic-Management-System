@@ -47,9 +47,10 @@ const PatientDashboard = () => {
           api.get('/api/users/patients/')
         ]);
         
-        setAppointments(apptRes.data || []);
+        const apptsData = Array.isArray(apptRes?.data) ? apptRes.data : (apptRes?.data?.results ?? []);
+        setAppointments(apptsData);
         
-        const patientData = Array.isArray(patientRes.data) ? patientRes.data : (patientRes.data.results ?? []);
+        const patientData = Array.isArray(patientRes?.data) ? patientRes.data : (patientRes?.data?.results ?? []);
         if (patientData.length > 0) {
           setPatientProfile(patientData[0]);
         }
@@ -88,7 +89,8 @@ const PatientDashboard = () => {
       }
 
       const res = await api.get('/api/appointments/appointments/');
-      setAppointments(res.data || []);
+      const apptsData = Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []);
+      setAppointments(apptsData);
     } catch (err) {
       console.error("Action failed", err);
     }
@@ -126,64 +128,6 @@ const PatientDashboard = () => {
   return (
     <div className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in">
       
-      {/* Reschedule Notifications */}
-      {(rescheduledAppointments.length > 0 || newlyConfirmed.length > 0) && (
-        <div className="space-y-3">
-          {rescheduledAppointments.map(appt => (
-            <div key={appt.id} className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top duration-500">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shadow-inner">
-                  <Bell className="animate-bounce" size={24} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-amber-900 text-sm">Action Required: Rescheduled</h4>
-                  <p className="text-amber-700 text-xs mt-1">
-                    Dr. {appt.doctor_name} moved your appointment to <span className="font-bold">{appt.date}</span> at <span className="font-bold">{appt.time?.substring(0, 5) || 'N/A'}</span>.
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2 w-full md:w-auto">
-                <button 
-                  onClick={() => handleAction(appt.id, 'confirmed')}
-                  className="flex-1 md:flex-none px-6 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold hover:bg-amber-700 shadow-sm transition-all"
-                >
-                  Accept New Time
-                </button>
-              </div>
-            </div>
-          ))}
-
-          {newlyConfirmed.map(appt => (
-            <div key={appt.id} className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top duration-500 relative">
-              <button 
-                onClick={() => handleDismissConfirmation(appt.id)}
-                className="absolute top-2 right-3 text-emerald-400 hover:text-emerald-700 transition-colors"
-                title="Dismiss"
-              >
-                <X size={16} />
-              </button>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 shadow-inner">
-                  <CheckCircle className="text-emerald-500" size={24} />
-                </div>
-                <div>
-                  <h4 className="font-bold text-emerald-900 text-sm">Appointment Confirmed!</h4>
-                  <p className="text-emerald-700 text-xs mt-1">
-                    Your visit with Dr. {appt.doctor_name} on {appt.date} is now officially confirmed.
-                  </p>
-                </div>
-              </div>
-              <button 
-                onClick={() => navigate('/my-appointments')}
-                className="w-full md:w-auto px-6 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 shadow-sm transition-all"
-              >
-                View Details
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
@@ -198,7 +142,12 @@ const PatientDashboard = () => {
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Action buttons could go here */}
+          <button
+            onClick={() => navigate('/appointments')}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-md shadow-blue-100 transition-all text-sm"
+          >
+            <Plus size={16} /> Book Appointment
+          </button>
         </div>
       </div>
 
@@ -251,7 +200,10 @@ const PatientDashboard = () => {
             <div className="relative z-10">
               <h3 className="font-bold text-2xl mb-4 leading-tight">Health Support 24/7</h3>
               <p className="text-indigo-100 text-sm mb-6 opacity-80">Need assistance? Our team is here to help you with your appointments and health records.</p>
-              <button className="w-full bg-white text-indigo-900 hover:bg-indigo-50 py-3 rounded-xl font-bold text-sm transition-all shadow-lg">
+              <button 
+                onClick={() => navigate('/chat')}
+                className="w-full bg-white text-indigo-900 hover:bg-indigo-50 py-3 rounded-xl font-bold text-sm transition-all shadow-lg"
+              >
                 Chat with Assistant
               </button>
             </div>
@@ -261,16 +213,25 @@ const PatientDashboard = () => {
           <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Account Settings</h4>
             <ul className="space-y-4">
-              <li className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors">
-                <span className="flex items-center gap-3"><User size={16} /> Profile Information</span>
+              <li 
+                onClick={() => navigate('/appointments')}
+                className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors"
+              >
+                <span className="flex items-center gap-3"><User size={16} /> Book Appointment</span>
                 <ChevronRight size={14} />
               </li>
-              <li className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors">
-                <span className="flex items-center gap-3"><Bell size={16} /> Notification Settings</span>
+              <li 
+                onClick={() => navigate('/queue')}
+                className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors"
+              >
+                <span className="flex items-center gap-3"><Bell size={16} /> My Queue Status</span>
                 <ChevronRight size={14} />
               </li>
-              <li className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors">
-                <span className="flex items-center gap-3"><Settings size={16} /> Privacy & Security</span>
+              <li 
+                onClick={() => navigate('/change-password')}
+                className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors"
+              >
+                <span className="flex items-center gap-3"><Settings size={16} /> Change Password</span>
                 <ChevronRight size={14} />
               </li>
             </ul>
