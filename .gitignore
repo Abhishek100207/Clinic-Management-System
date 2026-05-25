@@ -7,3 +7,6 @@ credentials.json
 ga_cms/token.json
 ga_cms/credentials.json
 ga-cms-frontend/node_modules/
+.env
+ga_cms/.env
+ga-cms-frontend/.env
