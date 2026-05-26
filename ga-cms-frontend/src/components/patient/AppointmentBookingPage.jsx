@@ -79,9 +79,11 @@ const AppointmentBookingPage = () => {
       const patientList = res.data || [];
       setPatients(patientList);
       
-      if (user && user.role === 'patient' && patientList.length > 0) {
-        setPatientId(patientList[0].id);
-        setStep(2);
+      if (patientList.length > 0) {
+        setPatientId(patientList[0].id.toString());
+        if (user && user.role === 'patient') {
+          setStep(2);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch patients", err);
@@ -236,7 +238,6 @@ const AppointmentBookingPage = () => {
                 value={patientId}
                 onChange={(e) => setPatientId(e.target.value)}
               >
-                <option value="" disabled>-- Select a Patient --</option>
                 {patients.map(p => <option key={p.id} value={p.id}>{p.full_name} ({p.patient_id})</option>)}
               </select>
             </div>

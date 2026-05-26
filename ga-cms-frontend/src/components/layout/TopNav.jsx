@@ -7,12 +7,11 @@ import { Badge } from '../shared/Badge';
 import { ROLE_CONFIG } from '../../utils/roleConfig';
 import api from '../../api/axios';
 import { NotificationDrawer } from './NotificationDrawer';
-
-
 const TopNav = () => {
   const { user, logout } = useAuthStore();
   const roleConfig = user?.role ? ROLE_CONFIG[user.role] : null;
   const navigate = useNavigate();
+
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [patientProfile, setPatientProfile] = useState(null);

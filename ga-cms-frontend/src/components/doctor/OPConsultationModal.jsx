@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { X, Save, Clipboard, TestTube, ChevronRight, ChevronLeft, Scale, User, Calendar, Droplets, Pill, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Save, Clipboard, TestTube, ChevronRight, ChevronLeft, Scale, User, Calendar, Droplets, Pill, Plus, Trash2, Users } from 'lucide-react';
+import api from '../../api/axios';
 
 const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
   const [step, setStep] = useState(1);
+  const [doctors, setDoctors] = useState([]);
   const [formData, setFormData] = useState({
     weight: '',
     soap: {
@@ -12,8 +14,26 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
       plan: ''
     },
     recommendedTests: '',
-    prescriptions: [{ medicine: '', dosage: '' }]
+    prescriptions: [{ medicine: '', dosage: '' }],
+    prescriptionNotes: '',
+    followUpDate: '',
+    referredDoctorId: '',
+    referralNote: ''
   });
+
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        const res = await api.get('/api/users/doctors/');
+        setDoctors(res.data || []);
+      } catch (err) {
+        console.error("Failed to fetch doctors", err);
+      }
+    };
+    if (isOpen) {
+      fetchDoctors();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -124,6 +144,47 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                   </div>
                 ))}
               </div>
+
+              {/* Specialist Consult & Referral Card */}
+              <div className="bg-slate-50 hover:bg-slate-50/80 border border-slate-100 rounded-3xl p-6 transition-all duration-300 mt-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold">
+                    <Users size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-slate-800 text-sm">Specialist Consult & Referral</h4>
+                    <p className="text-[11px] text-slate-400">Request second opinion or refer the patient to another specialist</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Doctor / Specialist</label>
+                    <select
+                      value={formData.referredDoctorId || ''}
+                      onChange={(e) => setFormData({ ...formData, referredDoctorId: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-colors"
+                    >
+                      <option value="">No referral (None)</option>
+                      {doctors.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          Dr. {d.user?.full_name || d.user?.first_name || 'Unknown'} ({d.specialty || 'General'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clinical Request / Notes</label>
+                    <input
+                      type="text"
+                      value={formData.referralNote || ''}
+                      onChange={(e) => setFormData({ ...formData, referralNote: e.target.value })}
+                      placeholder="E.g. Please evaluate for chronic chest pain..."
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -164,7 +225,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                     onClick={handleAddMedicine}
                     className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
                   >
-                    <Plus size={14} /> Add More
+                    <Plus size={14} /> Add Prescription
                   </button>
                 </div>
                 
@@ -200,6 +261,33 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                     </div>
                   </div>
                 ))}
+
+                {/* Prescription Notes / Advice & Follow-up Date */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-100 mt-6">
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                      Prescription Notes / Advice
+                    </label>
+                    <textarea
+                      value={formData.prescriptionNotes || ''}
+                      onChange={(e) => setFormData({ ...formData, prescriptionNotes: e.target.value })}
+                      placeholder="E.g. Take medications after food. Avoid cold beverages and rest well."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm h-28 focus:border-blue-500 outline-none transition-all resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                      <Calendar size={14} className="text-slate-400 inline" /> Follow-up Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.followUpDate || ''}
+                      onChange={(e) => setFormData({ ...formData, followUpDate: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
               </div>
             </div>
           )}

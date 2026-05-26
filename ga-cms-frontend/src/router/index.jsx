@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import AuthGuard from '../components/auth/AuthGuard';
 import LoginPage from '../components/auth/LoginPage';
 import SignInPage from '../components/auth/SignInPage';
@@ -42,6 +42,7 @@ import MedicalRecordsPage from '../components/patient/MedicalRecordsPage';
 import ScanReportPage from '../components/shared/ScanReportPage';
 import PatientChatPage from '../components/patient/PatientChatPage';
 import StaffChatPage from '../components/shared/chat/StaffChatPage';
+import ConsultationReviewForm from '../components/shared/ConsultationReviewForm';
 
 const ChatRouteWrapper = () => {
   return (
@@ -76,6 +77,15 @@ const GlobalAppointmentRouteWrapper = () => {
   return <BookAppointment />;
 };
 
+const ReviewRouteWrapper = () => {
+  const { appointmentId } = useParams();
+  return (
+    <div className="min-h-screen bg-[#020b18] py-12 px-4">
+      <ConsultationReviewForm appointmentId={appointmentId} />
+    </div>
+  );
+};
+
 const AppRouter = () => {
   return (
     <Routes>
@@ -83,6 +93,8 @@ const AppRouter = () => {
       <Route path="/login" element={<SignInPage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
+      <Route path="/review" element={<ReviewRouteWrapper />} />
+      <Route path="/review/:appointmentId" element={<ReviewRouteWrapper />} />
 
       <Route element={<AppShell />}>
         <Route path="/dashboard/admin"

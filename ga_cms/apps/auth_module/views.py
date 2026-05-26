@@ -17,7 +17,7 @@ from .serializers import UserSerializer
 from apps.users.services import log_security_event
 
 User = get_user_model()
-GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_ID = settings.GOOGLE_CLIENT_ID
 OTP_EXPIRY = 300  # 5 minutes
 
 

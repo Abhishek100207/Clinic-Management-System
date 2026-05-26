@@ -1,10 +1,11 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { ROLE_CONFIG } from '../../utils/roleConfig';
 import * as Icons from 'lucide-react';
 
 const Sidebar = () => {
+  const location = useLocation();
   const user = useAuthStore(state => state.user);
   const roleConfig = user?.role ? ROLE_CONFIG[user.role] : null;
 

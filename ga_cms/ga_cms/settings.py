@@ -124,6 +124,16 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL  = config('DEFAULT_FROM_EMAIL', default='GA Clinic <noreply@gaclinic.com>')
 
+# Google OAuth
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
+GOOGLE_CREDENTIALS_FILE = config('GOOGLE_CREDENTIALS_FILE', default='')
+GOOGLE_TOKEN_FILE = config('GOOGLE_TOKEN_FILE', default='')
+
+# Razorpay
+RAZORPAY_KEY_ID = config('RAZORPAY_KEY_ID', default='')
+RAZORPAY_KEY_SECRET = config('RAZORPAY_KEY_SECRET', default='')
+
 # Cache (OTP storage) — uses local memory in dev, swap to Redis in prod
 CACHES = {
     'default': {

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { X, Save, Plus, Trash2, Pill, Clipboard, Stethoscope, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Save, Plus, Trash2, Pill, Clipboard, Stethoscope, AlertCircle, Users, Calendar } from 'lucide-react';
+import api from '../../api/axios';
 
 const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
   const [activeTab, setActiveTab] = useState('soap');
@@ -12,6 +13,25 @@ const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
   const [prescriptions, setPrescriptions] = useState([
     { medication: '', dosage: '', frequency: '', duration: '' }
   ]);
+  const [prescriptionNotes, setPrescriptionNotes] = useState('');
+  const [followUpDate, setFollowUpDate] = useState('');
+  const [referredDoctorId, setReferredDoctorId] = useState('');
+  const [referralNote, setReferralNote] = useState('');
+  const [doctors, setDoctors] = useState([]);
+
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        const res = await api.get('/api/users/doctors/');
+        setDoctors(res.data || []);
+      } catch (err) {
+        console.error("Failed to fetch doctors", err);
+      }
+    };
+    if (isOpen) {
+      fetchDoctors();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -31,7 +51,16 @@ const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
   };
 
   const handleSave = () => {
-    onSave({ soap, prescriptions });
+    onSave({ 
+      soap, 
+      prescriptions, 
+      prescriptionNotes, 
+      followUpDate, 
+      referral: { 
+        referredDoctorId, 
+        referralNote 
+      } 
+    });
     onClose();
   };
 
@@ -74,42 +103,85 @@ const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
 
         <div className="p-8 max-h-[60vh] overflow-y-auto custom-scrollbar">
           {activeTab === 'soap' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subjective (S)</label>
-                <textarea 
-                  value={soap.subjective}
-                  onChange={(e) => setSoap({...soap, subjective: e.target.value})}
-                  placeholder="Patient's symptoms and history..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm h-32 focus:border-indigo-500 outline-none transition-colors resize-none"
-                />
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subjective (S)</label>
+                  <textarea 
+                    value={soap.subjective}
+                    onChange={(e) => setSoap({...soap, subjective: e.target.value})}
+                    placeholder="Patient's symptoms and history..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm h-32 focus:border-indigo-500 outline-none transition-colors resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Objective (O)</label>
+                  <textarea 
+                    value={soap.objective}
+                    onChange={(e) => setSoap({...soap, objective: e.target.value})}
+                    placeholder="Physical exam results, vitals..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm h-32 focus:border-indigo-500 outline-none transition-colors resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Assessment (A)</label>
+                  <textarea 
+                    value={soap.assessment}
+                    onChange={(e) => setSoap({...soap, assessment: e.target.value})}
+                    placeholder="Diagnosis or differential diagnosis..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm h-32 focus:border-indigo-500 outline-none transition-colors resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Plan (P)</label>
+                  <textarea 
+                    value={soap.plan}
+                    onChange={(e) => setSoap({...soap, plan: e.target.value})}
+                    placeholder="Next steps, follow-up, tests..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm h-32 focus:border-indigo-500 outline-none transition-colors resize-none"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Objective (O)</label>
-                <textarea 
-                  value={soap.objective}
-                  onChange={(e) => setSoap({...soap, objective: e.target.value})}
-                  placeholder="Physical exam results, vitals..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm h-32 focus:border-indigo-500 outline-none transition-colors resize-none"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Assessment (A)</label>
-                <textarea 
-                  value={soap.assessment}
-                  onChange={(e) => setSoap({...soap, assessment: e.target.value})}
-                  placeholder="Diagnosis or differential diagnosis..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm h-32 focus:border-indigo-500 outline-none transition-colors resize-none"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Plan (P)</label>
-                <textarea 
-                  value={soap.plan}
-                  onChange={(e) => setSoap({...soap, plan: e.target.value})}
-                  placeholder="Next steps, follow-up, tests..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm h-32 focus:border-indigo-500 outline-none transition-colors resize-none"
-                />
+
+              {/* Specialist Consult & Referral Card */}
+              <div className="bg-slate-50 hover:bg-slate-50/80 border border-slate-100 rounded-3xl p-6 transition-all duration-300">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-bold">
+                    <Users size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-slate-800 text-sm">Specialist Consult & Referral</h4>
+                    <p className="text-[11px] text-slate-400">Request second opinion or refer the patient to another specialist</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Doctor / Specialist</label>
+                    <select
+                      value={referredDoctorId}
+                      onChange={(e) => setReferredDoctorId(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-500 outline-none transition-colors"
+                    >
+                      <option value="">No referral (None)</option>
+                      {doctors.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          Dr. {d.user?.full_name || d.user?.first_name || 'Unknown'} ({d.specialty || 'General'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clinical Request / Notes</label>
+                    <input
+                      type="text"
+                      value={referralNote}
+                      onChange={(e) => setReferralNote(e.target.value)}
+                      placeholder="E.g. Please evaluate for chronic chest pain..."
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-500 outline-none transition-colors"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
@@ -122,7 +194,7 @@ const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                   onClick={handleAddMedication}
                   className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
                 >
-                  <Plus size={14} /> Add Medicine
+                  <Plus size={14} /> Add Prescription
                 </button>
               </div>
               
@@ -182,6 +254,32 @@ const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                   </div>
                 </div>
               ))}
+
+              {/* Prescription Notes / Advice & Follow-up Date */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-100 mt-6">
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                    Prescription Notes / Advice
+                  </label>
+                  <textarea
+                    value={prescriptionNotes}
+                    onChange={(e) => setPrescriptionNotes(e.target.value)}
+                    placeholder="E.g. Take medications after food. Avoid cold beverages and rest well."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm h-28 focus:border-indigo-500 outline-none transition-colors resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                    <Calendar size={14} className="text-slate-400 inline" /> Follow-up Date
+                  </label>
+                  <input
+                    type="date"
+                    value={followUpDate}
+                    onChange={(e) => setFollowUpDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-500 outline-none transition-colors"
+                  />
+                </div>
+              </div>
               
               <div className="mt-6 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex gap-3 items-start">
                 <AlertCircle className="text-amber-500 shrink-0" size={18} />

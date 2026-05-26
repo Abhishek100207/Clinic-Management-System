@@ -2,3 +2,9 @@
 __pycache__/
 db.sqlite3
 *.sqlite3
+
+# Credentials and local env
+ga_cms/.env
+ga_cms/client_secrets.json
+ga_cms/credentials.json
+ga_cms/token.json
