@@ -12,8 +12,8 @@ const Sidebar = () => {
   if (!roleConfig) return null;
 
   return (
-    <div className="w-[240px] bg-navy text-white flex flex-col h-full shrink-0 shadow-lg z-20">
-      <div className="h-[60px] flex items-center justify-center border-b border-white/10 shrink-0">
+    <div className="hidden md:flex w-[240px] bg-navy text-white flex-col h-screen sticky top-0 shrink-0 shadow-lg z-20">
+      <div className="h-[70px] flex items-center justify-center border-b border-white/10 shrink-0">
         <span className="text-xl font-bold tracking-tight">GA CMS</span>
       </div>
       <nav className="flex-1 py-4 overflow-y-auto custom-scrollbar">

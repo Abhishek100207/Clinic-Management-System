@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Plus, Trash2, Pill, Clipboard, Stethoscope, AlertCircle, Users, Calendar } from 'lucide-react';
 import api from '../../api/axios';
+import { useAuthStore } from '../../store/authStore';
+import { toast } from 'react-toastify';
 
 const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('soap');
   const [soap, setSoap] = useState({
     subjective: '',
@@ -62,6 +65,48 @@ const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
       } 
     });
     onClose();
+  };
+
+  const handleSendReferral = () => {
+    if (!referredDoctorId) {
+      toast.error("Please select a doctor/specialist first.");
+      return;
+    }
+    const referredDoc = doctors.find(d => d.id.toString() === referredDoctorId.toString());
+    if (!referredDoc || !referredDoc.user) {
+      toast.error("Selected doctor profile could not be found.");
+      return;
+    }
+
+    // Generate notification for targeted doctor
+    const newNotification = {
+      id: `consult-req-${Date.now()}`,
+      title: 'New Specialist Consult Request',
+      preview: `Consultation request from Dr. ${user?.full_name || 'Sarah Johnson'}`,
+      body: `Dear Dr. ${referredDoc.user.full_name},\n\nDr. ${user?.full_name || 'Sarah Johnson'} has requested a specialist consult / second opinion for patient ${patient?.patient_name || patient?.full_name || 'Anonymous Patient'}.\n\nClinical notes: ${referralNote || 'No notes provided.'}\n\nBest regards,\nClinic System`,
+      sender: 'consultations@gaclinic.com',
+      timestamp: new Date().toISOString(),
+      isRead: false,
+    };
+
+    // Save to target doctor's notifications in localStorage
+    const targetStorageKey = `notifications_user_${referredDoc.user.id}`;
+    let targetNotifications = [];
+    try {
+      const saved = localStorage.getItem(targetStorageKey);
+      if (saved) {
+        targetNotifications = JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("Failed to parse target doctor notifications", e);
+    }
+    targetNotifications = [newNotification, ...targetNotifications];
+    localStorage.setItem(targetStorageKey, JSON.stringify(targetNotifications));
+
+    // Also trigger storage event to update other tabs immediately
+    window.dispatchEvent(new Event('storage'));
+
+    toast.success(`Consult request sent to Dr. ${referredDoc.user.full_name} successfully!`);
   };
 
   return (
@@ -155,7 +200,7 @@ const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Doctor / Specialist</label>
                     <select
@@ -180,6 +225,15 @@ const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                       placeholder="E.g. Please evaluate for chronic chest pain..."
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-indigo-500 outline-none transition-colors"
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={handleSendReferral}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-indigo-100 transition-all text-xs active:scale-95 whitespace-nowrap"
+                    >
+                      Send Consult Request
+                    </button>
                   </div>
                 </div>
               </div>

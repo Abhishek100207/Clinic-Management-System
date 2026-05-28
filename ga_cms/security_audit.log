@@ -189,3 +189,11 @@
 2026-05-26 20:01:15,609 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-26 20:38:36,764 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-27 00:17:52,946 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-27 16:58:57,981 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-27 17:01:47,626 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-27 17:02:40,783 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-27 17:10:22,429 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-27 17:11:50,130 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-28 13:47:33,110 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-28 13:51:40,167 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-05-28 13:57:52,810 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
