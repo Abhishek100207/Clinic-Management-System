@@ -38,7 +38,7 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const { messages: wsMessages, sendMessage, connectionStatus } = useWebSocket(selectedChat?.id);
+  const { messages: wsMessages, sendMessage } = useWebSocket(selectedChat?.id);
 
   // Format websocket messages to match our UI needs
   const chatMessages = wsMessages.map(m => ({

@@ -1,21 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { useAppointmentStore } from '../../store/appointmentStore';
-import { useAuthStore } from '../../store/authStore';
+
 import AppointmentTable from './AppointmentTable';
 import { Calendar, Filter, RefreshCw, Plus } from 'lucide-react';
 import RescheduleModal from '../shared/appointments/RescheduleModal';
 import api from '../../api/axios';
 
 const DoctorAppointmentsPage = () => {
-  const navigate = useNavigate();
-  const { user } = useAuthStore();
+
   const { appointments, loading, fetchDoctorDashboardData, updateAppointmentStatus } = useAppointmentStore();
   const [rescheduleData, setRescheduleData] = useState({ isOpen: false, appointment: null });
   const [activeFilter, setActiveFilter] = useState('All Appointments');
 
   useEffect(() => {
     fetchDoctorDashboardData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAction = (id, action) => {

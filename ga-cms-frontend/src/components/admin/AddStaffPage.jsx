@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../api/auth';
-import { useAuthStore } from '../../store/authStore';
+
 
 const ROLES = [
   { value: 'receptionist', label: 'Receptionist',       icon: '🗂️', desc: 'Manages appointments & billing' },
@@ -16,7 +16,7 @@ const AddStaffPage = () => {
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
   const [staffList, setStaffList] = useState([]);
-  const { user }              = useAuthStore();
+
   const navigate              = useNavigate();
 
   useEffect(() => {

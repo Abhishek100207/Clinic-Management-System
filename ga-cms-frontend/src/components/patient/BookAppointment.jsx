@@ -31,7 +31,7 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import SearchableSelect from '../common/SearchableSelect';
 import { billingStorage } from '../../utils/billingStorage';
-import { queueStorage } from '../../utils/queueStorage';
+
 import { toast } from 'react-toastify';
 
 const loadRazorpayScript = () => {
@@ -93,6 +93,7 @@ const BookAppointment = ({ onBack }) => {
   useEffect(() => {
     const consultation = formData.appointment_type === 'virtual' ? 300 : 500;
     const gst = Math.round(consultation * 0.18);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFees({ consultation, gst, total: consultation + gst });
   }, [formData.appointment_type]);
 

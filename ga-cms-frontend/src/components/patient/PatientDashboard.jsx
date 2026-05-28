@@ -29,15 +29,7 @@ const PatientDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [rescheduleData, setRescheduleData] = useState({ isOpen: false, appointment: null });
   const [toast, setToast] = useState(null);
-  const [dismissedConfirmations, setDismissedConfirmations] = useState(() => {
-    return JSON.parse(localStorage.getItem('dismissedConfirmations') || '[]');
-  });
 
-  const handleDismissConfirmation = (id) => {
-    const newDismissed = [...dismissedConfirmations, id];
-    setDismissedConfirmations(newDismissed);
-    localStorage.setItem('dismissedConfirmations', JSON.stringify(newDismissed));
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -114,8 +106,6 @@ const PatientDashboard = () => {
     history: previousVisits.length
   };
 
-  const rescheduledAppointments = appointments.filter(a => a.status === 'rescheduled');
-  const newlyConfirmed = appointments.filter(a => a.status === 'confirmed' && !dismissedConfirmations.includes(a.id));
 
   if (loading) {
     return (

@@ -279,7 +279,9 @@ export const useNotificationStore = create((set, get) => ({
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) savedState = JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to parse notifications interaction state', e);
+    }
     
     savedState.readIds = savedState.readIds || {};
     savedState.readIds[id] = true;
@@ -301,7 +303,9 @@ export const useNotificationStore = create((set, get) => ({
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) savedState = JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to parse notifications interaction state', e);
+    }
     
     savedState.readIds = savedState.readIds || {};
     savedState.readIds[id] = !savedState.readIds[id];
@@ -321,7 +325,9 @@ export const useNotificationStore = create((set, get) => ({
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) savedState = JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to parse notifications interaction state', e);
+    }
     
     savedState.readIds = savedState.readIds || {};
     notifications.forEach(n => {
@@ -343,7 +349,9 @@ export const useNotificationStore = create((set, get) => ({
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) savedState = JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to parse notifications interaction state', e);
+    }
     
     savedState.deletedIds = savedState.deletedIds || {};
     savedState.deletedIds[id] = true;

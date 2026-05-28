@@ -8,7 +8,7 @@ export default function useWebSocket(otherUserId) {
   const reconnectAttempts = useRef(0);
   const maxRetries = 5;
 
-  const connect = useCallback(() => {
+  const connect = useCallback(function doConnect() {
     if (!otherUserId) return;
     
     const token = useAuthStore.getState().accessToken;
@@ -64,7 +64,7 @@ export default function useWebSocket(otherUserId) {
         const timeout = Math.pow(2, reconnectAttempts.current) * 1000;
         setTimeout(() => {
           reconnectAttempts.current += 1;
-          connect();
+          doConnect();
         }, timeout);
       } else {
         setConnectionStatus('closed');

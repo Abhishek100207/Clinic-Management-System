@@ -23,13 +23,7 @@ const DoctorConsultationsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
 
-  // Mock data for OP appointments
-  const mockAppointments = [
-    { id: '26', patient_name: 'Rahul Verma', age: 28, gender: 'Male', blood_group: 'O+', consultation_time: '10:30 AM', date: '2026-05-09', type: 'OP' },
-    { id: '2', patient_name: 'Anjali Sharma', age: 24, gender: 'Female', blood_group: 'A-', consultation_time: '11:15 AM', date: '2026-05-09', type: 'OP' },
-    { id: '3', patient_name: 'Vikram Singh', age: 35, gender: 'Male', blood_group: 'B+', consultation_time: '12:00 PM', date: '2026-05-09', type: 'OP' },
-    { id: '4', patient_name: 'Priya Das', age: 31, gender: 'Female', blood_group: 'AB+', consultation_time: '01:45 PM', date: '2026-05-09', type: 'OP' },
-  ];
+
 
   useEffect(() => {
     const fetchOPAppointments = async () => {
@@ -91,7 +85,7 @@ const DoctorConsultationsPage = () => {
       let availableDrugs = [];
       try {
         availableDrugs = await fetchDrugs();
-      } catch(e) {}
+      } catch(e) { /* eslint-disable-line no-unused-vars */ }
 
       if (data.prescriptions && data.prescriptions.length > 0 && data.prescriptions[0].medicine) {
         const meds = data.prescriptions.filter(p => p.medicine).map(p => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ListOrdered, Search, Filter, Clock, User, AlertTriangle, 
   Play, CheckCircle, Volume2, Maximize2, Minimize2, Plus, 
@@ -21,7 +21,7 @@ const QueuePage = () => {
   const [isTvMode, setIsTvMode] = useState(false);
   const [showAttachedTv, setShowAttachedTv] = useState(false);
   const [selectedDoctorFilter, setSelectedDoctorFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery] = useState('');
   
   // Receptionist check-in form state
   const [checkInForm, setCheckInForm] = useState({
@@ -78,6 +78,7 @@ const QueuePage = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshQueue();
     fetchConfirmedToday();
     
@@ -97,6 +98,7 @@ const QueuePage = () => {
       clearInterval(interval);
       window.removeEventListener('storage', refreshQueue);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastActiveToken]);
 
   // Load patients and doctors for Receptionist check-in dropdowns
@@ -156,7 +158,7 @@ const QueuePage = () => {
   };
 
   // Check-in a confirmed (pre-booked) appointment directly into the queue
-  const handleCheckInConfirmed = async (appointmentId, patientName) => {
+  const handleCheckInConfirmed = async (appointmentId) => {
     try {
       await api.patch(`/api/appointments/appointments/${appointmentId}/`, {
         status: 'checked_in',
@@ -732,7 +734,7 @@ const QueuePage = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {waitingList.length > 0 ? (
-                      waitingList.map((item, idx) => (
+                      waitingList.map((item) => (
                         <tr key={item.token} className="hover:bg-slate-50/30 transition-colors">
                           <td className="px-6 py-4">
                             <span className="font-mono font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded">

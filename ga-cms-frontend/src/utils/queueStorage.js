@@ -155,7 +155,7 @@ export const queueStorage = {
     }
   },
 
-  rescheduleMissed: async (token, doctorId = null, doctorName = null) => {
+  rescheduleMissed: async (token, doctorId = null) => {
     try {
       const queue = await queueStorage.getQueue();
       const item = queue.find(x => x.token === token);

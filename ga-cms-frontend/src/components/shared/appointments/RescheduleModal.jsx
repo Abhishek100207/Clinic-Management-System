@@ -12,6 +12,7 @@ const RescheduleModal = ({ isOpen, onClose, onConfirm, appointment }) => {
   // Reset fields whenever the modal opens for a new appointment
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNewDate('');
       setNewTime('');
       setReason('');

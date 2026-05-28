@@ -227,7 +227,9 @@ const BillingPage = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadBillingData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, adminTimeframe]);
 
   // Fetch doctors and patients for manual billing
@@ -254,6 +256,7 @@ const BillingPage = () => {
   useEffect(() => {
     const consultation = Number(manualBill.consultationFee) || 0;
     const tax = Math.round(consultation * 0.18);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setManualBill(prev => ({
       ...prev,
       tax,

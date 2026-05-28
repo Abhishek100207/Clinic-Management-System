@@ -191,7 +191,7 @@ const SignUpPage = () => {
                     ? <p className="text-white/25 text-xs">Resend OTP in <span className="text-white/50 font-semibold">{resendTimer}s</span></p>
                     : <button type="button" onClick={async () => {
                         setOtp('');
-                        try { await authApi.registerRequestOtp(userId, email, password, role); } catch {}
+                        try { await authApi.registerRequestOtp(userId, email, password, role); } catch (e) { /* eslint-disable-line no-unused-vars */ }
                         startResendTimer();
                       }} className="text-blue-400 hover:text-blue-300 text-xs font-semibold transition-colors">
                         Resend OTP

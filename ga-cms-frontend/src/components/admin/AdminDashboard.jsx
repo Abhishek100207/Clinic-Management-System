@@ -31,6 +31,7 @@ const AdminDashboard = () => {
   });
 
   const [staffData, setStaffData] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

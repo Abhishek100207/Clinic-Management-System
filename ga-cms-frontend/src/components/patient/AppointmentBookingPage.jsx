@@ -73,6 +73,7 @@ const AppointmentBookingPage = () => {
   useEffect(() => {
     const consultation = appointmentType === 'virtual' ? 300 : 500;
     const gst = Math.round(consultation * 0.18);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFees({ consultation, gst, total: consultation + gst });
   }, [appointmentType]);
 

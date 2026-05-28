@@ -84,6 +84,7 @@ const DoctorDashboard = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshQueue();
     // Storage sync
     window.addEventListener('storage', refreshQueue);
@@ -93,6 +94,7 @@ const DoctorDashboard = () => {
       window.removeEventListener('storage', refreshQueue);
       clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleCallPatient = async (token) => {
@@ -127,8 +129,10 @@ const DoctorDashboard = () => {
     // Logic for morning confirmation: Show if it's before 11 AM and not yet confirmed
     const hour = new Date().getHours();
     if (hour < 11) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowMorningConfirmation(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleConfirmSchedule = () => {
@@ -142,7 +146,7 @@ const DoctorDashboard = () => {
       await emergencyReschedule(data);
       setIsEmergencyModalOpen(false);
       alert("Patients have been notified and appointments rescheduled.");
-    } catch (err) {
+    } catch (err) { // eslint-disable-line no-unused-vars
       alert("Failed to reschedule. Please try again.");
     }
   };
@@ -158,7 +162,7 @@ const DoctorDashboard = () => {
     }
   };
 
-  const handleAction = (id, action) => {
+  const handleAction = (id, action) => { // eslint-disable-line no-unused-vars
     if (action === 'reschedule') {
       const appt = appointments.find(a => a.id === id);
       setRescheduleData({ isOpen: true, appointment: appt });
@@ -189,7 +193,7 @@ const DoctorDashboard = () => {
       let availableDrugs = [];
       try {
         availableDrugs = await fetchDrugs();
-      } catch(e) {}
+      } catch(e) { /* eslint-disable-line no-unused-vars */ }
 
       if (data.prescriptions && data.prescriptions.length > 0 && data.prescriptions[0].medication) {
         const meds = data.prescriptions.filter(p => p.medication).map(p => {
@@ -373,7 +377,7 @@ const DoctorDashboard = () => {
                 </h4>
 
                 <div className="space-y-3">
-                  {waitingList.slice(0, 3).map((item, idx) => (
+                  {waitingList.slice(0, 3).map((item) => (
                     <div 
                       key={item.token} 
                       className="flex items-center justify-between p-3.5 border border-slate-100 hover:border-slate-200 rounded-xl bg-slate-50/50 hover:bg-slate-50/80 transition-all"

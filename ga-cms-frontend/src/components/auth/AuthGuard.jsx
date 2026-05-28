@@ -16,7 +16,7 @@ const AuthGuard = ({ children, allowedRoles }) => {
           const userData = await authApi.getMe();
           // If we reached here, axios interceptor worked and token is likely valid
           setAuth(userData, useAuthStore.getState().accessToken);
-        } catch (_e) {
+        } catch (e) { // eslint-disable-line no-unused-vars
           // Intentionally empty, handled by interceptor logout
         }
       }

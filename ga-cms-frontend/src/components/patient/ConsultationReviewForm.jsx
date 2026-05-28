@@ -22,8 +22,6 @@ const ConsultationReviewForm = () => {
   const { appointmentId } = useParams();
   const navigate = useNavigate();
 
-  const [appointmentData, setAppointmentData] = useState(null);
-  const [loadingAppt, setLoadingAppt] = useState(true);
 
   // Form states for each of the required feedback areas
   const [ratings, setRatings] = useState({
@@ -68,7 +66,6 @@ const ConsultationReviewForm = () => {
     // We assume the backend might not have a public appointment detail route by default
     // We can just proceed without names if not available or decode it if we had a public endpoint
     // For now, we'll just use the ID.
-    setLoadingAppt(false);
   }, [appointmentId]);
 
   const getRatingLabel = (rating) => {

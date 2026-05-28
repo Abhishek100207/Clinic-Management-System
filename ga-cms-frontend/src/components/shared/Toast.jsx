@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability */
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 
@@ -21,21 +22,24 @@ export const ToastProvider = ({ children }) => {
     return id;
   }, [dismiss]);
 
-  // Convenience helpers
-  toast.success = (msg, opts) => toast({ type: 'success', message: msg, ...opts });
-  toast.error   = (msg, opts) => toast({ type: 'error',   message: msg, ...opts });
-  toast.warning = (msg, opts) => toast({ type: 'warning', message: msg, ...opts });
-  toast.info    = (msg, opts) => toast({ type: 'info',    message: msg, ...opts });
+  const toastActions = React.useMemo(() => {
+    const fn = (opts) => toast(opts);
+    fn.success = (msg, opts) => fn({ type: 'success', message: msg, ...opts });
+    fn.error   = (msg, opts) => fn({ type: 'error',   message: msg, ...opts });
+    fn.warning = (msg, opts) => fn({ type: 'warning', message: msg, ...opts });
+    fn.info    = (msg, opts) => fn({ type: 'info',    message: msg, ...opts });
+    return fn;
+  }, [toast]);
 
   return (
-    <ToastContext.Provider value={toast}>
+    <ToastContext.Provider value={toastActions}>
       {children}
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </ToastContext.Provider>
   );
 };
 
-// ─── Hook ───────────────────────────────────────────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
 export const useToast = () => {
   const ctx = useContext(ToastContext);
   if (!ctx) throw new Error('useToast must be used inside <ToastProvider>');

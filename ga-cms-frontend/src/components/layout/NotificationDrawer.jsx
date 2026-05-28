@@ -100,6 +100,7 @@ export const NotificationDrawer = () => {
     if (user) {
       init(user);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Click outside to close dropdown

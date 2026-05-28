@@ -21,14 +21,7 @@ const AdminStaffDirectoryPage = () => {
   const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Mock data fallback
-  const mockStaff = [
-    { id: 1, full_name: 'Dr. Sarah Johnson', role: 'doctor', email: 'sarah@clinic.com', spec: 'Cardiology' },
-    { id: 2, full_name: 'John Technician', role: 'technician', email: 'john.t@clinic.com', spec: 'Radiology' },
-    { id: 3, full_name: 'Anjali Sharma', role: 'receptionist', email: 'anjali@clinic.com', spec: 'Front Desk' },
-    { id: 4, full_name: 'Dr. Robert Chen', role: 'doctor', email: 'robert@clinic.com', spec: 'Orthopedics' },
-    { id: 5, full_name: 'Mike Scan', role: 'technician', email: 'mike@clinic.com', spec: 'Lab Tech' },
-  ];
+
 
   useEffect(() => {
     const fetchStaff = async () => {

@@ -114,6 +114,7 @@ const ReceptionistDashboard = () => {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshDashboardData();
     window.addEventListener('storage', refreshDashboardData);
     

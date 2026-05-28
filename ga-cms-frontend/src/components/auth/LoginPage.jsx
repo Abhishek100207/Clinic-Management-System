@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
-import { authApi } from '../../api/auth';
+
 import { ROLE_CONFIG } from '../../utils/roleConfig';
 
 /* ── Main Landing Page ── */
 const LoginPage = () => {
+  // eslint-disable-next-line no-unused-vars
   const [modal, setModal]   = useState(null);
-  const { isAuthenticated, user, setAuth } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const navigate            = useNavigate();
   const location            = useLocation();
 
@@ -19,16 +20,7 @@ const LoginPage = () => {
     }
   }, [isAuthenticated, user, navigate, location.state]);
 
-  const handleGoogleSuccess = async (cred) => {
-    try {
-      const res  = await authApi.googleLogin(cred.credential);
-      setAuth(res.user, res.access);
-      const cfg  = ROLE_CONFIG[res.user.role];
-      const from = location.state?.from?.pathname || (cfg ? cfg.dashboardRoute : '/');
-      navigate(from, { replace: true });
-    } catch { /* error shown inside modal */ }
-    finally { setModal(null); }
-  };
+
 
   const services = [
     {

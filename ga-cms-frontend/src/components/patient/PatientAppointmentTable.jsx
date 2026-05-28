@@ -3,7 +3,7 @@ import { Calendar, MapPin, Stethoscope, Clock } from 'lucide-react';
 import { Badge } from '../shared/Badge';
 
 const PatientAppointmentTable = ({ appointments, onAction }) => {
-  const [currentTime, setCurrentTime] = useState(Date.now());
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
 
   useEffect(() => {
     // Re-evaluate statuses every 60 seconds
