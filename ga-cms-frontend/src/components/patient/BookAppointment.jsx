@@ -28,11 +28,14 @@ import {
   Eye,
   X
 } from 'lucide-react';
+
 import { useAuthStore } from '../../store/authStore';
 import SearchableSelect from '../common/SearchableSelect';
 import { billingStorage } from '../../utils/billingStorage';
-
 import { toast } from 'react-toastify';
+import { queueStorage } from '../../utils/queueStorage';
+import { calendarStorage } from '../../utils/calendarStorage';
+import AvailabilityCalendar from '../doctor/AvailabilityCalendar';
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -131,7 +134,7 @@ const BookAppointment = ({ onBack }) => {
         setPatients(patientData);
         setDoctors(doctorData);
 
-        if (patientData.length === 1) {
+        if (patientData.length > 0) {
           setFormData(prev => ({
             ...prev,
             patient_id: patientData[0].id.toString(),
@@ -212,6 +215,23 @@ const BookAppointment = ({ onBack }) => {
       setNotification({ type: 'error', message: 'Please fill all required fields.' });
       return;
     }
+
+    // Verify that doctor is not on leave or hold on selected date
+    const selectedDoctor = doctors.find(d => d.id === parseInt(formData.doctor_id));
+    const statusInfo = calendarStorage.getDayStatus(formData.doctor_id, formData.date, selectedDoctor?.availabilities || []);
+    if (statusInfo.status === 'leave') {
+      setNotification({ type: 'error', message: `Doctor is on leave on this date (${statusInfo.reason || 'No reason specified'}). Please choose another date.` });
+      return;
+    }
+    if (statusInfo.status === 'hold') {
+      setNotification({ type: 'error', message: `Doctor's schedule is on hold on this date (${statusInfo.reason || 'No reason specified'}). Please choose another date.` });
+      return;
+    }
+    if (statusInfo.status === 'unavailable') {
+      setNotification({ type: 'error', message: 'Doctor is not available or clinic is closed on this date. Please choose another date.' });
+      return;
+    }
+
     setNotification(null);
     setStep('payment');
   };
@@ -693,86 +713,139 @@ For support, email: support@gacms.com
                     </button>
                   )}
                 </div>
-              </div>
-
-              {/* Date & Time */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              </div>              {/* Date & Time */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-5">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Select Date</label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-3 text-gray-400" size={18} />
                     <input
                       type="date"
                       className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                       value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      min={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value, time: '' })}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Select Time Slot</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Doctor Availability & Slot Selection</label>
                   {fetchingSlots ? (
-                    <div className="flex items-center gap-2 text-blue-600 text-sm font-medium p-4 bg-blue-50 rounded-xl">
+                    <div className="flex items-center gap-2 text-blue-600 text-sm font-medium p-4 bg-blue-50/50 rounded-xl border border-blue-100">
                       <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                      Checking slots...
+                      Checking availability...
                     </div>
                   ) : formData.doctor_id && formData.date ? (
                     (() => {
-                      // Get today's date string in YYYY-MM-DD (local time)
-                      const todayStr = (() => {
-                        const d = new Date();
-                        const yyyy = d.getFullYear();
-                        const mm = String(d.getMonth() + 1).padStart(2, '0');
-                        const dd = String(d.getDate()).padStart(2, '0');
-                        return `${yyyy}-${mm}-${dd}`;
-                      })();
-                      const isToday = formData.date === todayStr;
-                      const nowMinutes = isToday
-                        ? new Date().getHours() * 60 + new Date().getMinutes()
-                        : 0;
+                      const dayStatus = calendarStorage.getDayStatus(formData.doctor_id, formData.date, selectedDoctor?.availabilities || []);
+                      
+                      if (dayStatus.status === 'available') {
+                        // Get today's date string in YYYY-MM-DD (local time)
+                        const todayStr = (() => {
+                          const d = new Date();
+                          const yyyy = d.getFullYear();
+                          const mm = String(d.getMonth() + 1).padStart(2, '0');
+                          const dd = String(d.getDate()).padStart(2, '0');
+                          return `${yyyy}-${mm}-${dd}`;
+                        })();
+                        const isToday = formData.date === todayStr;
+                        const nowMinutes = isToday
+                          ? new Date().getHours() * 60 + new Date().getMinutes()
+                          : 0;
 
-                      const filteredSlots = availableSlots.filter(s => {
-                        const hour = parseInt((s.time || '').substring(0, 2) || '0');
-                        const minute = parseInt((s.time || '00:00').substring(3, 5) || '0');
-                        // Filter by appointment type hour window
-                        const inWindow = formData.appointment_type === 'in_person'
-                          ? hour >= 9 && hour < 13
-                          : hour >= 14 && hour < 18;
-                        if (!inWindow) return false;
-                        // For today: hide slots that are already past
-                        if (isToday && (hour * 60 + minute) <= nowMinutes) return false;
-                        return true;
-                      });
+                        const filteredSlots = availableSlots.filter(s => {
+                          const hour = parseInt((s.time || '').substring(0, 2) || '0');
+                          const minute = parseInt((s.time || '00:00').substring(3, 5) || '0');
+                          // Filter by appointment type hour window
+                          const inWindow = formData.appointment_type === 'in_person'
+                            ? hour >= 9 && hour < 13
+                            : hour >= 14 && hour < 18;
+                          if (!inWindow) return false;
+                          // For today: hide slots that are already past
+                          if (isToday && (hour * 60 + minute) <= nowMinutes) return false;
+                          return true;
+                        });
 
-                      if (filteredSlots.length > 0) {
                         return (
-                          <div className="grid grid-cols-3 gap-2">
-                            {filteredSlots.map(s => (
-                              <button
-                                key={s.time}
-                                type="button"
-                                disabled={!s.available}
-                                onClick={() => setFormData({ ...formData, time: s.time })}
-                                className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border ${
-                                  formData.time === s.time
-                                    ? 'bg-blue-600 border-blue-600 text-white shadow-md'
-                                    : s.available
-                                      ? 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-blue-50'
-                                      : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed opacity-50'
-                                  }`}
-                              >
-                                {s.time?.substring(0, 5) || s.time}
-                              </button>
-                            ))}
-                          </div>
-                        );
-                      } else {
-                        return (
-                          <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-700 text-xs">
-                            No {formData.appointment_type === 'in_person' ? 'visiting' : 'consulting'} slots on this date.
+                          <div className="space-y-4 animate-in fade-in duration-200">
+                            {/* Available Status Alert */}
+                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 flex items-center gap-2 text-xs font-bold shadow-sm">
+                              <span className="flex h-2.5 w-2.5 relative">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                              </span>
+                              <span>Doctor is Available</span>
+                            </div>
+
+                            {/* Time Slots Grid */}
+                            {filteredSlots.length > 0 ? (
+                              <div className="grid grid-cols-3 gap-2">
+                                {filteredSlots.map(s => (
+                                  <button
+                                    key={s.time}
+                                    type="button"
+                                    disabled={!s.available}
+                                    onClick={() => setFormData({ ...formData, time: s.time })}
+                                    className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border ${
+                                      formData.time === s.time
+                                        ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                                        : s.available
+                                          ? 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-blue-50'
+                                          : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed opacity-50'
+                                    }`}
+                                  >
+                                    {s.time?.substring(0, 5) || s.time}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-700 text-xs font-semibold">
+                                No {formData.appointment_type === 'in_person' ? 'visiting' : 'consulting'} slots on this date.
+                              </div>
+                            )}
                           </div>
                         );
                       }
+                      
+                      if (dayStatus.status === 'leave') {
+                        return (
+                          <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex flex-col gap-1.5 animate-in fade-in duration-200 shadow-sm">
+                            <div className="flex items-center gap-1.5 text-rose-900 text-sm">
+                              <span>🌴</span>
+                              <span>Doctor is On Leave</span>
+                            </div>
+                            <p className="opacity-90 leading-relaxed font-medium">Reason: {dayStatus.reason || 'Annual Leave / Personal Leave'}</p>
+                            <p className="text-[10px] text-rose-550 italic mt-1 font-semibold">* No slots are available. Please select another date.</p>
+                          </div>
+                        );
+                      }
+                      
+                      if (dayStatus.status === 'hold') {
+                        return (
+                          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-bold flex flex-col gap-1.5 animate-in fade-in duration-200 shadow-sm">
+                            <div className="flex items-center gap-1.5 text-amber-900 text-sm">
+                              <span>⏳</span>
+                              <span>Doctor Schedule is On Hold</span>
+                            </div>
+                            <p className="opacity-90 leading-relaxed font-medium">Reason: {dayStatus.reason || 'Schedule Temporarily Suspended'}</p>
+                            <p className="text-[10px] text-amber-650 italic mt-1 font-semibold">* No slots are available. Please select another date.</p>
+                          </div>
+                        );
+                      }
+                      
+                      if (dayStatus.status === 'unavailable') {
+                        return (
+                          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 text-xs font-bold flex flex-col gap-1 animate-in fade-in duration-200 shadow-sm">
+                            <div className="flex items-center gap-1.5 text-slate-800 text-sm">
+                              <span>🚫</span>
+                              <span>Doctor Unavailable / Clinic Closed</span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 italic mt-1 font-medium pl-4">* Doctor does not consult on this day of the week.</p>
+                          </div>
+                        );
+                      }
+
+                      return null;
                     })()
                   ) : (
                     <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl text-gray-400 text-xs italic">

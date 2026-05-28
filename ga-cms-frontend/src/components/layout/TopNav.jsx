@@ -8,12 +8,11 @@ import { ROLE_CONFIG } from '../../utils/roleConfig';
 import api from '../../api/axios';
 import useUnreadCount from '../../hooks/useUnreadCount';
 import { NotificationDrawer } from './NotificationDrawer';
-
-
 const TopNav = () => {
   const { user, logout } = useAuthStore();
   const roleConfig = user?.role ? ROLE_CONFIG[user.role] : null;
   const navigate = useNavigate();
+
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [patientProfile, setPatientProfile] = useState(null);
@@ -135,14 +134,17 @@ const TopNav = () => {
 
       <header className="h-[70px] bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-8">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
+          <div 
+            className={`flex items-center gap-2 cursor-pointer ${user?.role === 'senior_doctor' ? 'md:hidden' : ''}`} 
+            onClick={() => navigate('/')}
+          >
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">GA</div>
             <h1 className="text-navy font-bold text-lg hidden lg:block tracking-tight">Clinic-Management</h1>
           </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
+            {user?.role !== 'senior_doctor' && navLinks.map((link) => (
               <NavLink
                 key={link.path}
                 to={link.path}

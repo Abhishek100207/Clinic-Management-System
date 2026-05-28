@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Save, Clipboard, TestTube, ChevronRight, ChevronLeft, Scale, User, Calendar, Droplets, Pill, Plus, Trash2, Loader2 } from 'lucide-react';
+import { X, Save, Clipboard, TestTube, ChevronRight, ChevronLeft, Scale, User, Calendar, Droplets, Pill, Plus, Trash2, Loader2, Users } from 'lucide-react';
+import api from '../../api/axios';
+import { useAuthStore } from '../../store/authStore';
+import { toast } from 'react-toastify';
 import { searchDrugs } from '../../api/medicalRecords';
 
 const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
+  const { user } = useAuthStore();
   const [step, setStep] = useState(1);
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -10,6 +14,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
   const [timeoutId, setTimeoutId] = useState(null);
+  const [doctors, setDoctors] = useState([]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -29,7 +34,6 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
       document.removeEventListener('keydown', handleEscape);
     };
   }, []);
-
   const [formData, setFormData] = useState({
     weight: '',
     soap: {
@@ -39,8 +43,26 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
       plan: ''
     },
     recommendedTests: '',
-    prescriptions: [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, food: '' }]
+    prescriptions: [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, food: '' }],
+    prescriptionNotes: '',
+    followUpDate: '',
+    referredDoctorId: '',
+    referralNote: ''
   });
+
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        const res = await api.get('/api/users/doctors/');
+        setDoctors(res.data || []);
+      } catch (err) {
+        console.error("Failed to fetch doctors", err);
+      }
+    };
+    if (isOpen) {
+      fetchDoctors();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -117,6 +139,48 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
     
     onSave({ ...formData, prescriptions: mappedPrescriptions });
     onClose();
+  };
+
+  const handleSendReferral = () => {
+    if (!formData.referredDoctorId) {
+      toast.error("Please select a doctor/specialist first.");
+      return;
+    }
+    const referredDoc = doctors.find(d => d.id.toString() === formData.referredDoctorId.toString());
+    if (!referredDoc || !referredDoc.user) {
+      toast.error("Selected doctor profile could not be found.");
+      return;
+    }
+
+    // Generate notification for targeted doctor
+    const newNotification = {
+      id: `consult-req-${Date.now()}`,
+      title: 'New Specialist Consult Request',
+      preview: `Consultation request from Dr. ${user?.full_name || 'Sarah Johnson'}`,
+      body: `Dear Dr. ${referredDoc.user.full_name},\n\nDr. ${user?.full_name || 'Sarah Johnson'} has requested a specialist consult / second opinion for patient ${patient?.patient_name || patient?.full_name || 'Anonymous Patient'}.\n\nClinical notes: ${formData.referralNote || 'No notes provided.'}\n\nBest regards,\nClinic System`,
+      sender: 'consultations@gaclinic.com',
+      timestamp: new Date().toISOString(),
+      isRead: false,
+    };
+
+    // Save to target doctor's notifications in localStorage
+    const targetStorageKey = `notifications_user_${referredDoc.user.id}`;
+    let targetNotifications = [];
+    try {
+      const saved = localStorage.getItem(targetStorageKey);
+      if (saved) {
+        targetNotifications = JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("Failed to parse target doctor notifications", e);
+    }
+    targetNotifications = [newNotification, ...targetNotifications];
+    localStorage.setItem(targetStorageKey, JSON.stringify(targetNotifications));
+
+    // Also trigger storage event to update other tabs immediately
+    window.dispatchEvent(new Event('storage'));
+
+    toast.success(`Consult request sent to Dr. ${referredDoc.user.full_name} successfully!`);
   };
 
   return (
@@ -197,6 +261,56 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                   </div>
                 ))}
               </div>
+
+              {/* Specialist Consult & Referral Card */}
+              <div className="bg-slate-50 hover:bg-slate-50/80 border border-slate-100 rounded-3xl p-6 transition-all duration-300 mt-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold">
+                    <Users size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-slate-800 text-sm">Specialist Consult & Referral</h4>
+                    <p className="text-[11px] text-slate-400">Request second opinion or refer the patient to another specialist</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Select Doctor / Specialist</label>
+                    <select
+                      value={formData.referredDoctorId || ''}
+                      onChange={(e) => setFormData({ ...formData, referredDoctorId: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-colors"
+                    >
+                      <option value="">No referral (None)</option>
+                      {doctors.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          Dr. {d.user?.full_name || d.user?.first_name || 'Unknown'} ({d.specialty || 'General'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clinical Request / Notes</label>
+                    <input
+                      type="text"
+                      value={formData.referralNote || ''}
+                      onChange={(e) => setFormData({ ...formData, referralNote: e.target.value })}
+                      placeholder="E.g. Please evaluate for chronic chest pain..."
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={handleSendReferral}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-blue-100 transition-all text-xs active:scale-95 whitespace-nowrap"
+                    >
+                      Send Consult Request
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -237,7 +351,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                     onClick={handleAddMedicine}
                     className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
                   >
-                    <Plus size={14} /> Add More
+                    <Plus size={14} /> Add Prescription
                   </button>
                 </div>
                 
@@ -389,6 +503,33 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                     )}
                   </div>
                 ))}
+
+                {/* Prescription Notes / Advice & Follow-up Date */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-100 mt-6">
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                      Prescription Notes / Advice
+                    </label>
+                    <textarea
+                      value={formData.prescriptionNotes || ''}
+                      onChange={(e) => setFormData({ ...formData, prescriptionNotes: e.target.value })}
+                      placeholder="E.g. Take medications after food. Avoid cold beverages and rest well."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm h-28 focus:border-blue-500 outline-none transition-all resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                      <Calendar size={14} className="text-slate-400 inline" /> Follow-up Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.followUpDate || ''}
+                      onChange={(e) => setFormData({ ...formData, followUpDate: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
               </div>
             </div>
           )}

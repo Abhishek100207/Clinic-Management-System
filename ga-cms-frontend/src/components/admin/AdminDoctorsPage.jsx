@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Stethoscope, Search, Calendar, ChevronRight, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Stethoscope, Search, Calendar, ChevronRight, Star, UserPlus } from 'lucide-react';
 import api from '../../api/axios';
 import { Spinner } from '../shared/Spinner';
 
 const AdminDoctorsPage = () => {
+  const navigate = useNavigate();
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,7 +36,7 @@ const AdminDoctorsPage = () => {
           <h1 className="text-3xl font-extrabold tracking-tight text-navy mb-2">Doctor Directory & Scheduling</h1>
           <p className="text-slate-500">Manage doctor profiles, specializations, and their performance metrics.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col items-end gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
@@ -45,6 +47,12 @@ const AdminDoctorsPage = () => {
               className="bg-white border border-slate-200 pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all w-64 shadow-sm"
             />
           </div>
+          <button 
+            onClick={() => navigate('/staff/add')}
+            className="px-5 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-100 flex items-center gap-1.5 active:scale-95"
+          >
+            <UserPlus size={14} /> Add Doctor
+          </button>
         </div>
       </div>
 
