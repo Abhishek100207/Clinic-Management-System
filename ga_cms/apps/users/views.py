@@ -81,7 +81,11 @@ class PatientListView(APIView):
         if request.user.role == 'patient':
             patients = Patient.objects.select_related('user').filter(user=request.user).order_by('id') # PERF: select_related
         else:
-            patients = Patient.objects.select_related('user').all().order_by('id') # PERF: select_related
+            patient_id = request.query_params.get('id')
+            if patient_id:
+                patients = Patient.objects.select_related('user').filter(id=patient_id).order_by('id')
+            else:
+                patients = Patient.objects.select_related('user').all().order_by('id') # PERF: select_related
             
         paginator = StandardPagination() # PERF: Add pagination
         page = paginator.paginate_queryset(patients, request)

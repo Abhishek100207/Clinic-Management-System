@@ -8,12 +8,13 @@ import {
   ChevronRight,
   Plus
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import { useDebounce } from '../../hooks/useDebounce';
 
 const DoctorPatientsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300); // PERF: Debounce search input
   const [patients, setPatients] = useState([]);
@@ -85,6 +86,38 @@ const DoctorPatientsPage = () => {
     };
     fetchPatients();
   }, []);
+
+  // Listen to openHistoryFor navigation parameter to auto-display referred patient history
+  useEffect(() => {
+    if (location.state && location.state.openHistoryFor) {
+      const patientId = parseInt(location.state.openHistoryFor);
+      if (!patientId) return;
+
+      const existing = patients.find(p => p.id === patientId);
+      if (existing) {
+        setSelectedPatientForHistory(existing);
+        fetchHistory(patientId);
+      } else if (!loading) {
+        // If not in the loaded patient page list, dynamically fetch details from database
+        const fetchReferredPatient = async () => {
+          try {
+            const res = await api.get(`/api/users/patients/?id=${patientId}`);
+            const data = Array.isArray(res.data) ? res.data : (res.data.results || []);
+            if (data.length > 0) {
+              const referredPat = data[0];
+              // Prepend to current list view so referred patient is visible in "My Patients" list
+              setPatients(prev => [referredPat, ...prev.filter(p => p.id !== referredPat.id)]);
+              setSelectedPatientForHistory(referredPat);
+              fetchHistory(referredPat.id);
+            }
+          } catch (err) {
+            console.error("Failed to load referred patient details", err);
+          }
+        };
+        fetchReferredPatient();
+      }
+    }
+  }, [location.state, patients, loading]);
 
   const filteredPatients = patients.filter(p => 
     p.full_name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||

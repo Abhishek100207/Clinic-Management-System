@@ -85,16 +85,23 @@ class PrescribedMedicationSerializer(serializers.ModelSerializer):
 
 class PrescriptionSerializer(serializers.ModelSerializer):
     medications = PrescribedMedicationSerializer(many=True, required=False)
+    doctor_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Prescription
-        fields = ['id', 'appointment', 'patient', 'doctor', 'notes', 'created_at', 'medications']
+        fields = ['id', 'appointment', 'patient', 'doctor', 'doctor_name', 'notes', 'follow_up_date', 'created_at', 'medications']
         read_only_fields = ('doctor', 'patient', 'created_at')
         extra_kwargs = {
             'appointment': {
                 'validators': [] # Remove UniqueValidator to allow update_or_create in view
             }
         }
+
+    def get_doctor_name(self, obj):
+        if obj.doctor and obj.doctor.user:
+            return f"Dr. {obj.doctor.user.get_full_name()}"
+        return "Doctor"
+
 
     def create(self, validated_data):
         medications_data = validated_data.pop('medications', [])

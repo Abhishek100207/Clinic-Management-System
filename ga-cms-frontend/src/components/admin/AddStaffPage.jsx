@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { authApi } from '../../api/auth';
 
 
@@ -10,6 +10,8 @@ const ROLES = [
 ];
 
 const AddStaffPage = () => {
+  const navigate              = useNavigate();
+  const location              = useLocation();
   const [form, setForm]       = useState({ username: '', email: '', first_name: '', last_name: '', password: '', role: '' });
   const [confirm, setConfirm] = useState('');
   const [error, setError]     = useState(null);
@@ -17,11 +19,16 @@ const AddStaffPage = () => {
   const [loading, setLoading] = useState(false);
   const [staffList, setStaffList] = useState([]);
 
-  const navigate              = useNavigate();
+  useEffect(() => {
+    if (location.state && location.state.role) {
+      setForm(f => ({ ...f, role: location.state.role }));
+    }
+  }, [location.state]);
 
   useEffect(() => {
     authApi.listStaff().then(setStaffList).catch(() => {});
   }, [success]);
+
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 

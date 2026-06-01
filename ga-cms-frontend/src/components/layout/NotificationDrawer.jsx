@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore } from '../../store/notificationStore';
 import {
@@ -75,6 +76,7 @@ const getSenderMetadata = (sender) => {
 };
 
 export const NotificationDrawer = () => {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const {
     notifications,
@@ -317,6 +319,19 @@ export const NotificationDrawer = () => {
                             <p className="font-medium text-slate-600">
                               {item.body}
                             </p>
+                            {item.id?.startsWith('referral-') && item.patientId && (
+                              <div className="mt-3 pt-3 border-t border-slate-200/65 flex justify-end">
+                                <button
+                                  onClick={() => {
+                                    setIsOpen(false);
+                                    navigate('/my-patients', { state: { openHistoryFor: item.patientId } });
+                                  }}
+                                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-md shadow-blue-100 flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                >
+                                  <FileText size={12} /> View Patient Medical History
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}

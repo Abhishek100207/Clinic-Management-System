@@ -48,7 +48,7 @@ const AdminDoctorsPage = () => {
             />
           </div>
           <button 
-            onClick={() => navigate('/staff/add')}
+            onClick={() => navigate('/staff/add', { state: { role: 'doctor' } })}
             className="px-5 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 transition-all shadow-md shadow-blue-100 flex items-center gap-1.5 active:scale-95"
           >
             <UserPlus size={14} /> Add Doctor

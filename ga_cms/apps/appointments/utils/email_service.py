@@ -229,3 +229,68 @@ def send_review_request_email(appointment):
     except Exception as e:
         print(f"Failed to send review request email: {e}")
 
+
+def send_appointment_reminder_email(appointment):
+    patient_email = appointment.patient.user.email
+    subject = f"GA Clinic: Reminder - Appointment scheduled for tomorrow"
+    
+    # Check if virtual
+    is_virtual = appointment.appointment_type == 'virtual'
+    meet_link = appointment.meeting_link
+    
+    context = {
+        'patient_name': appointment.patient.full_name,
+        'doctor_name': f"Dr. {appointment.doctor.user.get_full_name()}",
+        'date': appointment.date,
+        'time': appointment.time,
+        'is_virtual': is_virtual,
+        'meet_link': meet_link,
+        'appointment_id': appointment.id
+    }
+    
+    html_content = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #1e3a8a;">GA Clinic: Appointment Reminder</h2>
+        <p>Dear {context['patient_name']},</p>
+        <p>This is a friendly reminder that you have an appointment scheduled for tomorrow.</p>
+        
+        <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+            <p style="margin: 5px 0;"><strong>Doctor:</strong> {context['doctor_name']}</p>
+            <p style="margin: 5px 0;"><strong>Date:</strong> {context['date']}</p>
+            <p style="margin: 5px 0;"><strong>Time:</strong> {context['time']}</p>
+            <p style="margin: 5px 0;"><strong>Type:</strong> {'Virtual Consultation' if context['is_virtual'] else 'In-Person Visit'}</p>
+        </div>
+    """
+    
+    if is_virtual and meet_link:
+        html_content += f"""
+        <div style="background-color: #ecfdf5; padding: 15px; border-radius: 8px; margin: 20px 0; border: 1px solid #34d399;">
+            <h3 style="color: #065f46; margin-top: 0;">Virtual Consultation Details</h3>
+            <p>Please join the meeting using the Google Meet link below:</p>
+            <a href="{meet_link}" style="display: inline-block; background-color: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Join Google Meet</a>
+        </div>
+        """
+    else:
+        html_content += """
+        <p style="color: #dc2626; font-weight: bold;">Please arrive at the clinic 15 minutes before your scheduled slot.</p>
+        """
+        
+    html_content += """
+        <p>If you need to reschedule or cancel, please do so via the Patient Dashboard or call the clinic.</p>
+        <p>Best regards,<br><strong>GA Clinic Team</strong></p>
+      </body>
+    </html>
+    """
+    
+    text_content = strip_tags(html_content)
+    
+    try:
+        msg = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [patient_email])
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
+        print(f"Successfully sent reminder email to {patient_email} for Appointment ID {appointment.id}")
+    except Exception as e:
+        print(f"Failed to send reminder email to {patient_email}: {e}")
+
+

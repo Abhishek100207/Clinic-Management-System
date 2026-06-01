@@ -3,15 +3,21 @@ import React, { useEffect, useState } from 'react';
 import { useAppointmentStore } from '../../store/appointmentStore';
 
 import AppointmentTable from './AppointmentTable';
-import { Calendar, Filter, RefreshCw, Plus } from 'lucide-react';
+import { Calendar, RefreshCw } from 'lucide-react';
 import RescheduleModal from '../shared/appointments/RescheduleModal';
+import OPConsultationModal from './OPConsultationModal';
 import api from '../../api/axios';
+import { createConsultationNote, createPrescription, fetchDrugs, checkDrugInteractions } from '../../api/medicalRecords';
+import { toast } from 'react-toastify';
 
 const DoctorAppointmentsPage = () => {
 
   const { appointments, loading, fetchDoctorDashboardData, updateAppointmentStatus } = useAppointmentStore();
   const [rescheduleData, setRescheduleData] = useState({ isOpen: false, appointment: null });
   const [activeFilter, setActiveFilter] = useState('All Appointments');
+
+  // ── OP Consultation modal state ────────────────────────────────────────────
+  const [consultModal, setConsultModal] = useState({ isOpen: false, appointment: null });
 
   useEffect(() => {
     fetchDoctorDashboardData();
@@ -22,6 +28,12 @@ const DoctorAppointmentsPage = () => {
     if (action === 'reschedule') {
       const appt = appointments.find(a => a.id === id);
       setRescheduleData({ isOpen: true, appointment: appt });
+    } else if (action === 'consult') {
+      // Open OP Consultation modal instead of just patching status
+      const appt = appointments.find(a => a.id === id);
+      setConsultModal({ isOpen: true, appointment: appt });
+      // Mark the appointment as in_progress so the queue reflects it
+      updateAppointmentStatus(id, 'in_progress');
     } else {
       updateAppointmentStatus(id, action);
     }
@@ -38,6 +50,105 @@ const DoctorAppointmentsPage = () => {
     }
   };
 
+  // ── Save consultation (mirrors DoctorConsultationsPage.handleSaveConsultation) ──
+  const handleSaveConsultation = async (data) => {
+    try {
+      const appt = consultModal.appointment;
+      const apptId = appt?.id;
+      if (!apptId) {
+        toast.error("Cannot save: no appointment ID found.");
+        return;
+      }
+
+      // 1. Save SOAP note
+      await createConsultationNote({
+        appointment: apptId,
+        subjective: data.soap.subjective,
+        objective:  data.soap.objective,
+        assessment: data.soap.assessment,
+        plan:       data.soap.plan,
+      });
+
+      // 2. Save prescription + medications
+      let availableDrugs = [];
+      try {
+        availableDrugs = await fetchDrugs();
+      } catch(e) { /* no drugs fetched */ }
+
+      if (data.prescriptions && data.prescriptions.length > 0 && data.prescriptions[0].medicine) {
+        const meds = data.prescriptions.filter(p => p.medicine).map(p => {
+          const matchedDrug = availableDrugs.find(d => d.name.toLowerCase() === p.medicine.toLowerCase());
+          return {
+            drug_id:   matchedDrug ? matchedDrug.id : (availableDrugs.length > 0 ? availableDrugs[0].id : 1),
+            dosage:    p.dosage,
+            frequency: p.frequency || 'As directed',
+            duration:  'As directed',
+          };
+        });
+
+        // Drug interaction check for multiple drugs
+        if (meds.length > 1) {
+          try {
+            const drugIds = meds.map(m => m.drug_id);
+            const interactionRes = await checkDrugInteractions(drugIds);
+            if (interactionRes.interactions && interactionRes.interactions.length > 0) {
+              const proceed = window.confirm(
+                `WARNING: Drug Interactions Detected:\n- ${interactionRes.interactions.join('\n- ')}\n\nDo you still want to prescribe these medications?`
+              );
+              if (!proceed) return;
+            }
+          } catch(e) { console.error("Interaction check failed", e); }
+        }
+
+        await createPrescription({
+          appointment: apptId,
+          notes:          data.prescriptionNotes || '',
+          follow_up_date: data.followUpDate || null,
+          medications:    meds,
+        });
+      } else if (data.prescriptionNotes || data.followUpDate) {
+        // Save prescription even with no medications if there are notes or a follow-up date
+        await createPrescription({
+          appointment:    apptId,
+          notes:          data.prescriptionNotes || '',
+          follow_up_date: data.followUpDate || null,
+          medications:    [],
+        });
+      }
+
+      // 3. Create scan orders for recommended tests
+      if (data.recommendedTests && data.recommendedTests !== 'None') {
+        const tests = data.recommendedTests.split(',').map(t => t.trim()).filter(Boolean);
+        for (const test of tests) {
+          try {
+            await api.post('/api/medical_records/scan-orders/', {
+              patient:   appt.patient || appt.id,
+              doctor:    appt.doctor  || 1,
+              scan_type: test,
+              status:    'pending',
+            });
+          } catch (err) {
+            console.error(`Failed to create scan order for ${test}:`, err);
+          }
+        }
+        await api.patch(`/api/appointments/appointments/${apptId}/`, { status: 'completed' });
+        toast.success(`Consultation finalized. SOAP notes saved. ${tests.length} test order(s) sent to technician.`);
+      } else {
+        await api.patch(`/api/appointments/appointments/${apptId}/`, { status: 'completed' });
+        toast.success("Consultation finalized. SOAP notes & prescription saved.");
+      }
+
+      // Close modal and refresh
+      setConsultModal({ isOpen: false, appointment: null });
+      fetchDoctorDashboardData();
+
+    } catch (err) {
+      console.error(err);
+      const errorMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      toast.error(`Failed to save consultation records: ${errorMsg}`);
+    }
+  };
+
   // Apply filter logic
   const today = new Date();
   const filteredAppointments = appointments.filter(appt => {
@@ -50,8 +161,8 @@ const DoctorAppointmentsPage = () => {
 
     if (activeFilter === 'Today') {
       return apptDate &&
-        apptDate.getDate() === today.getDate() &&
-        apptDate.getMonth() === today.getMonth() &&
+        apptDate.getDate()     === today.getDate() &&
+        apptDate.getMonth()    === today.getMonth() &&
         apptDate.getFullYear() === today.getFullYear();
     }
     if (activeFilter === 'Upcoming') {
@@ -128,11 +239,20 @@ const DoctorAppointmentsPage = () => {
         </div>
       </div>
 
+      {/* Reschedule Modal */}
       <RescheduleModal 
         isOpen={rescheduleData.isOpen}
         onClose={() => setRescheduleData({ isOpen: false, appointment: null })}
         onConfirm={handleRescheduleSubmit}
         appointment={rescheduleData.appointment}
+      />
+
+      {/* OP Consultation Modal — opens when Consult button is clicked */}
+      <OPConsultationModal
+        isOpen={consultModal.isOpen}
+        onClose={() => setConsultModal({ isOpen: false, appointment: null })}
+        patient={consultModal.appointment}
+        onSave={handleSaveConsultation}
       />
     </div>
   );

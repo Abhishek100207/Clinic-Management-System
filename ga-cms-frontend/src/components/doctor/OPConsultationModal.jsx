@@ -54,7 +54,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
     const fetchDoctors = async () => {
       try {
         const res = await api.get('/api/users/doctors/');
-        setDoctors(res.data || []);
+        setDoctors(Array.isArray(res.data) ? res.data : (res.data?.results || []));
       } catch (err) {
         console.error("Failed to fetch doctors", err);
       }
@@ -141,7 +141,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
     onClose();
   };
 
-  const handleSendReferral = () => {
+  const handleSendReferral = async () => {
     if (!formData.referredDoctorId) {
       toast.error("Please select a doctor/specialist first.");
       return;
@@ -152,35 +152,27 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
       return;
     }
 
-    // Generate notification for targeted doctor
-    const newNotification = {
-      id: `consult-req-${Date.now()}`,
-      title: 'New Specialist Consult Request',
-      preview: `Consultation request from Dr. ${user?.full_name || 'Sarah Johnson'}`,
-      body: `Dear Dr. ${referredDoc.user.full_name},\n\nDr. ${user?.full_name || 'Sarah Johnson'} has requested a specialist consult / second opinion for patient ${patient?.patient_name || patient?.full_name || 'Anonymous Patient'}.\n\nClinical notes: ${formData.referralNote || 'No notes provided.'}\n\nBest regards,\nClinic System`,
-      sender: 'consultations@gaclinic.com',
-      timestamp: new Date().toISOString(),
-      isRead: false,
-    };
-
-    // Save to target doctor's notifications in localStorage
-    const targetStorageKey = `notifications_user_${referredDoc.user.id}`;
-    let targetNotifications = [];
     try {
-      const saved = localStorage.getItem(targetStorageKey);
-      if (saved) {
-        targetNotifications = JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error("Failed to parse target doctor notifications", e);
+      // Post referral request to Django backend
+      const payload = {
+        referred_to: referredDoc.id,
+        patient: patient.patient, // patient.patient is the integer ID of the patient
+        notes: formData.referralNote || 'No notes provided.'
+      };
+      
+      await api.post('/api/appointments/referrals/', payload);
+
+      toast.success(`Referral request sent to Dr. ${referredDoc.user.full_name} successfully!`);
+      
+      // Dispatch storage event to trigger real-time updates for listeners
+      window.dispatchEvent(new Event('storage'));
+      
+      // Clear referral input
+      setFormData(prev => ({ ...prev, referralNote: '', referredDoctorId: '' }));
+    } catch (err) {
+      console.error("Failed to send referral", err);
+      toast.error("Failed to submit referral to the server.");
     }
-    targetNotifications = [newNotification, ...targetNotifications];
-    localStorage.setItem(targetStorageKey, JSON.stringify(targetNotifications));
-
-    // Also trigger storage event to update other tabs immediately
-    window.dispatchEvent(new Event('storage'));
-
-    toast.success(`Consult request sent to Dr. ${referredDoc.user.full_name} successfully!`);
   };
 
   return (

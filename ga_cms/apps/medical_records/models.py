@@ -106,7 +106,9 @@ class Prescription(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='prescriptions')
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='prescriptions')
     notes = models.TextField(blank=True)
+    follow_up_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
 
     def __str__(self):
         return f"Prescription for {self.patient} on {self.created_at.date()}"

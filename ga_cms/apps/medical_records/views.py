@@ -308,7 +308,8 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
             defaults={
                 'doctor': appointment.doctor,
                 'patient': appointment.patient,
-                'notes': serializer.validated_data.get('notes', '')
+                'notes': serializer.validated_data.get('notes', ''),
+                'follow_up_date': serializer.validated_data.get('follow_up_date', None)
             }
         )
         

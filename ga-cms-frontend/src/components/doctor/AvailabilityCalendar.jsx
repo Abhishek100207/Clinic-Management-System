@@ -62,6 +62,13 @@ const AvailabilityCalendar = ({
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  // Sync calendar overrides with backend on load or when doctor ID changes
+  useEffect(() => {
+    if (resolvedDoctorId) {
+      calendarStorage.syncWithBackend(resolvedDoctorId);
+    }
+  }, [resolvedDoctorId]);
+
   // Determine permissions
   // Only Doctor or Senior Doctor can edit the schedules. 
   // Others (Patient, Receptionist, Technician) can only view.

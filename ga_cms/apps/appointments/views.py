@@ -5,12 +5,14 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 
-from .models import DoctorAvailability, Appointment, RescheduleHistory, Invoice
+from .models import DoctorAvailability, Appointment, RescheduleHistory, Invoice, DoctorCalendarOverride, SpecialistReferral
 from .serializers import (
     DoctorAvailabilitySerializer,
     AppointmentSerializer,
     RescheduleRequestSerializer,
-    InvoiceSerializer
+    InvoiceSerializer,
+    DoctorCalendarOverrideSerializer,
+    SpecialistReferralSerializer
 )
 from .services import generate_available_slots, calculate_distance, send_notification
 
@@ -762,3 +764,79 @@ class ReviewListAPIView(views.APIView):
         reviews = ConsultationReview.objects.all().order_by('-created_at')
         serializer = ConsultationReviewSerializer(reviews, many=True)
         return Response(serializer.data)
+
+
+from django.db.models import Q
+
+class DoctorCalendarOverrideViewSet(viewsets.ModelViewSet):
+    serializer_class = DoctorCalendarOverrideSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = DoctorCalendarOverride.objects.all()
+        if user.role == 'doctor':
+            queryset = queryset.filter(doctor__user=user)
+            
+        doctor_id = self.request.query_params.get('doctor_id')
+        if doctor_id:
+            queryset = queryset.filter(doctor_id=doctor_id)
+            
+        date = self.request.query_params.get('date')
+        if date:
+            queryset = queryset.filter(date=date)
+            
+        return queryset
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        doctor = user.doctor if hasattr(user, 'doctor') else serializer.validated_data.get('doctor')
+        date = serializer.validated_data.get('date')
+        
+        DoctorCalendarOverride.objects.update_or_create(
+            doctor=doctor,
+            date=date,
+            defaults={
+                'status': serializer.validated_data.get('status'),
+                'reason': serializer.validated_data.get('reason'),
+                'sessions': serializer.validated_data.get('sessions')
+            }
+        )
+
+    @action(detail=False, methods=['delete'], url_path='by-date')
+    def delete_by_date(self, request):
+        doctor_id = request.query_params.get('doctor_id')
+        date = request.query_params.get('date')
+        if not doctor_id or not date:
+            return Response({"error": "doctor_id and date are required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user = request.user
+        if user.role == 'doctor' and str(user.doctor.id) != str(doctor_id):
+            return Response({"error": "You do not have permission to delete this override"}, status=status.HTTP_403_FORBIDDEN)
+            
+        overrides = DoctorCalendarOverride.objects.filter(doctor_id=doctor_id, date=date)
+        count = overrides.count()
+        overrides.delete()
+        return Response({"deleted": count, "message": "Override deleted successfully"})
+
+
+class SpecialistReferralViewSet(viewsets.ModelViewSet):
+    serializer_class = SpecialistReferralSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if hasattr(user, 'doctor'):
+            doctor = user.doctor
+            return SpecialistReferral.objects.filter(
+                Q(referrer=doctor) | Q(referred_to=doctor)
+            ).select_related('referrer__user', 'referred_to__user', 'patient').order_by('-created_at')
+        return SpecialistReferral.objects.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if hasattr(user, 'doctor'):
+            serializer.save(referrer=user.doctor)
+        else:
+            serializer.save()
+

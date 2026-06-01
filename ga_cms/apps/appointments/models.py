@@ -137,3 +137,40 @@ class ConsultationReview(models.Model):
         
     def __str__(self):
         return f"Review for {self.appointment} by {self.patient}"
+
+
+class DoctorCalendarOverride(models.Model):
+    STATUS_CHOICES = [
+        ('available', 'Available'),
+        ('leave', 'On Leave'),
+        ('hold', 'On Hold'),
+        ('unavailable', 'Unavailable'),
+    ]
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='calendar_overrides')
+    date = models.DateField(db_index=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    reason = models.TextField(blank=True, null=True)
+    sessions = models.JSONField(null=True, blank=True, help_text="Custom available session times")
+
+    class Meta:
+        unique_together = ('doctor', 'date')
+        verbose_name_plural = "Doctor Calendar Overrides"
+
+    def __str__(self):
+        return f"Override for {self.doctor} on {self.date}: {self.status}"
+
+
+class SpecialistReferral(models.Model):
+    referrer = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='referrals_sent')
+    referred_to = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='referrals_received')
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='specialist_referrals')
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "Specialist Referrals"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Referral: {self.referrer} to {self.referred_to} for {self.patient}"
+

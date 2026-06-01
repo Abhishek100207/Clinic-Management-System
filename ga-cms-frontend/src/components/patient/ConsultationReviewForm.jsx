@@ -60,12 +60,20 @@ const ConsultationReviewForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [appointment, setAppointment] = useState(null);
 
-  // We could fetch appointment details here to pre-fill name/doctor
   useEffect(() => {
-    // We assume the backend might not have a public appointment detail route by default
-    // We can just proceed without names if not available or decode it if we had a public endpoint
-    // For now, we'll just use the ID.
+    const fetchAppt = async () => {
+      const cleanId = appointmentId ? appointmentId.replace('APT-', '') : '';
+      if (!cleanId) return;
+      try {
+        const res = await api.get(`/api/appointments/appointments/${cleanId}/`);
+        setAppointment(res.data);
+      } catch (err) {
+        console.error("Failed to fetch appointment details", err);
+      }
+    };
+    fetchAppt();
   }, [appointmentId]);
 
   const getRatingLabel = (rating) => {
@@ -203,11 +211,27 @@ const ConsultationReviewForm = () => {
         </p>
 
         {/* Info Card */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-8 mt-8 border-t border-slate-800/80">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-8 mt-8 border-t border-slate-800/80">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Appointment ID</span>
             <span className="text-sm font-mono font-bold text-blue-400">{appointmentId}</span>
           </div>
+          {appointment && (
+            <>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Doctor & Department</span>
+                <span className="text-sm font-bold text-white">
+                  {appointment.doctor_name || 'Clinic Specialist'} ({appointment.doctor_specialty || 'General'})
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">Consultation Date</span>
+                <span className="text-sm font-bold text-white">
+                  {appointment.date} at {appointment.time?.substring(0, 5) || 'N/A'} ({appointment.appointment_type === 'virtual' ? 'Virtual' : 'In-Person'})
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

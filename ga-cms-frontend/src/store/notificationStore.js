@@ -71,11 +71,24 @@ export const useNotificationStore = create((set, get) => ({
               id,
               title: `New Prescription Issued`,
               preview: `A new prescription has been added to your medical records.`,
-              body: `Dear Patient,\n\nDr. ${presc.doctor || 'Staff'} has uploaded a new prescription for your treatment plan.\n\nNotes: ${presc.notes || 'N/A'}\n\nMedications:\n${medsBody || 'No medications listed.'}`,
+              body: `Dear Patient,\n\nDr. ${presc.doctor_name || 'Staff'} has uploaded a new prescription for your treatment plan.\n\nNotes: ${presc.notes || 'N/A'}\n\nMedications:\n${medsBody || 'No medications listed.'}`,
               sender: 'prescriptions@gaclinic.com',
               timestamp: presc.created_at,
               isRead: !!readIds[id]
             });
+
+            if (presc.follow_up_date) {
+              const fId = `presc-followup-${presc.id}`;
+              rawNotifications.push({
+                id: fId,
+                title: `Follow-up Target Recommended`,
+                preview: `Dr. ${presc.doctor_name || 'Staff'} has recommended a follow-up visit by ${presc.follow_up_date}.`,
+                body: `Dear Patient,\n\nYour consulting physician Dr. ${presc.doctor_name || 'Staff'} has recommended a follow-up visit.\n\nRecommended Date: ${presc.follow_up_date}\nNotes: ${presc.notes || 'None'}\n\nPlease book a follow-up appointment around this target date.`,
+                sender: 'prescriptions@gaclinic.com',
+                timestamp: presc.created_at,
+                isRead: !!readIds[fId]
+              });
+            }
           });
         } catch (err) {
           console.error("Failed to fetch prescriptions", err);
@@ -164,27 +177,28 @@ export const useNotificationStore = create((set, get) => ({
           console.error("Failed to fetch doctor scan reports", err);
         }
 
-        // 3. Fetch security audit logs (senior doctor only)
-        if (role === 'senior_doctor') {
-          try {
-            const auditRes = await api.get('/api/users/audit-logs/');
-            const audits = Array.isArray(auditRes?.data) ? auditRes.data : (auditRes?.data?.results || []);
-            audits.forEach(audit => {
-              const id = `audit-${audit.id}`;
-              rawNotifications.push({
-                id,
-                title: `Security Log Alert: ${audit.action}`,
-                preview: `${audit.user_name} performed action: ${audit.action}`,
-                body: `Attention Senior Doctor,\n\nA new system action has been audited.\n\nUser: ${audit.user_name}\nAction: ${audit.action}\nDetails: ${audit.details || 'N/A'}\nIP Address: ${audit.ip_address || 'Internal'}\nTimestamp: ${new Date(audit.timestamp).toLocaleString()}`,
-                sender: 'security@gaclinic.com',
-                timestamp: audit.timestamp,
-                isRead: !!readIds[id]
-              });
+        // 3. Fetch Specialist Referrals
+        try {
+          const refRes = await api.get('/api/appointments/referrals/');
+          const referrals = Array.isArray(refRes.data) ? refRes.data : (refRes.data.results || []);
+          referrals.forEach(ref => {
+            const id = `referral-${ref.id}`;
+            rawNotifications.push({
+              id,
+              title: `Specialist Referral: ${ref.patient_name}`,
+              preview: `Dr. ${ref.referrer_name} referred patient ${ref.patient_name} to you.`,
+              body: `Dear Dr. ${user.full_name || 'Doctor'},\n\nDr. ${ref.referrer_name} has requested a specialist consult / second opinion with you for patient ${ref.patient_name}.\n\nClinical notes: ${ref.notes || 'No notes provided.'}\n\nPatient ID: #PAT-${ref.patient_id}\n\nYou can click 'View Patient Medical History' to access their full medical records and history details.`,
+              sender: 'referrals@gaclinic.com',
+              timestamp: ref.created_at,
+              patientId: ref.patient_id, // stored for deep linking!
+              isRead: !!readIds[id]
             });
-          } catch (err) {
-            console.error("Failed to fetch audit logs", err);
-          }
+          });
+        } catch (err) {
+          console.error("Failed to fetch specialist referrals", err);
         }
+
+        // 3. Fetch security audit logs (senior doctor only) - Removed per request
 
       } else if (role === 'receptionist') {
         // 1. Fetch appointments

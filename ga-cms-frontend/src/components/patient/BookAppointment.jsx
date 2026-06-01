@@ -597,15 +597,27 @@ For support, email: support@gacms.com
 
               {/* Patient Selection */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Select Patient</label>
-                <SearchableSelect
-                  options={patients.map(p => ({ value: p.id, label: p.full_name }))}
-                  value={formData.patient_id}
-                  onChange={(val) => setFormData({ ...formData, patient_id: val })}
-                  placeholder="Choose a patient"
-                  icon={User}
-                  className="w-full"
-                />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Patient Name</label>
+                {user?.role === 'patient' ? (
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                      type="text"
+                      readOnly
+                      value={selectedPatient?.full_name || user?.full_name || ''}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 outline-none cursor-not-allowed font-medium shadow-inner"
+                    />
+                  </div>
+                ) : (
+                  <SearchableSelect
+                    options={patients.map(p => ({ value: p.id, label: p.full_name }))}
+                    value={formData.patient_id}
+                    onChange={(val) => setFormData({ ...formData, patient_id: val })}
+                    placeholder="Choose a patient"
+                    icon={User}
+                    className="w-full"
+                  />
+                )}
               </div>
 
               {/* Patient Location */}

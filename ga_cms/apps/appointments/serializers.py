@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import DoctorAvailability, Appointment, RescheduleHistory, Invoice, ConsultationReview
+from .models import DoctorAvailability, Appointment, RescheduleHistory, Invoice, ConsultationReview, DoctorCalendarOverride, SpecialistReferral
 
 class DoctorAvailabilitySerializer(serializers.ModelSerializer):
     class Meta:
@@ -52,3 +52,22 @@ class ConsultationReviewSerializer(serializers.ModelSerializer):
         model = ConsultationReview
         fields = '__all__'
         read_only_fields = ('patient', 'doctor', 'created_at')
+
+
+class DoctorCalendarOverrideSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DoctorCalendarOverride
+        fields = '__all__'
+
+
+class SpecialistReferralSerializer(serializers.ModelSerializer):
+    referrer_name = serializers.CharField(source='referrer.user.get_full_name', read_only=True)
+    referred_to_name = serializers.CharField(source='referred_to.user.get_full_name', read_only=True)
+    patient_name = serializers.CharField(source='patient.full_name', read_only=True)
+    patient_id = serializers.IntegerField(source='patient.id', read_only=True)
+
+    class Meta:
+        model = SpecialistReferral
+        fields = '__all__'
+        read_only_fields = ('referrer', 'created_at')
+
