@@ -397,3 +397,11 @@
 2026-05-29 17:08:23,984 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-05-29 17:10:04,717 - INFO - User: Suraj | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
 2026-05-29 17:10:19,478 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-01 18:58:16,664 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-01 19:04:58,317 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-01 19:07:25,233 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-01 19:14:58,201 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-01 19:16:53,860 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-01 21:00:34,760 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-01 21:00:36,869 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-01 21:35:32,671 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP

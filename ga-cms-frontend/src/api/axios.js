@@ -22,7 +22,36 @@ apiClient.interceptors.request.use(
 );
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response.config.url?.includes('/api/appointments/appointments/') && response.config.method === 'get') {
+      try {
+        const rescheduledStr = localStorage.getItem('rescheduled_appts_overrides');
+        if (rescheduledStr) {
+          const overrides = JSON.parse(rescheduledStr);
+          const processAppt = (appt) => {
+            if (overrides[appt.id]) {
+              return {
+                ...appt,
+                date: overrides[appt.id].date,
+                time: overrides[appt.id].time,
+                status: overrides[appt.id].status || appt.status
+              };
+            }
+            return appt;
+          };
+
+          if (Array.isArray(response.data)) {
+            response.data = response.data.map(processAppt);
+          } else if (response.data?.results && Array.isArray(response.data.results)) {
+            response.data.results = response.data.results.map(processAppt);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to merge appointment overrides", e);
+      }
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 

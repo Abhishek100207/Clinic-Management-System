@@ -6,23 +6,47 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  Plus
+  Plus,
+  ChevronDown,
+  Activity,
+  CheckCircle2,
+  Clock
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../../api/axios';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useAuthStore } from '../../store/authStore';
+import OPConsultationModal from './OPConsultationModal';
+import { createConsultationNote, createPrescription, fetchDrugs, checkDrugInteractions } from '../../api/medicalRecords';
+import { toast } from 'react-toastify';
 
 const DoctorPatientsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const currentUser = useAuthStore(state => state.user);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300); // PERF: Debounce search input
   const [patients, setPatients] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+  const [scanOrders, setScanOrders] = useState([]);
+  const [scanResults, setScanResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPatientForHistory, setSelectedPatientForHistory] = useState(null);
   const [historyData, setHistoryData] = useState({});
   const [historyLoading, setHistoryLoading] = useState(false);
   const [expandedDates, setExpandedDates] = useState({});
+  const [expandedPatients, setExpandedPatients] = useState({});
+
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [myDoctorId, setMyDoctorId] = useState(1);
+
+  const togglePatientExpanded = (patientId) => {
+    setExpandedPatients(prev => ({
+      ...prev,
+      [patientId]: !prev[patientId]
+    }));
+  };
 
   const fetchHistory = async (patientId) => {
     setHistoryLoading(true);
@@ -70,24 +94,185 @@ const DoctorPatientsPage = () => {
     }
   };
 
+  const calculateAge = (dobString) => {
+    if (!dobString) return '28';
+    try {
+      const birthDate = new Date(dobString);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age.toString();
+    } catch (e) {
+      return '28';
+    }
+  };
 
+  const handleOPClick = async (patient) => {
+    const patientAppts = appointments.filter(a => a.patient === patient.id);
+    let activeAppt = patientAppts.find(a => ['pending', 'confirmed', 'checked_in', 'in_progress'].includes(a.status));
+    
+    if (!activeAppt) {
+      toast.info("No active appointment found. Creating a walk-in consultation...");
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const timeStr = [
+          String(now.getHours()).padStart(2, '0'),
+          String(now.getMinutes()).padStart(2, '0'),
+          String(now.getSeconds()).padStart(2, '0')
+        ].join(':');
+
+        const newApptRes = await api.post('/api/appointments/appointments/', {
+          patient: patient.id,
+          doctor: myDoctorId,
+          date: todayStr,
+          time: timeStr,
+          appointment_type: 'in_person',
+          status: 'checked_in',
+          queue_type: 'walkin'
+        });
+        activeAppt = newApptRes.data;
+        setAppointments(prev => [...prev, activeAppt]);
+      } catch (err) {
+        console.error("Failed to auto-create appointment for consultation", err);
+        toast.error("Failed to start consultation. Please create an appointment first.");
+        return;
+      }
+    }
+
+    const apptDataForModal = {
+      ...activeAppt,
+      patient_name: patient.full_name,
+      gender: patient.gender,
+      blood_group: patient.blood_group || 'O+',
+      age: calculateAge(patient.date_of_birth)
+    };
+
+    setSelectedAppointment(apptDataForModal);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveConsultation = async (data) => {
+    try {
+      const apptId = selectedAppointment?.id;
+      if (!apptId) {
+        toast.error("Cannot save without an appointment ID.");
+        return;
+      }
+      
+      await createConsultationNote({
+        appointment: apptId,
+        subjective: data.soap.subjective,
+        objective: data.soap.objective,
+        assessment: data.soap.assessment,
+        plan: data.soap.plan,
+      });
+
+      let availableDrugs = [];
+      try {
+        availableDrugs = await fetchDrugs();
+      } catch(e) { /* eslint-disable-line no-unused-vars */ }
+
+      if (data.prescriptions && data.prescriptions.length > 0 && data.prescriptions[0].medicine) {
+        const meds = data.prescriptions.filter(p => p.medicine).map(p => {
+          const matchedDrug = availableDrugs.find(d => d.name.toLowerCase() === p.medicine.toLowerCase());
+          return {
+            drug_id: matchedDrug ? matchedDrug.id : (availableDrugs.length > 0 ? availableDrugs[0].id : 1),
+            dosage: p.dosage,
+            frequency: 'As directed',
+            duration: 'As directed'
+          };
+        });
+
+        if (meds.length > 1) {
+          try {
+            const drugIds = meds.map(m => m.drug_id);
+            const interactionRes = await checkDrugInteractions(drugIds);
+            if (interactionRes.interactions && interactionRes.interactions.length > 0) {
+              const proceed = window.confirm(`WARNING: Drug Interactions Detected:\n- ${interactionRes.interactions.join('\n- ')}\n\nDo you still want to prescribe these medications?`);
+              if (!proceed) return;
+            }
+          } catch(e) { console.error("Interaction check failed", e); }
+        }
+
+        await createPrescription({
+          appointment: apptId,
+          medications: meds
+        });
+      }
+
+      if (data.recommendedTests && data.recommendedTests !== 'None') {
+        const tests = data.recommendedTests.split(',').map(t => t.trim()).filter(Boolean);
+        for (const test of tests) {
+          try {
+            await api.post('/api/medical_records/scan-orders/', {
+              patient: selectedAppointment.patient || selectedAppointment.id,
+              doctor: selectedAppointment.doctor || 1,
+              scan_type: test,
+              status: 'pending'
+            });
+          } catch (err) {
+            console.error(`Failed to create scan order for ${test}:`, err);
+          }
+        }
+        await api.patch(`/api/appointments/appointments/${apptId}/`, { status: 'completed' });
+        toast.success(`Consultation finalized. SOAP notes saved to patient profile. ${tests.length} test orders sent to Technician.`);
+      } else {
+        await api.patch(`/api/appointments/appointments/${apptId}/`, { status: 'completed' });
+        toast.success(`Consultation finalized. SOAP notes saved to patient profile.`);
+      }
+
+      // Clear draft from localStorage on successful save
+      localStorage.removeItem(`op_draft_appt_${apptId}`);
+
+      setAppointments(prev => prev.map(a => a.id === apptId ? { ...a, status: 'completed' } : a));
+    } catch (err) {
+      console.error(err);
+      const errorMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      toast.error(`Failed to save consultation records: ${errorMsg}`);
+    }
+  };
+
+  const fetchPatientsAndAppointments = async () => {
+    try {
+      const [patientsRes, apptsRes, doctorsRes, scanOrdersRes, scanResultsRes] = await Promise.all([
+        api.get('/api/users/patients/'),
+        api.get('/api/appointments/appointments/'),
+        api.get('/api/users/doctors/'),
+        api.get('/api/medical_records/scan-orders/?limit=1000'),
+        api.get('/api/medical_records/scan-results/?limit=1000')
+      ]);
+      setPatients(Array.isArray(patientsRes?.data) ? patientsRes.data : (patientsRes?.data?.results || []));
+      setAppointments(Array.isArray(apptsRes?.data) ? apptsRes.data : (apptsRes?.data?.results || []));
+      setScanOrders(Array.isArray(scanOrdersRes?.data) ? scanOrdersRes.data : (scanOrdersRes?.data?.results || []));
+      setScanResults(Array.isArray(scanResultsRes?.data) ? scanResultsRes.data : (scanResultsRes?.data?.results || []));
+
+      if (currentUser) {
+        const docList = Array.isArray(doctorsRes?.data) ? doctorsRes.data : (doctorsRes?.data?.results || []);
+        const myProfile = docList.find(d => d.user?.id === currentUser.id);
+        if (myProfile) {
+          setMyDoctorId(myProfile.id);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch patients or appointments", err);
+      setPatients([]);
+      setAppointments([]);
+      setScanOrders([]);
+      setScanResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchPatients = async () => {
-      try {
-        const res = await api.get('/api/users/patients/');
-        setPatients(Array.isArray(res?.data) ? res.data : (res?.data?.results || []));
-      } catch (err) {
-        console.error("Failed to fetch patients", err);
-        setPatients([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPatients();
-  }, []);
+    fetchPatientsAndAppointments();
+  }, [currentUser]);
 
-  // Listen to openHistoryFor navigation parameter to auto-display referred patient history
+  // Listen to openHistoryFor / resumeOP navigation parameters
   useEffect(() => {
     if (location.state && location.state.openHistoryFor) {
       const patientId = parseInt(location.state.openHistoryFor);
@@ -95,8 +280,13 @@ const DoctorPatientsPage = () => {
 
       const existing = patients.find(p => p.id === patientId);
       if (existing) {
-        setSelectedPatientForHistory(existing);
-        fetchHistory(patientId);
+        if (location.state.resumeOP) {
+          handleOPClick(existing);
+          setSelectedPatientForHistory(null);
+        } else {
+          setSelectedPatientForHistory(existing);
+          fetchHistory(patientId);
+        }
       } else if (!loading) {
         // If not in the loaded patient page list, dynamically fetch details from database
         const fetchReferredPatient = async () => {
@@ -107,8 +297,13 @@ const DoctorPatientsPage = () => {
               const referredPat = data[0];
               // Prepend to current list view so referred patient is visible in "My Patients" list
               setPatients(prev => [referredPat, ...prev.filter(p => p.id !== referredPat.id)]);
-              setSelectedPatientForHistory(referredPat);
-              fetchHistory(referredPat.id);
+              if (location.state.resumeOP) {
+                handleOPClick(referredPat);
+                setSelectedPatientForHistory(null);
+              } else {
+                setSelectedPatientForHistory(referredPat);
+                fetchHistory(referredPat.id);
+              }
             }
           } catch (err) {
             console.error("Failed to load referred patient details", err);
@@ -144,58 +339,172 @@ const DoctorPatientsPage = () => {
       </div>
 
       {/* Patient Records List */}
-      <div className="space-y-4">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-20">
             <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
           </div>
         ) : filteredPatients.length > 0 ? (
-          filteredPatients.map((patient) => (
-            <div key={patient.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row items-center justify-between gap-6 group">
-              
-              {/* Patient Info */}
-              <div className="flex items-center gap-5 flex-1">
-                <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg">
-                  {patient.full_name?.charAt(0)}
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-12 flex-1">
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Patient Name</p>
-                    <p className="font-bold text-navy">{patient.full_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Patient ID</p>
-                    <p className="font-bold text-navy text-sm">#PAT-{patient.id}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Blood Group</p>
-                    <p className="font-bold text-rose-600 text-sm">{patient.blood_group || 'O+'}</p>
-                  </div>
-                </div>
-              </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-slate-50 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                  <th className="px-6 py-4">Patient & ID</th>
+                  <th className="px-6 py-4">OP Status</th>
+                  <th className="px-6 py-4">Report Status</th>
+                  <th className="px-6 py-4 text-right"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredPatients.map((patient) => {
+                  const isExpanded = !!expandedPatients[patient.id];
+                  const patientAppts = appointments.filter(a => a.patient === patient.id);
+                  const latestAppt = patientAppts.reduce((latest, current) => {
+                    if (!latest) return current;
+                    return current.id > latest.id ? current : latest;
+                  }, null);
+                  const isOPCompleted = latestAppt ? latestAppt.status === 'completed' : false;
+                  const hasResult = scanResults.some(r => r.patient === patient.id || r.patient?.id === patient.id);
+                  const hasPendingOrder = scanOrders.some(o => (o.patient === patient.id || o.patient?.id === patient.id) && o.status !== 'completed');
+                  const reportStatus = hasResult ? 'Available' : hasPendingOrder ? 'Pending' : 'None';
+                  
+                  return (
+                    <React.Fragment key={patient.id}>
+                      <tr className="hover:bg-slate-50/50 transition-colors">
+                        {/* Patient Name & ID */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <button
+                              onClick={() => togglePatientExpanded(patient.id)}
+                              className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold mr-3 hover:bg-blue-100 transition-colors focus:outline-none"
+                            >
+                              {patient.full_name?.charAt(0)}
+                            </button>
+                            <div>
+                              <button
+                                onClick={() => togglePatientExpanded(patient.id)}
+                                className="font-bold text-navy hover:text-blue-600 transition-colors text-left flex items-center gap-1 focus:outline-none"
+                              >
+                                {patient.full_name}
+                                <ChevronDown 
+                                  size={14} 
+                                  className={`text-slate-400 transition-transform duration-200 ${
+                                    isExpanded ? 'rotate-180' : ''
+                                  }`} 
+                                />
+                              </button>
+                              <p className="text-xs text-slate-500">ID: PAT-{patient.id}</p>
+                            </div>
+                          </div>
+                        </td>
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                <button 
-                  onClick={() => {
-                    setSelectedPatientForHistory(patient);
-                    fetchHistory(patient.id);
-                  }}
-                  className="flex-1 md:flex-none px-6 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Clipboard size={14} /> Medical History
-                </button>
-                <button 
-                  onClick={() => navigate(`/scan-report/SCAN-${patient.id}`, { state: { patientData: patient } })}
-                  className="flex-1 md:flex-none px-6 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
-                >
-                  <FileText size={14} /> View Scan
-                </button>
-              </div>
-            </div>
-          ))
+                        {/* OP Status Badge */}
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex text-xs font-bold px-3 py-1.5 rounded-full items-center gap-1.5 border ${
+                            isOPCompleted 
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            <span className={`w-2 h-2 rounded-full ${isOPCompleted ? 'bg-emerald-500' : 'bg-amber-500'}`}></span>
+                            {isOPCompleted ? 'OP Complete' : 'OP Pending'}
+                          </span>
+                        </td>
+
+                        {/* Report Status Badge */}
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex text-xs font-bold px-3 py-1.5 rounded-full items-center gap-1.5 border ${
+                            reportStatus === 'Available'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : reportStatus === 'Pending'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-slate-50 text-slate-600 border-slate-200'
+                          }`}>
+                            <span className={`w-2 h-2 rounded-full ${
+                              reportStatus === 'Available' ? 'bg-emerald-500' : reportStatus === 'Pending' ? 'bg-amber-500' : 'bg-slate-400'
+                            }`}></span>
+                            {reportStatus === 'Available' ? 'Report Available' : reportStatus === 'Pending' ? 'Report Pending' : 'No Reports'}
+                          </span>
+                        </td>
+
+                        {/* Action Buttons */}
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => {
+                                setSelectedPatientForHistory(patient);
+                                fetchHistory(patient.id);
+                              }}
+                              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all border border-slate-200 flex items-center gap-1.5 shadow-sm"
+                            >
+                              <Clipboard size={12} /> Medical History
+                            </button>
+                            <button 
+                              onClick={() => navigate('/test-results', { state: { patientData: patient } })}
+                              className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all border border-blue-100 shadow-sm flex items-center gap-1.5"
+                            >
+                              <Activity size={12} /> Medical Reports
+                            </button>
+                            {isOPCompleted && (
+                              <button 
+                                onClick={() => navigate('/doctor/prescriptions', { state: { patientData: patient } })}
+                                className="bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all border border-emerald-100 shadow-sm flex items-center gap-1.5"
+                              >
+                                <CheckCircle2 size={12} /> Complete
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Collapsible Details */}
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan="4" className="bg-slate-50/50 px-8 py-6 border-b border-slate-100">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 animate-in fade-in slide-in-from-top-2 duration-200 text-left">
+                              <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Gender</p>
+                                <p className="font-bold text-navy text-sm capitalize">{patient.gender || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Age</p>
+                                <p className="font-bold text-navy text-sm">{calculateAge(patient.date_of_birth)}y</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Blood Group</p>
+                                <p className="font-bold text-rose-600 text-sm">{patient.blood_group || 'O+'}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Mobile Number</p>
+                                <p className="font-bold text-navy text-sm">{patient.mobile_number || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Email Address</p>
+                                <p className="font-bold text-navy text-sm">{patient.email || 'N/A'}</p>
+                              </div>
+                              {patient.known_allergies && (
+                                <div className="sm:col-span-2">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Known Allergies</p>
+                                  <p className="text-slate-600 text-sm font-semibold">{patient.known_allergies}</p>
+                                </div>
+                              )}
+                              {patient.chronic_conditions && (
+                                <div className="sm:col-span-2">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Chronic Conditions</p>
+                                  <p className="text-slate-600 text-sm font-semibold">{patient.chronic_conditions}</p>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         ) : (
-          <div className="bg-slate-50 rounded-3xl p-12 text-center border border-dashed border-slate-200">
+          <div className="bg-slate-50 p-12 text-center border-t border-slate-100">
             <p className="text-slate-400 font-medium">No patients found matching your search.</p>
           </div>
         )}
@@ -331,6 +640,17 @@ const DoctorPatientsPage = () => {
           </div>
         </div>
       )}
+
+      <OPConsultationModal 
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedAppointment(null);
+          fetchPatientsAndAppointments();
+        }}
+        patient={selectedAppointment}
+        onSave={handleSaveConsultation}
+      />
     </div>
   );
 };

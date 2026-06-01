@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '../api/axios';
+import { useAuthStore } from './authStore';
 
 export const useNotificationStore = create((set, get) => ({
   notifications: [],
@@ -12,6 +13,15 @@ export const useNotificationStore = create((set, get) => ({
     if (!user) return;
     set({ userId: user.id });
     get().fetchNotifications(user);
+
+    // Listen to storage events to dynamically reload notifications
+    const handleStorageChange = () => {
+      const activeUser = useAuthStore.getState().user;
+      if (activeUser) {
+        get().fetchNotifications(activeUser);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
   },
 
   fetchNotifications: async (user) => {
@@ -135,6 +145,37 @@ export const useNotificationStore = create((set, get) => ({
           console.error("Failed to fetch scan results", err);
         }
 
+        // 5. Scan for local reschedule requests from doctors
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('op_reschedule_req_')) {
+              const reqStr = localStorage.getItem(key);
+              if (reqStr) {
+                const req = JSON.parse(reqStr);
+                if (req.patientId == userId && req.status === 'requested') {
+                  const id = `op-reschedule-req-notif-${req.apptId}`;
+                  rawNotifications.push({
+                    id,
+                    title: `Continuation Reschedule Suggestion`,
+                    preview: `Dr. ${req.doctorName} requested to reschedule continuation of your consultation.`,
+                    body: `Dear Patient,\n\nDr. ${req.doctorName} has suggested to reschedule the continuation of your incomplete Outpatient consultation to ${req.suggestedDate}.\n\nPlease select a time slot below to accept and confirm the reschedule. Once confirmed, you can continue the consultation.`,
+                    sender: 'consultations@gaclinic.com',
+                    timestamp: new Date().toISOString(),
+                    apptId: req.apptId,
+                    suggestedDate: req.suggestedDate,
+                    doctorName: req.doctorName,
+                    isOPRescheduleRequestNotif: true,
+                    isRead: !!readIds[id]
+                  });
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Failed to parse local reschedule requests", err);
+        }
+
       } else if (role === 'doctor' || role === 'senior_doctor') {
         // 1. Fetch appointments
         try {
@@ -151,6 +192,25 @@ export const useNotificationStore = create((set, get) => ({
               timestamp: appt.created_at || `${appt.date}T${appt.time}`,
               isRead: !!readIds[id]
             });
+
+            // 2. OP Incomplete/Pending notification (only for active, incomplete appointments with a draft)
+            const hasDraft = localStorage.getItem(`op_draft_appt_${appt.id}`);
+            if (appt.status !== 'completed' && appt.status !== 'cancelled' && hasDraft) {
+              const pendingId = `op-pending-${appt.id}`;
+              rawNotifications.push({
+                id: pendingId,
+                title: `OP Pending / Incomplete: ${appt.patient_name}`,
+                preview: `You left mid-way during consultation for ${appt.patient_name}.`,
+                body: `Hello Dr. ${user.full_name || 'Doctor'},\n\nYou left the Outpatient consultation for patient ${appt.patient_name} mid-way without completing the process.\n\nDate: ${appt.date}\nTime: ${appt.time?.substring(0, 5) || 'N/A'}\n\nPlease click 'Resume OP' below to continue the SOAP notes, recommended tests, and prescriptions.`,
+                sender: 'consultations@gaclinic.com',
+                timestamp: appt.created_at || `${appt.date}T${appt.time}`,
+                patientId: appt.patient,
+                patientName: appt.patient_name,
+                appointmentId: appt.id,
+                isOPPendingNotif: true,
+                isRead: !!readIds[pendingId]
+              });
+            }
           });
         } catch (err) {
           console.error("Failed to fetch doctor appointments", err);
@@ -191,11 +251,41 @@ export const useNotificationStore = create((set, get) => ({
               sender: 'referrals@gaclinic.com',
               timestamp: ref.created_at,
               patientId: ref.patient_id, // stored for deep linking!
+              patientName: ref.patient_name,
               isRead: !!readIds[id]
             });
           });
         } catch (err) {
           console.error("Failed to fetch specialist referrals", err);
+        }
+
+        // 4. Scan for local reschedule acceptances from patients
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('op_reschedule_req_')) {
+              const reqStr = localStorage.getItem(key);
+              if (reqStr) {
+                const req = JSON.parse(reqStr);
+                if (req.status === 'accepted' && (!req.doctorId || req.doctorId == userId)) {
+                  const id = `op-reschedule-accept-notif-${req.apptId}`;
+                  rawNotifications.push({
+                    id,
+                    title: `Continuation Rescheduled: ${req.patientName}`,
+                    preview: `${req.patientName} accepted and booked ${req.slot} on ${req.suggestedDate}.`,
+                    body: `Hello Dr. ${user.full_name || 'Doctor'},\n\nPatient ${req.patientName} has accepted your suggestion for continuation reschedule and chosen the slot ${req.slot} on ${req.suggestedDate}.\n\nThe appointment has been updated to the chosen date and time. You can resume the consultation once they arrive.`,
+                    sender: 'consultations@gaclinic.com',
+                    timestamp: new Date().toISOString(),
+                    apptId: req.apptId,
+                    isOPRescheduleAcceptNotif: true,
+                    isRead: !!readIds[id]
+                  });
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Failed to parse local reschedule acceptances", err);
         }
 
         // 3. Fetch security audit logs (senior doctor only) - Removed per request

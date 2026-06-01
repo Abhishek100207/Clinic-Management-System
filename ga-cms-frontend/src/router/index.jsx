@@ -47,6 +47,7 @@ const ScanReportPage = lazy(() => import('../components/shared/ScanReportPage'))
 const PatientChatPage = lazy(() => import('../components/patient/PatientChatPage'));
 const StaffChatPage = lazy(() => import('../components/shared/chat/StaffChatPage'));
 const ConsultationReviewForm = lazy(() => import('../components/shared/ConsultationReviewForm'));
+const DoctorPrescriptionsPage = lazy(() => import('../components/doctor/DoctorPrescriptionsPage'));
 
 const ChatRouteWrapper = () => {
   return (
@@ -137,6 +138,13 @@ const AppRouter = () => {
             element={
               <AuthGuard allowedRoles={['doctor', 'senior_doctor']}>
                 <DoctorPatientsPage />
+              </AuthGuard>
+            } 
+          />
+          <Route path="/doctor/prescriptions" 
+            element={
+              <AuthGuard allowedRoles={['doctor', 'senior_doctor']}>
+                <DoctorPrescriptionsPage />
               </AuthGuard>
             } 
           />

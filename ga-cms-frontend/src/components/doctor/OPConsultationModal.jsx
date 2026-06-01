@@ -15,6 +15,8 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
   const dropdownRef = useRef(null);
   const [timeoutId, setTimeoutId] = useState(null);
   const [doctors, setDoctors] = useState([]);
+  const [saveStatus, setSaveStatus] = useState('');
+  const isFirstLoad = useRef(true);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -63,6 +65,64 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
       fetchDoctors();
     }
   }, [isOpen]);
+
+  // Load draft when patient/appointment changes or modal opens
+  useEffect(() => {
+    if (isOpen && patient?.id) {
+      isFirstLoad.current = true;
+      setSaveStatus('');
+      const savedDraft = localStorage.getItem(`op_draft_appt_${patient.id}`);
+      if (savedDraft) {
+        try {
+          const draft = JSON.parse(savedDraft);
+          if (draft.formData) {
+            setFormData(draft.formData);
+          }
+          if (draft.step) {
+            setStep(draft.step);
+          }
+          setSaveStatus('Draft loaded');
+        } catch (e) {
+          console.error("Failed to parse saved consultation draft", e);
+        }
+      } else {
+        // Reset to default empty state if no draft exists
+        setStep(1);
+        setFormData({
+          weight: '',
+          soap: {
+            subjective: '',
+            objective: '',
+            assessment: '',
+            plan: ''
+          },
+          recommendedTests: '',
+          prescriptions: [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, food: '' }],
+          prescriptionNotes: '',
+          followUpDate: '',
+          referredDoctorId: '',
+          referralNote: ''
+        });
+      }
+      
+      const timer = setTimeout(() => {
+        isFirstLoad.current = false;
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, patient?.id]);
+
+  // Save draft on state changes
+  useEffect(() => {
+    if (isOpen && patient?.id && !isFirstLoad.current) {
+      const draft = {
+        formData,
+        step
+      };
+      localStorage.setItem(`op_draft_appt_${patient.id}`, JSON.stringify(draft));
+      setSaveStatus('Draft autosaved');
+    }
+  }, [formData, step, isOpen, patient?.id]);
 
   if (!isOpen) return null;
 
@@ -529,7 +589,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
 
         {/* Footer */}
         <div className="p-8 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-          <div>
+          <div className="flex items-center gap-4">
             {step > 1 && (
               <button 
                 onClick={handleBack}
@@ -537,6 +597,12 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
               >
                 <ChevronLeft size={18} /> Back
               </button>
+            )}
+            {saveStatus && (
+              <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1.5 animate-pulse bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 shadow-sm shadow-emerald-50/50">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                {saveStatus}
+              </span>
             )}
           </div>
           
