@@ -95,6 +95,9 @@ export const NotificationDrawer = () => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  const [reschedulingApptId, setReschedulingApptId] = useState(null);
+  const [suggestedDate, setSuggestedDate] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState('');
   const dropdownRef = useRef(null);
 
   // Initialize notifications for the logged-in user
@@ -320,18 +323,187 @@ export const NotificationDrawer = () => {
                               {item.body}
                             </p>
                             {item.id?.startsWith('referral-') && item.patientId && (
-                              <div className="mt-3 pt-3 border-t border-slate-200/65 flex justify-end">
+                              <div className="mt-3 pt-3 border-t border-slate-200/65 flex justify-end gap-2">
                                 <button
                                   onClick={() => {
                                     setIsOpen(false);
                                     navigate('/my-patients', { state: { openHistoryFor: item.patientId } });
                                   }}
-                                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-md shadow-blue-100 flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                  className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center gap-1.5 active:scale-95 cursor-pointer"
                                 >
-                                  <FileText size={12} /> View Patient Medical History
+                                  <FileText size={12} /> Medical History
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setIsOpen(false);
+                                    navigate('/test-results', { state: { patientData: { full_name: item.patientName || item.title.replace('Specialist Referral: ', '').trim() } } });
+                                  }}
+                                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-md shadow-blue-100 flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                >
+                                  <Activity size={12} /> View Reports
                                 </button>
                               </div>
                             )}
+                            {item.isOPPendingNotif && item.patientId && (
+                              <div className="mt-3 pt-3 border-t border-slate-200/65 flex flex-col gap-3">
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setIsOpen(false);
+                                      navigate('/my-patients', { state: { openHistoryFor: item.patientId, resumeOP: true } });
+                                    }}
+                                    className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-md shadow-amber-100 flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                  >
+                                    <FileText size={12} /> Resume OP
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setReschedulingApptId(reschedulingApptId === item.appointmentId ? null : item.appointmentId);
+                                      setSuggestedDate(new Date(Date.now() + 86400000).toISOString().split('T')[0]);
+                                    }}
+                                    className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all border border-indigo-100 flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                  >
+                                    <Calendar size={12} /> Reschedule
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setIsOpen(false);
+                                      navigate('/test-results', { state: { patientData: { full_name: item.patientName || item.title.replace('OP Pending / Incomplete: ', '').trim() } } });
+                                    }}
+                                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-md shadow-blue-100 flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                                  >
+                                    <Activity size={12} /> View Reports
+                                  </button>
+                                </div>
+
+                                {reschedulingApptId === item.appointmentId && (
+                                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col gap-2.5 animate-in fade-in duration-200">
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Suggest New Continuation Date</p>
+                                    <div className="flex gap-2">
+                                      <input 
+                                        type="date"
+                                        value={suggestedDate}
+                                        onChange={(e) => setSuggestedDate(e.target.value)}
+                                        min={new Date().toISOString().split('T')[0]}
+                                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-100 w-full"
+                                      />
+                                      <button
+                                        onClick={async () => {
+                                          if (!suggestedDate) {
+                                            alert("Please choose a date.");
+                                            return;
+                                          }
+                                          const req = {
+                                            status: 'requested',
+                                            suggestedDate: suggestedDate,
+                                            apptId: item.appointmentId,
+                                            patientId: item.patientId,
+                                            patientName: item.patientName,
+                                            doctorName: user?.full_name || 'Doctor',
+                                            doctorId: user?.id
+                                          };
+                                          localStorage.setItem(`op_reschedule_req_${item.appointmentId}`, JSON.stringify(req));
+                                          
+                                          const rescheduledStr = localStorage.getItem('rescheduled_appts_overrides') || '{}';
+                                          const overrides = JSON.parse(rescheduledStr);
+                                          overrides[item.appointmentId] = {
+                                            ...overrides[item.appointmentId],
+                                            status: 'rescheduling'
+                                          };
+                                          localStorage.setItem('rescheduled_appts_overrides', JSON.stringify(overrides));
+
+                                          setReschedulingApptId(null);
+                                          window.dispatchEvent(new Event('storage'));
+                                          alert("Continuation reschedule request sent to patient.");
+                                        }}
+                                        className="px-3 py-1.5 bg-blue-600 text-white font-bold text-xs rounded-lg hover:bg-blue-700 transition-colors shrink-0"
+                                      >
+                                        Send Request
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                          {item.isOPRescheduleRequestNotif && (
+                            <div className="mt-3 pt-3 border-t border-slate-200/65 flex flex-col gap-3">
+                              <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-200 flex flex-col gap-2.5 animate-in fade-in duration-200">
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Select Continuation Time Slot</p>
+                                <div className="flex gap-2">
+                                  <select
+                                    value={selectedSlot}
+                                    onChange={(e) => setSelectedSlot(e.target.value)}
+                                    className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-100 w-full font-medium text-slate-700"
+                                  >
+                                    <option value="">Choose a slot...</option>
+                                    <option value="09:00 AM">09:00 AM</option>
+                                    <option value="10:30 AM">10:30 AM</option>
+                                    <option value="02:00 PM">02:00 PM</option>
+                                    <option value="04:30 PM">04:30 PM</option>
+                                  </select>
+                                  <button
+                                    onClick={() => {
+                                      if (!selectedSlot) {
+                                        alert("Please select a time slot.");
+                                        return;
+                                      }
+                                      const reqKey = `op_reschedule_req_${item.apptId}`;
+                                      const reqStr = localStorage.getItem(reqKey);
+                                      if (reqStr) {
+                                        const req = JSON.parse(reqStr);
+                                        req.status = 'accepted';
+                                        req.slot = selectedSlot;
+                                        localStorage.setItem(reqKey, JSON.stringify(req));
+                                      } else {
+                                        const fallbackReq = {
+                                          status: 'accepted',
+                                          suggestedDate: item.suggestedDate,
+                                          apptId: item.apptId,
+                                          patientId: user?.id,
+                                          patientName: user?.full_name || 'Patient',
+                                          doctorName: item.doctorName,
+                                          slot: selectedSlot
+                                        };
+                                        localStorage.setItem(reqKey, JSON.stringify(fallbackReq));
+                                      }
+                                      
+                                      const rescheduledStr = localStorage.getItem('rescheduled_appts_overrides') || '{}';
+                                      const overrides = JSON.parse(rescheduledStr);
+                                      overrides[item.apptId] = {
+                                        date: item.suggestedDate,
+                                        time: selectedSlot,
+                                        status: 'confirmed'
+                                      };
+                                      localStorage.setItem('rescheduled_appts_overrides', JSON.stringify(overrides));
+                                      
+                                      window.dispatchEvent(new Event('storage'));
+                                      alert("Continuation slot selected and accepted successfully!");
+                                      setExpandedId(null);
+                                    }}
+                                    className="px-3 py-1.5 bg-emerald-600 text-white font-bold text-xs rounded-lg hover:bg-emerald-700 transition-colors shrink-0 cursor-pointer active:scale-95"
+                                  >
+                                    Accept & Confirm
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {item.isOPRescheduleAcceptNotif && (
+                            <div className="mt-3 pt-3 border-t border-slate-200/65 flex justify-end">
+                              <button
+                                onClick={() => {
+                                  localStorage.removeItem(`op_reschedule_req_${item.apptId}`);
+                                  window.dispatchEvent(new Event('storage'));
+                                  setExpandedId(null);
+                                }}
+                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-md active:scale-95 cursor-pointer"
+                              >
+                                Dismiss Alert
+                              </button>
+                            </div>
+                          )}
                           </div>
                         </div>
                       )}

@@ -1,7 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Activity, Download, FileCheck, Search } from 'lucide-react';
 
 const TestResultsPage = () => {
+  const location = useLocation();
+  const initialSearch = location.state?.patientData?.full_name || '';
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
+
+  const allReports = [
+    { name: 'Blood Culture', date: 'May 01, 2026', type: 'Laboratory', status: 'Available', patient: 'Abhishek' },
+    { name: 'X-Ray Chest PA', date: 'April 28, 2026', type: 'Imaging', status: 'Available', patient: 'Abhishek' },
+  ];
+
+  const filteredReports = allReports.filter(report => {
+    const term = searchTerm.toLowerCase();
+    return report.name.toLowerCase().includes(term) ||
+           report.type.toLowerCase().includes(term) ||
+           (report.patient && report.patient.toLowerCase().includes(term));
+  });
+
   return (
     <div className="max-w-5xl mx-auto w-full p-4 md:p-8 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
@@ -15,6 +32,8 @@ const TestResultsPage = () => {
             <input 
               type="text" 
               placeholder="Search reports..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="bg-white border border-slate-200 pl-10 pr-4 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 transition-all w-64 shadow-sm"
             />
           </div>
@@ -22,10 +41,7 @@ const TestResultsPage = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {[
-          { name: 'Blood Culture', date: 'May 01, 2026', type: 'Laboratory', status: 'Available' },
-          { name: 'X-Ray Chest PA', date: 'April 28, 2026', type: 'Imaging', status: 'Available' },
-        ].map((report, i) => (
+        {filteredReports.map((report, i) => (
           <div key={i} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
             <div className="flex items-start justify-between mb-4">
               <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">

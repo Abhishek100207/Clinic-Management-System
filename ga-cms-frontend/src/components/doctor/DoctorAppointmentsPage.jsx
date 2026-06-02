@@ -138,6 +138,9 @@ const DoctorAppointmentsPage = () => {
         toast.success("Consultation finalized. SOAP notes & prescription saved.");
       }
 
+      // Clear draft from localStorage on successful save
+      localStorage.removeItem(`op_draft_appt_${apptId}`);
+
       // Close modal and refresh
       setConsultModal({ isOpen: false, appointment: null });
       fetchDoctorDashboardData();

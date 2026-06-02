@@ -25,34 +25,36 @@ const DoctorConsultationsPage = () => {
 
 
 
+  const fetchOPAppointments = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/api/appointments/appointments/');
+      
+      // Filter for OP (in-person) and confirmed for today using robust timezone-aware match
+      const opList = res.data.filter(a => {
+        if (!a.date) return false;
+        const [year, month, day] = a.date.split('-').map(Number);
+        const d = new Date(year, month - 1, day);
+        const today = new Date();
+        const isToday = d.getDate() === today.getDate() &&
+                       d.getMonth() === today.getMonth() &&
+                       d.getFullYear() === today.getFullYear();
+        
+        return (a.appointment_type === 'in_person' || a.appointment_type === 'in-person' || a.appointment_type === 'virtual' || a.type === 'OP') &&
+               a.status === 'confirmed' &&
+               isToday;
+      });
+      
+      setAppointments(opList);
+    } catch (err) {
+      console.error("Failed to fetch appointments:", err);
+      setAppointments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchOPAppointments = async () => {
-      try {
-        const res = await api.get('/api/appointments/appointments/');
-        
-        // Filter for OP (in-person) and confirmed for today using robust timezone-aware match
-        const opList = res.data.filter(a => {
-          if (!a.date) return false;
-          const [year, month, day] = a.date.split('-').map(Number);
-          const d = new Date(year, month - 1, day);
-          const today = new Date();
-          const isToday = d.getDate() === today.getDate() &&
-                         d.getMonth() === today.getMonth() &&
-                         d.getFullYear() === today.getFullYear();
-          
-          return (a.appointment_type === 'in_person' || a.appointment_type === 'in-person' || a.appointment_type === 'virtual' || a.type === 'OP') &&
-                 a.status === 'confirmed' &&
-                 isToday;
-        });
-        
-        setAppointments(opList);
-      } catch (err) {
-        console.error("Failed to fetch appointments:", err);
-        setAppointments([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchOPAppointments();
   }, []);
 
@@ -137,6 +139,10 @@ const DoctorConsultationsPage = () => {
         await api.patch(`/api/appointments/appointments/${apptId}/`, { status: 'completed' });
         toast.success(`Consultation finalized. SOAP notes saved to patient profile.`);
       }
+      
+      // Clear draft from localStorage on successful save
+      localStorage.removeItem(`op_draft_appt_${apptId}`);
+
       // Remove from list
       setAppointments(prev => prev.filter(a => a.id !== apptId));
     } catch (err) {
@@ -208,12 +214,21 @@ const DoctorConsultationsPage = () => {
 
               {/* Action Button */}
               <div className="w-full md:w-auto">
-                <button 
-                  onClick={() => handleTakeOP(appt)}
-                  className="w-full md:w-auto px-10 py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-3 active:scale-95"
-                >
-                  <Stethoscope size={20} /> Start Consultation
-                </button>
+                {localStorage.getItem(`op_draft_appt_${appt.id}`) ? (
+                  <button 
+                    onClick={() => handleTakeOP(appt)}
+                    className="w-full md:w-auto px-10 py-4 bg-amber-500 text-white font-bold rounded-2xl hover:bg-amber-600 transition-all shadow-lg shadow-amber-100 flex items-center justify-center gap-3 active:scale-95"
+                  >
+                    <Stethoscope size={20} /> Continue OP
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => handleTakeOP(appt)}
+                    className="w-full md:w-auto px-10 py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-3 active:scale-95"
+                  >
+                    <Stethoscope size={20} /> Start Consultation
+                  </button>
+                )}
               </div>
             </div>
           ))
@@ -241,7 +256,10 @@ const DoctorConsultationsPage = () => {
 
       <OPConsultationModal 
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          fetchOPAppointments();
+        }}
         patient={selectedPatient}
         onSave={handleSaveConsultation}
       />
