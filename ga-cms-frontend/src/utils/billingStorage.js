@@ -3,7 +3,14 @@ import apiClient from '../api/axios';
 export const billingStorage = {
   getInvoices: async () => {
     try {
-      const response = await apiClient.get('/api/appointments/invoices/');
+      const todayStr = (() => {
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      })();
+      const response = await apiClient.get(`/api/appointments/invoices/?date=${todayStr}`);
       return response.data.map(item => ({
         id: item.id,
         invoiceId: item.invoice_id,

@@ -86,7 +86,7 @@ const QueuePage = () => {
     const interval = setInterval(() => {
       refreshQueue();
       fetchConfirmedToday();
-    }, 3000);
+    }, 1000);
     
     // Listen to storage events from other tabs/dashboards
     window.addEventListener('storage', () => {

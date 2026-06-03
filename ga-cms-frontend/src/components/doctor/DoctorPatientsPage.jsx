@@ -19,18 +19,64 @@ import { useAuthStore } from '../../store/authStore';
 import OPConsultationModal from './OPConsultationModal';
 import { createConsultationNote, createPrescription, fetchDrugs, checkDrugInteractions } from '../../api/medicalRecords';
 import { toast } from 'react-toastify';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const DoctorPatientsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const currentUser = useAuthStore(state => state.user);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
   const debouncedSearchTerm = useDebounce(searchTerm, 300); // PERF: Debounce search input
+  
+  const { data: qPatientsData, isLoading: isLoadingPatients } = useQuery({
+    queryKey: ['patients', page],
+    queryFn: () => api.get(`/api/users/patients/?page=${page}`).then(res => res.data)
+  });
+  const { data: qAppointmentsData, isLoading: isLoadingAppts } = useQuery({
+    queryKey: ['appointments', page],
+    queryFn: () => api.get(`/api/appointments/appointments/?page=${page}`).then(res => res.data)
+  });
+  const { data: doctorsData, isLoading: isLoadingDocs } = useQuery({
+    queryKey: ['doctors'],
+    queryFn: () => api.get('/api/users/doctors/').then(res => res.data)
+  });
+  const { data: qScanOrdersData, isLoading: isLoadingOrders } = useQuery({
+    queryKey: ['scanOrders', page],
+    queryFn: () => api.get(`/api/medical_records/scan-orders/?page=${page}`).then(res => res.data)
+  });
+  const { data: qScanResultsData, isLoading: isLoadingResults } = useQuery({
+    queryKey: ['scanResults', page],
+    queryFn: () => api.get(`/api/medical_records/scan-results/?page=${page}`).then(res => res.data)
+  });
+
+  const qPatients = Array.isArray(qPatientsData) ? qPatientsData : (qPatientsData?.results || []);
+  const qAppointments = Array.isArray(qAppointmentsData) ? qAppointmentsData : (qAppointmentsData?.results || []);
+  const doctors = Array.isArray(doctorsData) ? doctorsData : (doctorsData?.results || []);
+  const qScanOrders = Array.isArray(qScanOrdersData) ? qScanOrdersData : (qScanOrdersData?.results || []);
+  const qScanResults = Array.isArray(qScanResultsData) ? qScanResultsData : (qScanResultsData?.results || []);
+
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [scanOrders, setScanOrders] = useState([]);
   const [scanResults, setScanResults] = useState([]);
-  const [loading, setLoading] = useState(true);
+  
+  const loading = isLoadingPatients || isLoadingAppts || isLoadingDocs || isLoadingOrders || isLoadingResults;
+
+  // Sync React Query data to local state for local manipulation (e.g. prepending a fetched patient)
+  useEffect(() => { if (qPatients) setPatients(qPatients); }, [qPatients]);
+  useEffect(() => { if (qAppointments) setAppointments(qAppointments); }, [qAppointments]);
+  useEffect(() => { if (qScanOrders) setScanOrders(qScanOrders); }, [qScanOrders]);
+  useEffect(() => { if (qScanResults) setScanResults(qScanResults); }, [qScanResults]);
+
+  useEffect(() => {
+    if (currentUser && doctors) {
+      const myProfile = doctors.find(d => d.user?.id === currentUser.id);
+      if (myProfile) setMyDoctorId(myProfile.id);
+    }
+  }, [currentUser, doctors]);
+
   const [selectedPatientForHistory, setSelectedPatientForHistory] = useState(null);
   const [historyData, setHistoryData] = useState({});
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -235,42 +281,6 @@ const DoctorPatientsPage = () => {
       toast.error(`Failed to save consultation records: ${errorMsg}`);
     }
   };
-
-  const fetchPatientsAndAppointments = async () => {
-    try {
-      const [patientsRes, apptsRes, doctorsRes, scanOrdersRes, scanResultsRes] = await Promise.all([
-        api.get('/api/users/patients/'),
-        api.get('/api/appointments/appointments/'),
-        api.get('/api/users/doctors/'),
-        api.get('/api/medical_records/scan-orders/?limit=1000'),
-        api.get('/api/medical_records/scan-results/?limit=1000')
-      ]);
-      setPatients(Array.isArray(patientsRes?.data) ? patientsRes.data : (patientsRes?.data?.results || []));
-      setAppointments(Array.isArray(apptsRes?.data) ? apptsRes.data : (apptsRes?.data?.results || []));
-      setScanOrders(Array.isArray(scanOrdersRes?.data) ? scanOrdersRes.data : (scanOrdersRes?.data?.results || []));
-      setScanResults(Array.isArray(scanResultsRes?.data) ? scanResultsRes.data : (scanResultsRes?.data?.results || []));
-
-      if (currentUser) {
-        const docList = Array.isArray(doctorsRes?.data) ? doctorsRes.data : (doctorsRes?.data?.results || []);
-        const myProfile = docList.find(d => d.user?.id === currentUser.id);
-        if (myProfile) {
-          setMyDoctorId(myProfile.id);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to fetch patients or appointments", err);
-      setPatients([]);
-      setAppointments([]);
-      setScanOrders([]);
-      setScanResults([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPatientsAndAppointments();
-  }, [currentUser]);
 
   // Listen to openHistoryFor / resumeOP navigation parameters
   useEffect(() => {
@@ -510,13 +520,27 @@ const DoctorPatientsPage = () => {
         )}
       </div>
 
-      {/* Pagination Placeholder */}
+      {/* Pagination controls */}
       {filteredPatients.length > 0 && (
         <div className="flex justify-between items-center px-2 py-4">
-          <p className="text-xs text-slate-400 font-medium">Showing {filteredPatients.length} patients</p>
+          <p className="text-xs text-slate-400 font-medium">
+            Showing {filteredPatients.length} patients {qPatientsData?.count ? `of ${qPatientsData.count}` : ''}
+          </p>
           <div className="flex gap-2">
-            <button className="p-2 border border-slate-200 rounded-lg text-slate-400 hover:bg-white transition-colors"><ChevronLeft size={16} /></button>
-            <button className="p-2 border border-slate-200 rounded-lg text-slate-400 hover:bg-white transition-colors"><ChevronRight size={16} /></button>
+            <button 
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-2 border border-slate-200 rounded-lg text-slate-400 hover:bg-white transition-colors disabled:opacity-50"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button 
+              onClick={() => setPage(p => p + 1)}
+              disabled={!qPatientsData?.next}
+              className="p-2 border border-slate-200 rounded-lg text-slate-400 hover:bg-white transition-colors disabled:opacity-50"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
         </div>
       )}
@@ -646,7 +670,7 @@ const DoctorPatientsPage = () => {
         onClose={() => {
           setIsModalOpen(false);
           setSelectedAppointment(null);
-          fetchPatientsAndAppointments();
+          queryClient.invalidateQueries(['appointments']);
         }}
         patient={selectedAppointment}
         onSave={handleSaveConsultation}

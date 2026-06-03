@@ -58,9 +58,15 @@ class ConsultationNoteViewSet(viewsets.ModelViewSet):
         return Response(response_serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
 class LabResultViewSet(viewsets.ModelViewSet):
-    queryset = LabResult.objects.all()
     serializer_class = LabResultSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = LabResult.objects.all()
+        patient = self.request.query_params.get('patient')
+        if patient:
+            queryset = queryset.filter(patient_id=patient)
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save()
@@ -71,10 +77,16 @@ class LabResultViewSet(viewsets.ModelViewSet):
         )
 
 class ScanResultViewSet(viewsets.ModelViewSet):
-    queryset = ScanResult.objects.select_related('patient').all().order_by('-uploaded_at') # PERF: select_related
     serializer_class = ScanResultSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = StandardPagination # PERF: Add pagination
+
+    def get_queryset(self):
+        queryset = ScanResult.objects.select_related('patient').all().order_by('-uploaded_at') # PERF: select_related
+        patient = self.request.query_params.get('patient')
+        if patient:
+            queryset = queryset.filter(patient_id=patient)
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save()

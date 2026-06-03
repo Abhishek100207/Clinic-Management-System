@@ -63,17 +63,51 @@ class GoogleLoginView(APIView):
 
             user = User.objects.filter(email__iexact=email).first()
             if not user:
-                return Response({'error': 'Account not found. Contact your administrator.'}, status=status.HTTP_403_FORBIDDEN)
-
-            if not user.google_id:
+                base_username = email.split('@')[0]
+                username = base_username
+                counter = 1
+                while User.objects.filter(username__iexact=username).exists():
+                    username = f"{base_username}{counter}"
+                    counter += 1
+                
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=User.objects.make_random_password(),
+                    role='patient',
+                )
+                if 'picture' in idinfo:
+                    user.avatar_url = idinfo['picture']
+                if 'given_name' in idinfo:
+                    user.first_name = idinfo['given_name']
+                if 'family_name' in idinfo:
+                    user.last_name = idinfo['family_name']
                 user.google_id = idinfo.get('sub')
-            if 'picture' in idinfo and not user.avatar_url:
-                user.avatar_url = idinfo['picture']
-            if not user.first_name and 'given_name' in idinfo:
-                user.first_name = idinfo['given_name']
-            if not user.last_name and 'family_name' in idinfo:
-                user.last_name = idinfo['family_name']
-            user.save()
+                user.save()
+                
+                from apps.users.models import Patient
+                try:
+                    Patient.objects.create(
+                        user=user,
+                        patient_id=f"PAT-{user.id}",
+                        full_name=f"{user.first_name} {user.last_name}".strip() or user.username,
+                        mobile_number=f"00000{user.id}"[:15],
+                        date_of_birth="2000-01-01",
+                        gender="Other",
+                        email=user.email
+                    )
+                except Exception:
+                    pass
+            else:
+                if not user.google_id:
+                    user.google_id = idinfo.get('sub')
+                if 'picture' in idinfo and not user.avatar_url:
+                    user.avatar_url = idinfo['picture']
+                if not user.first_name and 'given_name' in idinfo:
+                    user.first_name = idinfo['given_name']
+                if not user.last_name and 'family_name' in idinfo:
+                    user.last_name = idinfo['family_name']
+                user.save()
 
             tokens = get_tokens_for_user(user)
             response = Response({'access': tokens['access'], 'user': UserSerializer(user).data})

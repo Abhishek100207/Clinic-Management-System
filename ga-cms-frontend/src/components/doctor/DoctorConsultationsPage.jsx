@@ -41,7 +41,7 @@ const DoctorConsultationsPage = () => {
                        d.getFullYear() === today.getFullYear();
         
         return (a.appointment_type === 'in_person' || a.appointment_type === 'in-person' || a.appointment_type === 'virtual' || a.type === 'OP') &&
-               a.status === 'confirmed' &&
+               ['confirmed', 'checked_in', 'in_progress'].includes(a.status) &&
                isToday;
       });
       

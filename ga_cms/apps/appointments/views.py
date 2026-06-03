@@ -40,7 +40,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = Appointment.objects.select_related('patient', 'doctor', 'doctor__user').all()
+        queryset = Appointment.objects.select_related('patient', 'doctor', 'doctor__user').prefetch_related('reschedule_history').all()
 
         if user.role == 'patient':
             queryset = queryset.filter(patient__user=user)
@@ -48,24 +48,28 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(doctor__user=user)
         # Receptionist or Admin sees all
 
+        date_param = self.request.query_params.get('date')
+        if date_param:
+            queryset = queryset.filter(date=date_param)
+
         # Auto-mark missed: confirmed/pending appointments whose slot has passed
         # Use a 30-minute grace window after the scheduled time
         now = timezone.now()
         grace = datetime.timedelta(minutes=30)
-        missed_qs = queryset.filter(
+        cutoff_dt = now - grace
+        
+        # 1. Appointments from previous days
+        Appointment.objects.filter(
             status__in=['pending', 'confirmed', 'rescheduled'],
-        )
-        missed_ids = []
-        for appt in missed_qs:
-            slot_dt = timezone.make_aware(
-                datetime.datetime.combine(appt.date, appt.time),
-                timezone.get_current_timezone()
-            )
-            if slot_dt + grace < now:
-                missed_ids.append(appt.id)
+            date__lt=cutoff_dt.date()
+        ).update(status='missed')
 
-        if missed_ids:
-            Appointment.objects.filter(id__in=missed_ids).update(status='missed')
+        # 2. Appointments from today but past the time cutoff
+        Appointment.objects.filter(
+            status__in=['pending', 'confirmed', 'rescheduled'],
+            date=cutoff_dt.date(),
+            time__lt=cutoff_dt.time()
+        ).update(status='missed')
 
         return queryset
 
@@ -535,6 +539,10 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if patient_id:
             queryset = queryset.filter(patient__id=patient_id)
             
+        date_param = self.request.query_params.get('date')
+        if date_param:
+            queryset = queryset.filter(date_generated__date=date_param)
+            
         if user.role == 'patient':
             return queryset.filter(patient__user=user)
         elif user.role in ['doctor', 'senior_doctor']:
@@ -771,6 +779,7 @@ from django.db.models import Q
 class DoctorCalendarOverrideViewSet(viewsets.ModelViewSet):
     serializer_class = DoctorCalendarOverrideSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None # PERF: disable pagination to fetch all overrides for calendar
 
     def get_queryset(self):
         user = self.request.user

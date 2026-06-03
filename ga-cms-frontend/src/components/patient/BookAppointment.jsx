@@ -703,7 +703,7 @@ For support, email: support@gacms.com
                     <MapPin size={20} />
                     <div className="text-left">
                       <p className="font-bold text-sm">In-Person</p>
-                      <p className="text-[10px] opacity-70">9:00 AM - 1:00 PM</p>
+                      <p className="text-[10px] opacity-70">Clinic Visit</p>
                     </div>
                   </button>
                   {user?.role !== 'receptionist' && (
@@ -720,7 +720,7 @@ For support, email: support@gacms.com
                       <Video size={20} />
                       <div className="text-left">
                         <p className="font-bold text-sm">Virtual</p>
-                        <p className="text-[10px] opacity-70">2:00 PM - 6:00 PM</p>
+                        <p className="text-[10px] opacity-70">Video Call</p>
                       </div>
                     </button>
                   )}
@@ -768,13 +768,33 @@ For support, email: support@gacms.com
                         const filteredSlots = availableSlots.filter(s => {
                           const hour = parseInt((s.time || '').substring(0, 2) || '0');
                           const minute = parseInt((s.time || '00:00').substring(3, 5) || '0');
-                          // Filter by appointment type hour window
-                          const inWindow = formData.appointment_type === 'in_person'
-                            ? hour >= 9 && hour < 13
-                            : hour >= 14 && hour < 18;
+                          const slotTotalMins = hour * 60 + minute;
+
+                          // Find if this slot falls within ANY valid session for this day and appointment type
+                          const validSessions = (dayStatus.sessions || []).filter(
+                            session => session.appointment_type === formData.appointment_type
+                          );
+                          
+                          let inWindow = false;
+                          for (const session of validSessions) {
+                            const startHr = parseInt((session.start_time || '00:00').substring(0, 2));
+                            const startMin = parseInt((session.start_time || '00:00').substring(3, 5));
+                            const endHr = parseInt((session.end_time || '00:00').substring(0, 2));
+                            const endMin = parseInt((session.end_time || '00:00').substring(3, 5));
+                            
+                            const sessionStartMins = startHr * 60 + startMin;
+                            const sessionEndMins = endHr * 60 + endMin;
+                            
+                            // Check if slot falls in this window
+                            if (slotTotalMins >= sessionStartMins && slotTotalMins < sessionEndMins) {
+                                inWindow = true;
+                                break;
+                            }
+                          }
+                          
                           if (!inWindow) return false;
                           // For today: hide slots that are already past
-                          if (isToday && (hour * 60 + minute) <= nowMinutes) return false;
+                          if (isToday && slotTotalMins <= nowMinutes) return false;
                           return true;
                         });
 

@@ -89,7 +89,7 @@ const DoctorDashboard = () => {
     // Storage sync
     window.addEventListener('storage', refreshQueue);
     // Periodical fallback polling
-    const interval = setInterval(refreshQueue, 3000);
+    const interval = setInterval(refreshQueue, 1000);
     return () => {
       window.removeEventListener('storage', refreshQueue);
       clearInterval(interval);
@@ -98,18 +98,18 @@ const DoctorDashboard = () => {
   }, [user]);
 
   const handleCallPatient = async (token) => {
-    await queueStorage.updatePatientStatus(token, 'active');
-    refreshQueue();
+    setQueue(prev => prev.map(item => item.token === token ? { ...item, status: 'active' } : item));
+    queueStorage.updatePatientStatus(token, 'active').then(() => refreshQueue());
   };
 
   const handleFinalizeConsult = async (token) => {
-    await queueStorage.updatePatientStatus(token, 'completed');
-    refreshQueue();
+    setQueue(prev => prev.map(item => item.token === token ? { ...item, status: 'completed' } : item));
+    queueStorage.updatePatientStatus(token, 'completed').then(() => refreshQueue());
   };
 
   const handleMissedPatient = async (token) => {
-    await queueStorage.updatePatientStatus(token, 'missed');
-    refreshQueue();
+    setQueue(prev => prev.map(item => item.token === token ? { ...item, status: 'missed' } : item));
+    queueStorage.updatePatientStatus(token, 'missed').then(() => refreshQueue());
   };
 
   useEffect(() => {
@@ -334,30 +334,36 @@ const DoctorDashboard = () => {
 
                 {currentServing ? (
                   <div className="bg-gradient-to-r from-slate-50 to-blue-50/30 border border-blue-100/50 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-5 transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black text-xl font-mono shadow-md shadow-blue-500/10">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="min-w-[4.5rem] px-2 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-black text-xl font-mono shadow-md shadow-blue-500/10 shrink-0 whitespace-nowrap">
                         {currentServing.token}
                       </div>
-                      <div>
-                        <h5 className="font-extrabold text-navy text-base leading-snug">{currentServing.patientName}</h5>
+                      <div className="overflow-hidden">
+                        <h5 className="font-extrabold text-navy text-base leading-snug truncate">{currentServing.patientName}</h5>
                         <p className="text-xs text-slate-500 font-medium mt-0.5">
                           Check-in: <span className="capitalize">{currentServing.type}</span> • Status: <span className="font-bold text-blue-600 uppercase">{currentServing.status}</span>
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                    <div className="flex items-center gap-2.5 w-full sm:w-auto mt-4 sm:mt-0 flex-wrap sm:flex-nowrap">
+                      <button 
+                        onClick={() => setConsultationData({ isOpen: true, appointment: { patient_name: currentServing.patientName, patient_id: currentServing.patientId, id: currentServing.id } })}
+                        className="flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <Stethoscope size={14} /> {localStorage.getItem(`op_draft_appt_${currentServing.id}`) ? 'Continue OP' : 'Take OP'}
+                      </button>
                       <button 
                         onClick={() => handleFinalizeConsult(currentServing.token)}
-                        className="flex-1 sm:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/10 transition-all flex items-center justify-center gap-1.5"
+                        className="flex-1 sm:flex-none px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/10 transition-all flex items-center justify-center gap-1.5"
                       >
-                        <Check size={14} /> Finalize Consult
+                        <Check size={14} /> Finish
                       </button>
                       <button 
                         onClick={() => handleMissedPatient(currentServing.token)}
                         className="flex-1 sm:flex-none px-4 py-2.5 bg-white border border-slate-200 hover:bg-rose-50 hover:border-rose-100 text-rose-600 font-bold text-xs rounded-xl transition-all"
                       >
-                        Mark Absent
+                        Absent
                       </button>
                     </div>
                   </div>

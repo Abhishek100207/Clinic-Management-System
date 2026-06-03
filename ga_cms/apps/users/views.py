@@ -179,3 +179,54 @@ class AdminSummaryAPIView(APIView):
             'revenue': total_revenue,
             'growth': 15  # Mocked growth metric
         })
+
+from apps.appointments.serializers import AppointmentSerializer
+from apps.medical_records.serializers import ScanOrderSerializer
+
+class DashboardBootstrapAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        # 1. Fetch User Profile
+        if user.role == 'patient':
+            try:
+                profile = PatientSerializer(user.patient).data
+            except:
+                profile = {}
+        elif user.role in ['doctor', 'senior_doctor']:
+            try:
+                profile = DoctorSerializer(user.doctor).data
+            except:
+                profile = {}
+        else:
+            profile = {}
+            
+        # 2. Fetch Relevant Appointments (e.g. today's or pending)
+        from apps.appointments.models import Appointment
+        from django.utils import timezone
+        
+        today = timezone.now().date()
+        appointments_qs = Appointment.objects.select_related('patient', 'doctor', 'doctor__user').all()
+        if user.role == 'patient':
+            appointments_qs = appointments_qs.filter(patient__user=user)
+        elif user.role in ['doctor', 'senior_doctor']:
+            appointments_qs = appointments_qs.filter(doctor__user=user)
+            
+        appointments_data = AppointmentSerializer(appointments_qs, many=True).data
+
+        # 3. Compile response
+        response_data = {
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'full_name': user.get_full_name(),
+                'role': user.role,
+                'profile': profile
+            },
+            'appointments': appointments_data,
+        }
+        
+        return Response(response_data)

@@ -67,12 +67,19 @@ export const calendarStorage = {
     try {
       const docIdStr = doctorId ? doctorId.toString() : '1';
       
-      // Update local storage synchronously first
+      // Get existing ID before overwriting local storage
       const data = localStorage.getItem(CALENDAR_STORAGE_KEY);
       const all = data ? JSON.parse(data) : {};
       
+      const existingId = (all[docIdStr] && all[docIdStr][dateStr]) ? all[docIdStr][dateStr].id : null;
+      
       if (!all[docIdStr]) {
         all[docIdStr] = {};
+      }
+      
+      // Preserve the id in the new details so local UI knows about it instantly
+      if (existingId) {
+        overrideDetails.id = existingId;
       }
       
       all[docIdStr][dateStr] = overrideDetails;
@@ -88,7 +95,11 @@ export const calendarStorage = {
         sessions: overrideDetails.sessions || null
       };
       
-      await apiClient.post('/api/appointments/overrides/', payload);
+      if (existingId) {
+        await apiClient.put(`/api/appointments/overrides/${existingId}/`, payload);
+      } else {
+        await apiClient.post('/api/appointments/overrides/', payload);
+      }
       
       // Sync again to make sure everything matches
       calendarStorage.syncWithBackend(docIdStr);

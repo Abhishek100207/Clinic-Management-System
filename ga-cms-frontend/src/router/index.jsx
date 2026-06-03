@@ -102,7 +102,7 @@ const AppRouter = () => {
         <Route path="/review" element={<ReviewRouteWrapper />} />
         <Route path="/review/:appointmentId" element={<ReviewRouteWrapper />} />
 
-        <Route element={<AppShell />}>
+        <Route element={<AuthGuard><AppShell /></AuthGuard>}>
           <Route path="/dashboard/admin"
             element={<AuthGuard allowedRoles={['senior_doctor']}><AdminDashboard /></AuthGuard>} />
           <Route path="/dashboard/doctor"

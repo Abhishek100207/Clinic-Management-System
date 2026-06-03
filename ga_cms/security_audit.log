@@ -413,3 +413,26 @@
 2026-06-01 21:00:34,760 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-06-01 21:00:36,869 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-06-01 21:35:32,671 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-02 13:09:52,138 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-02 13:12:10,110 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-06-02 13:14:19,982 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-02 14:03:11,614 - INFO - User: Suraj | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-06-02 14:03:30,402 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-02 14:04:29,330 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-02 15:50:06,225 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-02 15:53:15,466 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-02 16:01:41,175 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-02 16:48:15,450 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-06-02 16:48:17,242 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-06-02 16:48:31,335 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-02 17:06:09,337 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-02 17:08:29,091 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-06-02 17:08:30,009 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-06-02 17:08:30,029 - INFO - User: Abhishek | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-06-02 17:08:43,203 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-02 17:19:25,474 - INFO - User: Suraj | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-06-02 17:19:27,114 - INFO - User: Suraj | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-06-02 17:23:27,754 - INFO - User: Abhishek | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-03 14:15:42,113 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-03 14:15:43,792 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
+2026-06-03 14:16:26,587 - INFO - User: Suraj | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out

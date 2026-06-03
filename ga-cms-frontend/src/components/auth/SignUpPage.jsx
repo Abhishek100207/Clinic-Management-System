@@ -5,6 +5,8 @@ import { authApi } from '../../api/auth';
 import { ROLE_CONFIG } from '../../utils/roleConfig';
 import OtpInput from './OtpInput';
 
+import { GoogleLogin } from '@react-oauth/google';
+
 // step: 'form' | 'otp'
 const SignUpPage = () => {
   const [step, setStep]         = useState('form');
@@ -12,7 +14,7 @@ const SignUpPage = () => {
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm]   = useState('');
-  const [role, setRole]         = useState('');
+  const [role, setRole]         = useState('patient');
   const [otp, setOtp]           = useState('');
   const [error, setError]       = useState(null);
   const [loading, setLoading]   = useState(false);
@@ -25,6 +27,18 @@ const SignUpPage = () => {
     const t = setInterval(() => {
       setResendTimer(prev => { if (prev <= 1) { clearInterval(t); return 0; } return prev - 1; });
     }, 1000);
+  };
+
+  const handleGoogleSuccess = async (cred) => {
+    setLoading(true); setError(null);
+    try {
+      const res  = await authApi.googleLogin(cred.credential);
+      setAuth(res.user, res.access);
+      const cfg  = ROLE_CONFIG[res.user.role];
+      navigate(cfg ? cfg.dashboardRoute : '/login', { replace: true });
+    } catch (err) {
+      setError(err.response?.data?.error || 'Account creation failed. Contact your administrator.');
+    } finally { setLoading(false); }
   };
 
   const handleSubmit = async (e) => {
@@ -122,23 +136,7 @@ const SignUpPage = () => {
                     style={{ background: 'rgba(255,255,255,0.05)' }} />
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-white/50 text-xs font-semibold uppercase tracking-wider">Role</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { value: 'senior_doctor', label: 'Senior Doctor', icon: '👨‍⚕️' },
-                      { value: 'patient',       label: 'Patient',       icon: '🧑' },
-                    ].map(({ value, label, icon }) => (
-                      <button key={value} type="button" onClick={() => setRole(value)}
-                        className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${
-                          role === value ? 'border-blue-500 text-white' : 'border-white/10 text-white/40 hover:border-white/25 hover:text-white/70'
-                        }`}
-                        style={{ background: role === value ? 'rgba(29,78,216,0.25)' : 'rgba(255,255,255,0.03)' }}>
-                        <span>{icon}</span><span>{label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+
 
                 {/* Password */}
                 <div className="flex flex-col gap-1.5">
@@ -165,6 +163,20 @@ const SignUpPage = () => {
                   style={{ background: 'linear-gradient(135deg,#1d4ed8,#0ea5e9)' }}>
                   {loading ? 'Sending OTP…' : 'Continue — Get OTP →'}
                 </button>
+
+                <div className="flex items-center gap-3 my-2">
+                  <div className="flex-1 h-px bg-white/10" />
+                  <span className="text-white/25 text-xs">or</span>
+                  <div className="flex-1 h-px bg-white/10" />
+                </div>
+
+                <div className="flex justify-center">
+                  {loading
+                    ? <div className="w-10 h-10 rounded-full border-4 border-white/10 border-t-blue-400" style={{ animation: 'spin 0.8s linear infinite' }} />
+                    : <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError('Google sign-up failed.')}
+                        useOneTap={false} shape="rectangular" theme="filled_blue" size="large" text="signup_with" width="320" />
+                  }
+                </div>
               </form>
             ) : (
               <form onSubmit={handleVerifyOtp} className="flex flex-col gap-5">

@@ -9,6 +9,20 @@ const apiClient = axios.create({
   },
 });
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 apiClient.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().accessToken;
@@ -67,7 +81,19 @@ apiClient.interceptors.response.use(
         return Promise.reject(error);
       }
 
+      if (isRefreshing) {
+        return new Promise(function(resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        }).then(token => {
+          originalRequest.headers['Authorization'] = 'Bearer ' + token;
+          return apiClient(originalRequest);
+        }).catch(err => {
+          return Promise.reject(err);
+        });
+      }
+
       originalRequest._retry = true;
+      isRefreshing = true;
       try {
         const { data } = await axios.post(
           `${apiClient.defaults.baseURL}/auth/refresh/`,
@@ -76,13 +102,17 @@ apiClient.interceptors.response.use(
         );
         useAuthStore.getState().setToken(data.access);
         originalRequest.headers['Authorization'] = `Bearer ${data.access}`;
+        processQueue(null, data.access);
         return apiClient(originalRequest);
       } catch (err) {
+        processQueue(err, null);
         useAuthStore.getState().logout();
         if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
         return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
       }
     }
     return Promise.reject(error);

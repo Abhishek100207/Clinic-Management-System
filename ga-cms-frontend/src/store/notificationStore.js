@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from '../api/axios';
 import { useAuthStore } from './authStore';
+import { queryClient } from '../main';
 
 export const useNotificationStore = create((set, get) => ({
   notifications: [],
@@ -50,7 +51,10 @@ export const useNotificationStore = create((set, get) => ({
       if (role === 'patient') {
         // 1. Fetch appointments
         try {
-          const apptRes = await api.get('/api/appointments/appointments/');
+          const apptRes = await queryClient.fetchQuery({
+            queryKey: ['appointments'],
+            queryFn: () => api.get('/api/appointments/appointments/')
+          });
           const appts = Array.isArray(apptRes.data) ? apptRes.data : (apptRes.data.results || []);
           appts.forEach(appt => {
             const id = `appt-${appt.id}`;
@@ -157,9 +161,9 @@ export const useNotificationStore = create((set, get) => ({
                   const id = `op-reschedule-req-notif-${req.apptId}`;
                   rawNotifications.push({
                     id,
-                    title: `Continuation Reschedule Suggestion`,
-                    preview: `Dr. ${req.doctorName} requested to reschedule continuation of your consultation.`,
-                    body: `Dear Patient,\n\nDr. ${req.doctorName} has suggested to reschedule the continuation of your incomplete Outpatient consultation to ${req.suggestedDate}.\n\nPlease select a time slot below to accept and confirm the reschedule. Once confirmed, you can continue the consultation.`,
+                    title: `Free Reschedule Suggestion for Missed Appointment`,
+                    preview: `Dr. ${req.doctorName} requested to reschedule your missed consultation for free.`,
+                    body: `Dear Patient,\n\nDr. ${req.doctorName} has suggested to reschedule your missed Outpatient consultation to ${req.suggestedDate}. This reschedule will be completely free of charge.\n\nPlease select a time slot below to accept and confirm the reschedule. Once confirmed, your appointment will be updated.`,
                     sender: 'consultations@gaclinic.com',
                     timestamp: new Date().toISOString(),
                     apptId: req.apptId,
@@ -179,7 +183,10 @@ export const useNotificationStore = create((set, get) => ({
       } else if (role === 'doctor' || role === 'senior_doctor') {
         // 1. Fetch appointments
         try {
-          const apptRes = await api.get('/api/appointments/appointments/');
+          const apptRes = await queryClient.fetchQuery({
+            queryKey: ['appointments'],
+            queryFn: () => api.get('/api/appointments/appointments/')
+          });
           const appts = Array.isArray(apptRes.data) ? apptRes.data : (apptRes.data.results || []);
           appts.forEach(appt => {
             const id = `appt-${appt.id}`;
@@ -193,9 +200,10 @@ export const useNotificationStore = create((set, get) => ({
               isRead: !!readIds[id]
             });
 
-            // 2. OP Incomplete/Pending notification (only for active, incomplete appointments with a draft)
+            // 2. OP Incomplete/Pending notification (only for active, incomplete appointments with a draft from previous days)
             const hasDraft = localStorage.getItem(`op_draft_appt_${appt.id}`);
-            if (appt.status !== 'completed' && appt.status !== 'cancelled' && hasDraft) {
+            const isPastDay = new Date(appt.date) < new Date(new Date().setHours(0,0,0,0));
+            if (appt.status !== 'completed' && appt.status !== 'cancelled' && hasDraft && isPastDay) {
               const pendingId = `op-pending-${appt.id}`;
               rawNotifications.push({
                 id: pendingId,
@@ -218,7 +226,10 @@ export const useNotificationStore = create((set, get) => ({
 
         // 2. Fetch Scan Results
         try {
-          const scanRes = await api.get('/api/medical_records/scan-results/');
+          const scanRes = await queryClient.fetchQuery({
+            queryKey: ['scanResults'],
+            queryFn: () => api.get('/api/medical_records/scan-results/')
+          });
           const scans = Array.isArray(scanRes.data) ? scanRes.data : (scanRes.data.results || []);
           scans.forEach(scan => {
             const id = `scan-${scan.id}`;
@@ -293,7 +304,10 @@ export const useNotificationStore = create((set, get) => ({
       } else if (role === 'receptionist') {
         // 1. Fetch appointments
         try {
-          const apptRes = await api.get('/api/appointments/appointments/');
+          const apptRes = await queryClient.fetchQuery({
+            queryKey: ['appointments'],
+            queryFn: () => api.get('/api/appointments/appointments/')
+          });
           const appts = Array.isArray(apptRes?.data) ? apptRes.data : (apptRes?.data?.results || []);
           appts.forEach(appt => {
             const id = `appt-${appt.id}`;
@@ -313,7 +327,10 @@ export const useNotificationStore = create((set, get) => ({
 
         // 2. Fetch Patients (new registrations)
         try {
-          const patientRes = await api.get('/api/users/patients/');
+          const patientRes = await queryClient.fetchQuery({
+            queryKey: ['patients'],
+            queryFn: () => api.get('/api/users/patients/')
+          });
           const patients = Array.isArray(patientRes?.data) ? patientRes.data : (patientRes?.data?.results || []);
           patients.forEach(pat => {
             const id = `pat-reg-${pat.id}`;

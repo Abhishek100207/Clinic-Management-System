@@ -363,7 +363,7 @@ export const NotificationDrawer = () => {
                                     }}
                                     className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all border border-indigo-100 flex items-center gap-1.5 active:scale-95 cursor-pointer"
                                   >
-                                    <Calendar size={12} /> Reschedule
+                                    <Calendar size={12} /> Raise a Reschedule
                                   </button>
                                   <button
                                     onClick={() => {
@@ -378,7 +378,7 @@ export const NotificationDrawer = () => {
 
                                 {reschedulingApptId === item.appointmentId && (
                                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col gap-2.5 animate-in fade-in duration-200">
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Suggest New Continuation Date</p>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Suggest Reschedule for Missed Appointment</p>
                                     <div className="flex gap-2">
                                       <input 
                                         type="date"
@@ -429,7 +429,7 @@ export const NotificationDrawer = () => {
                           {item.isOPRescheduleRequestNotif && (
                             <div className="mt-3 pt-3 border-t border-slate-200/65 flex flex-col gap-3">
                               <div className="bg-slate-50/50 p-3 rounded-xl border border-slate-200 flex flex-col gap-2.5 animate-in fade-in duration-200">
-                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Select Continuation Time Slot</p>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reschedule Missed Appointment (Free)</p>
                                 <div className="flex gap-2">
                                   <select
                                     value={selectedSlot}

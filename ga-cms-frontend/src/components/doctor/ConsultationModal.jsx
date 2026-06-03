@@ -33,8 +33,34 @@ const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
     };
     if (isOpen) {
       fetchDoctors();
+      
+      // Load draft if it exists
+      if (patient?.id) {
+        const draftStr = localStorage.getItem(`op_draft_appt_${patient.id}`);
+        if (draftStr) {
+          try {
+            const draft = JSON.parse(draftStr);
+            if (draft.soap) setSoap(draft.soap);
+            if (draft.prescriptions) setPrescriptions(draft.prescriptions);
+            if (draft.prescriptionNotes) setPrescriptionNotes(draft.prescriptionNotes);
+            if (draft.followUpDate) setFollowUpDate(draft.followUpDate);
+          } catch (e) {
+            console.error("Failed to parse draft", e);
+          }
+        }
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, patient]);
+
+  // Auto-save draft
+  useEffect(() => {
+    if (isOpen && patient?.id) {
+      const draft = { soap, prescriptions, prescriptionNotes, followUpDate };
+      localStorage.setItem(`op_draft_appt_${patient.id}`, JSON.stringify(draft));
+      // Dispatch storage event to update other components
+      window.dispatchEvent(new Event('storage'));
+    }
+  }, [soap, prescriptions, prescriptionNotes, followUpDate, isOpen, patient]);
 
   if (!isOpen) return null;
 
@@ -64,6 +90,18 @@ const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
         referralNote 
       } 
     });
+    if (patient?.id) {
+      localStorage.removeItem(`op_draft_appt_${patient.id}`);
+      window.dispatchEvent(new Event('storage'));
+    }
+    onClose();
+  };
+
+  const handleDiscard = () => {
+    if (patient?.id) {
+      localStorage.removeItem(`op_draft_appt_${patient.id}`);
+      window.dispatchEvent(new Event('storage'));
+    }
     onClose();
   };
 
@@ -353,7 +391,7 @@ const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
           </div>
           <div className="flex gap-3">
             <button 
-              onClick={onClose}
+              onClick={handleDiscard}
               className="px-6 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors"
             >
               Discard
