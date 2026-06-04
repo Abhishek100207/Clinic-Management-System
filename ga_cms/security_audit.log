@@ -436,3 +436,6 @@
 2026-06-03 14:15:42,113 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-06-03 14:15:43,792 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
 2026-06-03 14:16:26,587 - INFO - User: Suraj | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-06-04 14:14:17,209 - INFO - User: Senior_Doctor | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via Google OAuth
+2026-06-04 14:15:49,222 - INFO - User: Senior_Doctor | Action: LOGOUT | IP: 127.0.0.1 | Details: Logged out
+2026-06-04 14:16:04,140 - INFO - User: Suraj | Action: LOGIN | IP: 127.0.0.1 | Details: Logged in via OTP
