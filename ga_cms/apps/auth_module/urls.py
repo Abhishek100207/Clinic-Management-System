@@ -4,6 +4,7 @@ from .views import (
     LoginRequestOtpView, LoginVerifyOtpView,
     RegisterRequestOtpView, RegisterVerifyOtpView,
     MeView, LogoutView, CookieTokenRefreshView,
+    ChangePasswordView,
 )
 
 urlpatterns = [
@@ -22,4 +23,5 @@ urlpatterns = [
     path('auth/me/',              MeView.as_view(),                  name='auth_me'),
     path('auth/logout/',          LogoutView.as_view(),              name='auth_logout'),
     path('auth/refresh/',         CookieTokenRefreshView.as_view(),  name='auth_refresh'),
+    path('auth/change-password/', ChangePasswordView.as_view(),      name='auth_change_password'),
 ]

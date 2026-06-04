@@ -55,9 +55,10 @@ class DoctorSerializer(serializers.ModelSerializer):
 
 class PatientSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    address = serializers.CharField(source='street_address', required=False, allow_blank=True)
     class Meta:
         model = Patient
-        fields = ['id', 'user', 'patient_id', 'full_name', 'email', 'mobile_number', 'blood_group', 'known_allergies', 'chronic_conditions']
+        fields = ['id', 'user', 'patient_id', 'full_name', 'email', 'mobile_number', 'blood_group', 'known_allergies', 'chronic_conditions', 'date_of_birth', 'gender', 'address']
 
 class DoctorListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -95,6 +96,47 @@ class PatientListView(APIView):
             
         serializer = PatientSerializer(patients, many=True)
         return Response(serializer.data)
+
+    def patch(self, request):
+        if request.user.role != 'patient':
+            return Response({'error': 'Only patients can update their own profile.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            patient = Patient.objects.get(user=request.user)
+        except Patient.DoesNotExist:
+            return Response({'error': 'Patient profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = PatientSerializer(patient, data=request.data, partial=True)
+        if serializer.is_valid():
+            patient_instance = serializer.save()
+            
+            # Sync user profile updates
+            user = request.user
+            user_updated = False
+            
+            if 'email' in request.data:
+                user.email = request.data['email']
+                user_updated = True
+                
+            if 'full_name' in request.data:
+                names = request.data['full_name'].strip().split(' ', 1)
+                user.first_name = names[0]
+                user.last_name = names[1] if len(names) > 1 else ''
+                user_updated = True
+            
+            if 'avatar_url' in request.data:
+                user.avatar_url = request.data['avatar_url']
+                user_updated = True
+                
+            if user_updated:
+                user.save()
+                
+            return Response(PatientSerializer(patient_instance).data, status=status.HTTP_200_OK)
+            
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request):
+        return self.patch(request)
 
 class AddStaffView(APIView):
     permission_classes = [IsAuthenticated]

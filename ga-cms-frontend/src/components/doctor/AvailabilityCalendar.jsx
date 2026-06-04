@@ -214,59 +214,53 @@ const AvailabilityCalendar = ({
       switch (dayStatus.status) {
         case 'available':
           statusStyles = isSelected 
-            ? 'bg-emerald-500/25 border-2 border-emerald-500 text-emerald-950 ring-4 ring-emerald-300/30 z-10 scale-[1.02] shadow-md cursor-pointer'
-            : 'bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-800 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer transition-all duration-150 backdrop-blur-md';
+            ? 'bg-emerald-600 border-2 border-emerald-700 text-white ring-4 ring-emerald-300/30 z-10 scale-[1.02] shadow-md'
+            : 'bg-emerald-600 hover:bg-emerald-700 text-white hover:-translate-y-0.5 hover:shadow-sm transition-all duration-150';
           tooltipText = 'Available';
-          editIconColor = 'text-emerald-600 hover:text-emerald-800';
-          if (viewMode === 'admin') {
-            statusLabel = <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider block mt-1">Available</span>;
-          }
+          editIconColor = 'text-white/80 hover:text-white';
+          statusLabel = <span className="text-[9px] font-black tracking-widest text-center block w-full uppercase">AVAILABLE</span>;
           break;
         case 'leave':
           statusStyles = isSelected
-            ? 'bg-rose-500/25 border-2 border-rose-500 text-rose-950 ring-4 ring-rose-300/30 z-10 scale-[1.02] shadow-md cursor-pointer'
-            : 'bg-rose-50/70 border border-rose-100 text-rose-800 hover:bg-rose-100/50 cursor-pointer transition-colors';
+            ? 'bg-rose-500 border-2 border-rose-600 text-white ring-4 ring-rose-300/30 z-10 scale-[1.02] shadow-md'
+            : 'bg-rose-500 hover:bg-rose-600 text-white hover:-translate-y-0.5 hover:shadow-sm transition-all duration-150';
           tooltipText = dayStatus.reason ? `On Leave: ${dayStatus.reason}` : 'On Leave';
-          editIconColor = 'text-rose-600 hover:text-rose-800';
-          if (viewMode === 'admin') {
-            statusLabel = <span className="text-[10px] font-black text-rose-700 uppercase tracking-wider block mt-1 truncate" title={dayStatus.reason}>Leave</span>;
-          }
+          editIconColor = 'text-white/80 hover:text-white';
+          statusLabel = <span className="text-[9px] font-black tracking-widest text-center block w-full uppercase truncate" title={dayStatus.reason}>LEAVE</span>;
           break;
         case 'hold':
           statusStyles = isSelected
-            ? 'bg-amber-500/25 border-2 border-amber-500 text-amber-950 ring-4 ring-amber-300/30 z-10 scale-[1.02] shadow-md cursor-pointer'
-            : 'bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-800 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer transition-all duration-150 backdrop-blur-md';
+            ? 'bg-amber-500 border-2 border-amber-600 text-white ring-4 ring-amber-300/30 z-10 scale-[1.02] shadow-md'
+            : 'bg-amber-500 hover:bg-amber-600 text-white hover:-translate-y-0.5 hover:shadow-sm transition-all duration-150';
           tooltipText = dayStatus.reason ? `On Hold: ${dayStatus.reason}` : 'On Hold';
-          editIconColor = 'text-amber-600 hover:text-amber-800';
-          if (viewMode === 'admin') {
-            statusLabel = <span className="text-[10px] font-black text-amber-700 uppercase tracking-wider block mt-1 truncate" title={dayStatus.reason}>Hold</span>;
-          }
+          editIconColor = 'text-white/80 hover:text-white';
+          statusLabel = <span className="text-[9px] font-black tracking-widest text-center block w-full uppercase truncate" title={dayStatus.reason}>HOLD</span>;
           break;
         default:
           statusStyles = isSelected
-            ? 'bg-slate-500/20 border-2 border-slate-450 text-slate-900 ring-4 ring-slate-200/30 z-10 scale-[1.02] shadow-md cursor-pointer'
-            : 'bg-slate-500/5 hover:bg-slate-500/10 border border-slate-500/10 text-slate-500 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer transition-all duration-150 backdrop-blur-md';
+            ? 'bg-slate-100 border-2 border-slate-200 text-slate-500 ring-4 ring-slate-200/30 z-10 scale-[1.02] shadow-md'
+            : 'bg-[#f1f5f9] hover:bg-slate-200 text-slate-450 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-150';
           tooltipText = 'Closed / Unavailable';
           editIconColor = 'text-slate-400 hover:text-slate-600';
-          if (viewMode === 'admin') {
-            statusLabel = <span className="text-[10px] font-black text-slate-550 uppercase tracking-wider block mt-1">Closed</span>;
-          }
+          statusLabel = <span className="text-[9px] font-black tracking-widest text-center block w-full uppercase">CLOSED</span>;
       }
 
       cells.push(
         <div key={dateStr} className="relative w-full aspect-square">
           <div 
             onClick={() => handleCellClick(dateStr, dayStatus)}
-            className={`absolute inset-0 p-2 flex flex-col justify-between group rounded-xl cursor-pointer ${statusStyles}`}
+            className={`absolute inset-0 p-2.5 flex flex-col justify-between group rounded-xl cursor-pointer ${statusStyles}`}
             title={tooltipText}
           >
             <div className="flex justify-between items-start w-full">
-              <span className="font-mono font-black text-sm">{day}</span>
+              <span className="font-mono font-black text-xs">{day}</span>
               {hasWriteAccess && (
-                <Edit3 size={12} className={`opacity-0 group-hover:opacity-100 ${editIconColor} transition-opacity`} />
+                <Edit3 size={11} className={`opacity-0 group-hover:opacity-100 ${editIconColor} transition-opacity`} />
               )}
             </div>
-            {statusLabel}
+            <div className="flex-1 flex items-center justify-center min-w-0">
+              {statusLabel}
+            </div>
           </div>
         </div>
       );
@@ -441,7 +435,7 @@ const AvailabilityCalendar = ({
                 onClick={() => setViewType('weekly')}
                 className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewType === 'weekly' ? 'bg-white text-navy shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
               >
-                Weekly View
+                Weekly Base
               </button>
             </div>
           )}
@@ -516,9 +510,9 @@ const AvailabilityCalendar = ({
           <div className="min-w-[700px]">
             {/* Days of Week Header */}
             <div className="grid grid-cols-7 gap-3 mb-3">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-center py-2 bg-slate-100 border border-slate-200 rounded-lg">
-                  <span className="text-xs font-black text-slate-600 uppercase tracking-wider">{day}</span>
+              {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
+                <div key={day} className="text-center py-3 bg-[#f8fafc] border border-slate-100 rounded-xl">
+                  <span className="text-xs font-black text-slate-500 uppercase tracking-wider">{day}</span>
                 </div>
               ))}
             </div>

@@ -121,6 +121,41 @@ const BookAppointment = ({ onBack }) => {
     fetchSlots();
   }, [formData.doctor_id, formData.date, formData.appointment_type]);
 
+  const [patientAppointments, setPatientAppointments] = useState([]);
+
+  // Fetch patient appointments to detect conflicts
+  useEffect(() => {
+    const fetchPatientAppointments = async () => {
+      if (formData.patient_id) {
+        try {
+          const res = await api.get('/api/appointments/appointments/');
+          const apptsData = Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []);
+          const filtered = apptsData.filter(appt => 
+            appt.patient?.toString() === formData.patient_id.toString() &&
+            appt.status !== 'cancelled'
+          );
+          setPatientAppointments(filtered);
+        } catch (err) {
+          console.error("Failed to fetch patient appointments", err);
+          setPatientAppointments([]);
+        }
+      } else {
+        setPatientAppointments([]);
+      }
+    };
+    fetchPatientAppointments();
+  }, [formData.patient_id]);
+
+  const normalizeTime = (timeStr) => {
+    if (!timeStr) return '';
+    const match = timeStr.match(/^(\d{2}):(\d{2})/);
+    return match ? `${match[1]}:${match[2]}` : timeStr;
+  };
+
+  const conflictingTimes = patientAppointments
+    .filter(appt => appt.date === formData.date)
+    .map(appt => normalizeTime(appt.time));
+
   // Fetch Patients & Doctors
   useEffect(() => {
     const fetchData = async () => {
@@ -792,23 +827,35 @@ For support, email: support@gacms.com
                             {/* Time Slots Grid */}
                             {filteredSlots.length > 0 ? (
                               <div className="grid grid-cols-3 gap-2">
-                                {filteredSlots.map(s => (
-                                  <button
-                                    key={s.time}
-                                    type="button"
-                                    disabled={!s.available}
-                                    onClick={() => setFormData({ ...formData, time: s.time })}
-                                    className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border ${
-                                      formData.time === s.time
-                                        ? 'bg-blue-600 border-blue-600 text-white shadow-md'
-                                        : s.available
-                                          ? 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-blue-50'
-                                          : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed opacity-50'
-                                    }`}
-                                  >
-                                    {s.time?.substring(0, 5) || s.time}
-                                  </button>
-                                ))}
+                                {filteredSlots.map(s => {
+                                  const isConflicting = conflictingTimes.includes(normalizeTime(s.time));
+                                  return (
+                                    <button
+                                      key={s.time}
+                                      type="button"
+                                      disabled={!s.available || isConflicting}
+                                      onClick={() => setFormData({ ...formData, time: s.time })}
+                                      title={isConflicting ? "Unavailable: You have another appointment at this time" : undefined}
+                                      className={`py-2 px-2 rounded-xl text-xs font-bold transition-all border relative ${
+                                        formData.time === s.time
+                                          ? 'bg-blue-600 border-blue-600 text-white shadow-md'
+                                          : isConflicting
+                                            ? 'bg-red-50 border-red-200 text-red-500 cursor-not-allowed opacity-50 blur-[0.5px]'
+                                            : s.available
+                                              ? 'bg-white border-gray-200 text-gray-600 hover:border-blue-300 hover:bg-blue-50'
+                                              : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed opacity-50'
+                                      }`}
+                                    >
+                                      {s.time?.substring(0, 5) || s.time}
+                                      {isConflicting && (
+                                        <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                                        </span>
+                                      )}
+                                    </button>
+                                  );
+                                })}
                               </div>
                             ) : (
                               <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-amber-700 text-xs font-semibold">

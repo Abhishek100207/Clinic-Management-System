@@ -134,6 +134,41 @@ const AppointmentBookingPage = () => {
     fetchSlots();
   }, [doctorId, date, appointmentType]);
 
+  const [patientAppointments, setPatientAppointments] = useState([]);
+
+  // Fetch patient appointments to detect conflicts
+  useEffect(() => {
+    const fetchPatientAppointments = async () => {
+      if (patientId) {
+        try {
+          const res = await api.get('/api/appointments/appointments/');
+          const apptsData = Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []);
+          const filtered = apptsData.filter(appt => 
+            appt.patient?.toString() === patientId.toString() &&
+            appt.status !== 'cancelled'
+          );
+          setPatientAppointments(filtered);
+        } catch (err) {
+          console.error("Failed to fetch patient appointments", err);
+          setPatientAppointments([]);
+        }
+      } else {
+        setPatientAppointments([]);
+      }
+    };
+    fetchPatientAppointments();
+  }, [patientId]);
+
+  const normalizeTime = (timeStr) => {
+    if (!timeStr) return '';
+    const match = timeStr.match(/^(\d{2}):(\d{2})/);
+    return match ? `${match[1]}:${match[2]}` : timeStr;
+  };
+
+  const conflictingTimes = patientAppointments
+    .filter(appt => appt.date === date)
+    .map(appt => normalizeTime(appt.time));
+
   const handleExpiryChange = (e) => {
     let val = e.target.value.replace(/\D/g, '');
     if (val.length > 2) {
@@ -411,15 +446,37 @@ const AppointmentBookingPage = () => {
                     {loading && <span className="w-2 h-2 bg-blue-600 rounded-full animate-ping"></span>}
                   </label>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                    {availableSlots.length > 0 ? availableSlots.map(slot => (
-                      <button
-                        key={slot}
-                        onClick={() => setTime(slot)}
-                        className={`py-3 px-2 rounded-xl text-sm font-bold transition-all ${time === slot ? 'bg-blue-600 text-white shadow-lg scale-105' : 'border border-gray-200 text-slate-600 hover:bg-blue-50 hover:border-blue-200 bg-white'}`}
-                      >
-                        {slot?.substring(0, 5) || slot}
-                      </button>
-                    )) : !loading && <p className="text-sm text-slate-400 italic py-4">No slots available for this date.</p>}
+                    {availableSlots.length > 0 ? availableSlots.map(slot => {
+                      const slotTime = typeof slot === 'object' ? slot.time : slot;
+                      const slotAvailable = typeof slot === 'object' ? slot.available : true;
+                      const isConflicting = conflictingTimes.includes(normalizeTime(slotTime));
+                      return (
+                        <button
+                          key={slotTime}
+                          type="button"
+                          disabled={!slotAvailable || isConflicting}
+                          onClick={() => setTime(slotTime)}
+                          title={isConflicting ? "Unavailable: You have another appointment at this time" : undefined}
+                          className={`py-3 px-2 rounded-xl text-sm font-bold transition-all border relative ${
+                            time === slotTime
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-lg scale-105'
+                              : isConflicting
+                                ? 'bg-red-50 border-red-200 text-red-500 cursor-not-allowed opacity-50 blur-[0.5px]'
+                                : slotAvailable
+                                  ? 'border border-gray-200 text-slate-600 hover:bg-blue-50 hover:border-blue-200 bg-white'
+                                  : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed opacity-50'
+                          }`}
+                        >
+                          {slotTime?.substring(0, 5) || slotTime}
+                          {isConflicting && (
+                            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                            </span>
+                          )}
+                        </button>
+                      );
+                    }) : !loading && <p className="text-sm text-slate-400 italic py-4">No slots available for this date.</p>}
                   </div>
                 </div>
               )}

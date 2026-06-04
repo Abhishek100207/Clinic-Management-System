@@ -5,6 +5,7 @@ import api from '../../api/axios';
 import RescheduleModal from '../shared/appointments/RescheduleModal';
 import PatientStats from './PatientStats';
 import Toast from '../shared/Toast';
+import EditableProfileModal from './EditableProfileModal';
 import { 
   User, 
   Calendar, 
@@ -28,6 +29,7 @@ const PatientDashboard = () => {
   const [patientProfile, setPatientProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rescheduleData, setRescheduleData] = useState({ isOpen: false, appointment: null });
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [toast, setToast] = useState(null);
 
 
@@ -124,7 +126,7 @@ const PatientDashboard = () => {
           <h1 className="text-4xl font-extrabold tracking-tight text-navy mb-2">Health Dashboard</h1>
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-slate-500">
-              Welcome back, <span className="text-blue-600 font-bold">{patientProfile?.full_name || user?.full_name}</span>
+              Welcome back, <span className="text-blue-600 font-bold cursor-pointer hover:underline" onClick={() => setIsProfileOpen(true)}>{patientProfile?.full_name || user?.full_name}</span>
             </span>
             <span className="text-slate-300">•</span>
             <span className="text-xs font-medium text-slate-400">Patient ID: #PAT-{user?.id || '000'}</span>
@@ -204,10 +206,17 @@ const PatientDashboard = () => {
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Account Settings</h4>
             <ul className="space-y-4">
               <li 
+                onClick={() => setIsProfileOpen(true)}
+                className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors"
+              >
+                <span className="flex items-center gap-3"><User size={16} /> My Profile</span>
+                <ChevronRight size={14} />
+              </li>
+              <li 
                 onClick={() => navigate('/appointments')}
                 className="flex items-center justify-between text-sm font-medium text-slate-600 cursor-pointer hover:text-blue-600 transition-colors"
               >
-                <span className="flex items-center gap-3"><User size={16} /> Book Appointment</span>
+                <span className="flex items-center gap-3"><Calendar size={16} /> Book Appointment</span>
                 <ChevronRight size={14} />
               </li>
               <li 
@@ -235,6 +244,13 @@ const PatientDashboard = () => {
         onClose={() => setRescheduleData({ isOpen: false, appointment: null })}
         onConfirm={(data) => handleAction(null, 'submit_reschedule', data)}
         appointment={rescheduleData.appointment}
+      />
+
+      <EditableProfileModal 
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        initialProfile={patientProfile}
+        onUpdate={(updated) => setPatientProfile(updated)}
       />
 
       {toast && (

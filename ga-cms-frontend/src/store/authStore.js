@@ -17,6 +17,9 @@ export const useAuthStore = create(
     setUnreadChatCount: (count) =>
       set({ unreadChatCount: count }),
     
+    setUser: (user) =>
+      set({ user }),
+    
     logout: () =>
       set({ user: null, accessToken: null, isAuthenticated: false, unreadChatCount: 0 }),
   }))
