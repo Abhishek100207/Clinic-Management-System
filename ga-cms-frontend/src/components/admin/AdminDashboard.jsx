@@ -1,8 +1,9 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const ClinicAnalytics = lazy(() => import('./ClinicAnalytics')); // PERF: Lazy load heavy chart
+import AvailabilityCalendar from '../doctor/AvailabilityCalendar';
 import { useAuthStore } from '../../store/authStore';
 import { authApi } from '../../api/auth';
+import apiClient from '../../api/axios';
 
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '../shared/Badge';
@@ -11,13 +12,7 @@ import StaffTable from './StaffTable';
 import { 
   ShieldCheck, 
   UserPlus, 
-  Settings, 
-  BarChart3, 
-  Activity, 
-  Bell, 
-  Database,
-  ChevronRight,
-  LayoutGrid
+  Activity
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -33,12 +28,14 @@ const AdminDashboard = () => {
   const [staffData, setStaffData] = useState([]);
   // eslint-disable-next-line no-unused-vars
   const [loading, setLoading] = useState(true);
+  const [selectedDoctorId, setSelectedDoctorId] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
+      
+      // 1. Fetch staff list for table
       try {
-        setLoading(true);
-        // Fetch staff list for table
         const staffList = await authApi.listStaff();
         setStaffData(staffList.map(member => ({
           name: member.full_name || member.username,
@@ -47,22 +44,42 @@ const AdminDashboard = () => {
           status: 'Online',
           lastActive: 'Now'
         })));
-        
-        // Fetch admin summary for stats
-        const summaryRes = await authApi.client.get('/api/users/admin-summary/');
+      } catch (err) {
+        console.error("Failed to fetch staff data:", err);
+      }
+      
+      // 2. Fetch admin summary for stats
+      try {
+        const summaryRes = await apiClient.get('/api/users/admin-summary/');
         setStats({
           staffCount: summaryRes.data.staffCount,
           growth: summaryRes.data.growth,
           revenue: summaryRes.data.revenue
         });
       } catch (err) {
-        console.error("Failed to fetch admin data:", err);
+        console.error("Failed to fetch admin summary:", err);
+      }
+
+      // 3. Fetch doctors list to find logged-in senior doctor profile
+      try {
+        const docsRes = await apiClient.get('/api/users/doctors/');
+        const docs = docsRes.data.results || docsRes.data;
+
+        // Default to logged-in user if they have a doctor profile in the list
+        const myDoc = docs.find(d => d.user?.id === user?.id);
+        if (myDoc) {
+          setSelectedDoctorId(myDoc.id);
+        } else if (docs.length > 0) {
+          setSelectedDoctorId(docs[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch doctors list for calendar:", err);
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [user]);
 
   return (
     <div className="max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 animate-fade-in">
@@ -98,39 +115,15 @@ const AdminDashboard = () => {
         <div className="lg:col-span-2 space-y-8">
           <StaffTable staff={staffData} />
           
-          {/* System Performance Chart */}
-          <Suspense fallback={<div className="h-64 flex items-center justify-center bg-white rounded-2xl border border-gray-100 shadow-sm"><div className="w-8 h-8 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin"></div></div>}>
-            <ClinicAnalytics />
-          </Suspense> {/* PERF: Suspense for lazy loaded component */}
+          {/* Doctor Schedule Calendar */}
+          {selectedDoctorId && (
+            <AvailabilityCalendar doctorId={selectedDoctorId} viewMode="admin" />
+          )}
         </div>
 
         {/* Sidebar (Right 1/3) */}
         <div className="space-y-8">
           
-          {/* Quick Config Sidebar */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden p-6">
-            <h3 className="font-bold text-navy text-lg mb-6 flex items-center gap-2">
-              <LayoutGrid size={20} className="text-indigo-500" />
-              System Modules
-            </h3>
-            <div className="space-y-3">
-              {[
-                { name: 'Patient Database', icon: <Database size={18} />, color: 'text-blue-500', bg: 'bg-blue-50' },
-                { name: 'Audit Logs', icon: <ShieldCheck size={18} />, color: 'text-purple-500', bg: 'bg-purple-50' },
-                { name: 'System Settings', icon: <Settings size={18} />, color: 'text-slate-500', bg: 'bg-slate-50' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-indigo-200 hover:shadow-sm transition-all cursor-pointer group">
-                  <div className="flex items-center gap-4">
-                    <div className={`p-2 rounded-xl ${item.bg} ${item.color}`}>
-                      {item.icon}
-                    </div>
-                    <span className="text-sm font-bold text-navy">{item.name}</span>
-                  </div>
-                  <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
-                </div>
-              ))}
-            </div>
-          </div>
 
           {/* Security Alert Banner */}
           <div className="bg-slate-900 rounded-3xl p-8 text-white shadow-xl overflow-hidden relative">

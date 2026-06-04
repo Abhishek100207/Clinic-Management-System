@@ -5,6 +5,7 @@ export const ROLE_CONFIG = {
     navLinks: [
       { name: 'Dashboard', path: '/dashboard/admin', icon: 'LayoutDashboard' },
       { name: 'Appointments (All Doctors)', path: '/appointments', icon: 'CalendarDays' },
+      { name: 'Consultations',   path: '/consultations',    icon: 'Stethoscope' },
       { name: 'Patient Records', path: '/patients', icon: 'Users' },
       { name: 'Revenue', path: '/revenue', icon: 'IndianRupee' },
       { name: 'Billing & Invoices', path: '/billing', icon: 'CreditCard' },

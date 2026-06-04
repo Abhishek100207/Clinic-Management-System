@@ -31,6 +31,7 @@ const ComingSoonPage = lazy(() => import('../components/shared/ComingSoonPage'))
 const BookAppointment = lazy(() => import('../components/patient/BookAppointment'));
 const DoctorAppointmentsPage = lazy(() => import('../components/doctor/DoctorAppointmentsPage'));
 const PatientAppointmentsPage = lazy(() => import('../components/patient/PatientAppointmentsPage'));
+const PatientProfilePage = lazy(() => import('../components/patient/PatientProfilePage'));
 
 // Role-specific action pages
 const ScanOrdersPage = lazy(() => import('../components/technician/ScanOrdersPage'));
@@ -205,6 +206,13 @@ const AppRouter = () => {
             element={
               <AuthGuard allowedRoles={['patient']}>
                 <MedicalRecordsPage />
+              </AuthGuard>
+            } 
+          />
+          <Route path="/profile" 
+            element={
+              <AuthGuard allowedRoles={['patient']}>
+                <PatientProfilePage />
               </AuthGuard>
             } 
           />
