@@ -66,25 +66,29 @@ const EditableProfileModal = ({ isOpen, onClose, onUpdate, initialProfile }) => 
 
     if (isOpen) {
       if (!initialProfile) {
-        fetchProfileData();
+        if (user?.role === 'patient') {
+          fetchProfileData();
+        } else {
+          setLoadingProfile(false);
+        }
       } else {
         setPatientProfile(initialProfile);
         setLoadingProfile(false);
       }
     }
-  }, [isOpen, initialProfile]);
+  }, [isOpen, initialProfile, user?.role]);
 
   // Sync form states with patientProfile and user store
   useEffect(() => {
-    if (patientProfile) {
-      setFullName(patientProfile.full_name || user?.full_name || '');
-      setEmail(patientProfile.email || user?.email || '');
-      setPhone(patientProfile.mobile_number || '');
-      setDob(patientProfile.date_of_birth || '');
-      setGender(patientProfile.gender || 'other');
-      setBloodGroup(patientProfile.blood_group || '');
-      setAddress(patientProfile.address || '');
-      setAvatarUrl(patientProfile.user?.avatar_url || user?.avatar_url || '');
+    if (patientProfile || user?.role !== 'patient') {
+      setFullName(patientProfile?.full_name || user?.full_name || '');
+      setEmail(patientProfile?.email || user?.email || '');
+      setPhone(patientProfile?.mobile_number || '');
+      setDob(patientProfile?.date_of_birth || '');
+      setGender(patientProfile?.gender || 'other');
+      setBloodGroup(patientProfile?.blood_group || '');
+      setAddress(patientProfile?.address || '');
+      setAvatarUrl(patientProfile?.user?.avatar_url || user?.avatar_url || '');
     }
   }, [patientProfile, user]);
 
@@ -219,7 +223,7 @@ const EditableProfileModal = ({ isOpen, onClose, onUpdate, initialProfile }) => 
           <div className="flex items-center gap-2">
             <User className="text-blue-600" size={20} />
             <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-              {isEditing ? 'Edit Profile Details' : 'Patient Profile Details'}
+              {isEditing ? 'Edit Profile Details' : (user?.role === 'patient' ? 'Patient Profile Details' : 'Staff Profile Details')}
             </span>
           </div>
           <button 
@@ -266,16 +270,22 @@ const EditableProfileModal = ({ isOpen, onClose, onUpdate, initialProfile }) => 
                   <div className="text-center sm:text-left space-y-1 pb-1 flex-1">
                     <h4 className="text-lg font-black text-navy">{currentFullName}</h4>
                     <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold">
-                        <Fingerprint size={10} /> ID: {patientId}
-                      </span>
+                      {user?.role === 'patient' ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold">
+                          <Fingerprint size={10} /> ID: {patientId}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold uppercase">
+                          <Fingerprint size={10} /> Role: {user?.role?.replace('_', ' ')}
+                        </span>
+                      )}
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-[10px] font-bold">
                         Active Member
                       </span>
                     </div>
                   </div>
 
-                  {!isEditing && (
+                  {!isEditing && user?.role === 'patient' && (
                     <button
                       type="button"
                       onClick={() => setIsEditing(true)}
@@ -378,103 +388,113 @@ const EditableProfileModal = ({ isOpen, onClose, onUpdate, initialProfile }) => 
                   )}
 
                   {/* Patient ID (Read-only) */}
-                  <ModalInfoCard 
-                    icon={Fingerprint} 
-                    iconColor="text-indigo-500 bg-indigo-50 border-indigo-100"
-                    label="Patient ID / UHID" 
-                    value={patientId} 
-                  />
+                  {user?.role === 'patient' && (
+                    <ModalInfoCard 
+                      icon={Fingerprint} 
+                      iconColor="text-indigo-500 bg-indigo-50 border-indigo-100"
+                      label="Patient ID / UHID" 
+                      value={patientId} 
+                    />
+                  )}
 
                   {/* Age & Gender */}
-                  {isEditing ? (
-                    <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm space-y-1.5">
-                      <label className="block text-[9px] uppercase tracking-wider font-extrabold text-slate-400">Gender</label>
-                      <select
-                        value={gender}
-                        onChange={(e) => setGender(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none text-slate-800 font-medium bg-white"
-                      >
-                        <option value="male">Male</option>
-                        <option value="female">Female</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                  ) : (
-                    <ModalInfoCard 
-                      icon={HeartHandshake} 
-                      iconColor="text-emerald-500 bg-emerald-50 border-emerald-100"
-                      label="Age & Gender" 
-                      value={`${currentAge} years • ${currentGender.charAt(0).toUpperCase() + currentGender.slice(1)}`} 
-                    />
+                  {user?.role === 'patient' && (
+                    isEditing ? (
+                      <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm space-y-1.5">
+                        <label className="block text-[9px] uppercase tracking-wider font-extrabold text-slate-400">Gender</label>
+                        <select
+                          value={gender}
+                          onChange={(e) => setGender(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none text-slate-800 font-medium bg-white"
+                        >
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                    ) : (
+                      <ModalInfoCard 
+                        icon={HeartHandshake} 
+                        iconColor="text-emerald-500 bg-emerald-50 border-emerald-100"
+                        label="Age & Gender" 
+                        value={`${currentAge} years • ${currentGender !== 'N/A' ? currentGender.charAt(0).toUpperCase() + currentGender.slice(1) : 'N/A'}`} 
+                      />
+                    )
                   )}
 
                   {/* Date of Birth */}
-                  {isEditing ? (
-                    <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm space-y-1.5">
-                      <label className="block text-[9px] uppercase tracking-wider font-extrabold text-slate-400">Date of Birth</label>
-                      <input
-                        type="date"
-                        value={dob}
-                        onChange={(e) => setDob(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none text-slate-800 font-medium"
+                  {user?.role === 'patient' && (
+                    isEditing ? (
+                      <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm space-y-1.5">
+                        <label className="block text-[9px] uppercase tracking-wider font-extrabold text-slate-400">Date of Birth</label>
+                        <input
+                          type="date"
+                          value={dob}
+                          onChange={(e) => setDob(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none text-slate-800 font-medium"
+                        />
+                      </div>
+                    ) : (
+                      <ModalInfoCard 
+                        icon={CalendarDays} 
+                        iconColor="text-amber-500 bg-amber-50 border-amber-100"
+                        label="Date of Birth" 
+                        value={formatDate(currentDob)} 
                       />
-                    </div>
-                  ) : (
-                    <ModalInfoCard 
-                      icon={CalendarDays} 
-                      iconColor="text-amber-500 bg-amber-50 border-amber-100"
-                      label="Date of Birth" 
-                      value={formatDate(currentDob)} 
-                    />
+                    )
                   )}
 
                   {/* Blood Group */}
-                  {isEditing ? (
-                    <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm space-y-1.5">
-                      <label className="block text-[9px] uppercase tracking-wider font-extrabold text-slate-400">Blood Group</label>
-                      <select
-                        value={bloodGroup}
-                        onChange={(e) => setBloodGroup(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none text-slate-800 font-medium bg-white"
-                      >
-                        <option value="">Select Blood Group</option>
-                        <option value="A+">A+</option>
-                        <option value="A-">A-</option>
-                        <option value="B+">B+</option>
-                        <option value="B-">B-</option>
-                        <option value="AB+">AB+</option>
-                        <option value="AB-">AB-</option>
-                        <option value="O+">O+</option>
-                        <option value="O-">O-</option>
-                      </select>
-                    </div>
-                  ) : (
-                    <ModalInfoCard 
-                      icon={Droplets} 
-                      iconColor="text-red-500 bg-red-50 border-red-100"
-                      label="Blood Group" 
-                      value={currentBloodGroup} 
-                    />
+                  {user?.role === 'patient' && (
+                    isEditing ? (
+                      <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm space-y-1.5">
+                        <label className="block text-[9px] uppercase tracking-wider font-extrabold text-slate-400">Blood Group</label>
+                        <select
+                          value={bloodGroup}
+                          onChange={(e) => setBloodGroup(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none text-slate-800 font-medium bg-white"
+                        >
+                          <option value="">Select Blood Group</option>
+                          <option value="A+">A+</option>
+                          <option value="A-">A-</option>
+                          <option value="B+">B+</option>
+                          <option value="B-">B-</option>
+                          <option value="AB+">AB+</option>
+                          <option value="AB-">AB-</option>
+                          <option value="O+">O+</option>
+                          <option value="O-">O-</option>
+                        </select>
+                      </div>
+                    ) : (
+                      <ModalInfoCard 
+                        icon={Droplets} 
+                        iconColor="text-red-500 bg-red-50 border-red-100"
+                        label="Blood Group" 
+                        value={currentBloodGroup} 
+                      />
+                    )
                   )}
 
                   {/* Phone Number */}
-                  {isEditing ? (
-                    <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm space-y-1.5">
-                      <label className="block text-[9px] uppercase tracking-wider font-extrabold text-slate-400">Phone Number</label>
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none text-slate-800 font-medium"
+                  {user?.role === 'patient' && (
+                    isEditing ? (
+                      <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm space-y-1.5">
+                        <label className="block text-[9px] uppercase tracking-wider font-extrabold text-slate-400">Phone Number</label>
+                        <input
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none text-slate-800 font-medium"
+                        />
+                      </div>
+                    ) : (
+                      <ModalInfoCard 
+                        icon={Phone} 
+                        iconColor="text-teal-500 bg-teal-50 border-teal-100"
+                        label="Phone Number" 
+                        value={currentPhone} 
                       />
-                    </div>
-                  ) : (
-                    <ModalInfoCard 
-                      icon={Phone} 
-                      iconColor="text-teal-500 bg-teal-50 border-teal-100"
-                      label="Phone Number" 
-                      value={currentPhone} 
-                    />
+                    )
                   )}
 
                   {/* Email Address */}
@@ -499,24 +519,26 @@ const EditableProfileModal = ({ isOpen, onClose, onUpdate, initialProfile }) => 
                   )}
 
                   {/* Address */}
-                  {isEditing ? (
-                    <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm space-y-1.5 sm:col-span-2">
-                      <label className="block text-[9px] uppercase tracking-wider font-extrabold text-slate-400">Address</label>
-                      <textarea
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        rows={2}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none text-slate-800 font-medium resize-none"
+                  {user?.role === 'patient' && (
+                    isEditing ? (
+                      <div className="bg-white p-4 rounded-xl border border-gray-150 shadow-sm space-y-1.5 sm:col-span-2">
+                        <label className="block text-[9px] uppercase tracking-wider font-extrabold text-slate-400">Address</label>
+                        <textarea
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          rows={2}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none text-slate-800 font-medium resize-none"
+                        />
+                      </div>
+                    ) : (
+                      <ModalInfoCard 
+                        icon={MapPin} 
+                        iconColor="text-rose-500 bg-rose-50 border-rose-100"
+                        label="Address" 
+                        value={currentAddress} 
+                        spanTwoCols
                       />
-                    </div>
-                  ) : (
-                    <ModalInfoCard 
-                      icon={MapPin} 
-                      iconColor="text-rose-500 bg-rose-50 border-rose-100"
-                      label="Address" 
-                      value={currentAddress} 
-                      spanTwoCols
-                    />
+                    )
                   )}
                 </div>
               </div>

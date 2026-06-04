@@ -11,21 +11,25 @@ const PatientProfilePage = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await api.get('/api/users/patients/');
-        const patientData = Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []);
-        if (patientData.length > 0) {
-          setPatientProfile(patientData[0]);
+    if (user?.role === 'patient') {
+      const fetchProfile = async () => {
+        try {
+          const res = await api.get('/api/users/patients/');
+          const patientData = Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []);
+          if (patientData.length > 0) {
+            setPatientProfile(patientData[0]);
+          }
+        } catch (err) {
+          console.error("Failed to fetch patient profile", err);
+        } finally {
+          setLoading(false);
         }
-      } catch (err) {
-        console.error("Failed to fetch patient profile", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProfile();
-  }, []);
+      };
+      fetchProfile();
+    } else {
+      setLoading(false);
+    }
+  }, [user?.role]);
 
   const calculateAge = (dobString) => {
     if (!dobString) return '28';
@@ -83,8 +87,10 @@ const PatientProfilePage = () => {
           <ArrowLeft size={20} className="text-slate-500" />
         </button>
         <div>
-          <h1 className="text-3xl font-extrabold text-navy tracking-tight">Patient Profile</h1>
-          <p className="text-sm text-slate-400 font-medium">Manage and view your personal medical identity information.</p>
+          <h1 className="text-3xl font-extrabold text-navy tracking-tight">
+            {user?.role === 'patient' ? 'Patient Profile' : 'Staff Profile'}
+          </h1>
+          <p className="text-sm text-slate-400 font-medium">Manage and view your personal information.</p>
         </div>
       </div>
 
@@ -107,9 +113,15 @@ const PatientProfilePage = () => {
             <div className="text-center sm:text-left space-y-1">
               <h2 className="text-2xl font-black text-navy">{fullName}</h2>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-xs font-bold">
-                  <Fingerprint size={12} /> Patient ID: {patientId}
-                </span>
+                {user?.role === 'patient' ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-xs font-bold">
+                    <Fingerprint size={12} /> Patient ID: {patientId}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-xs font-bold uppercase">
+                    <Fingerprint size={12} /> Role: {user?.role?.replace('_', ' ')}
+                  </span>
+                )}
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-bold">
                   Active Member
                 </span>
@@ -127,49 +139,57 @@ const PatientProfilePage = () => {
               label="Full Name" 
               value={fullName} 
             />
-            <InfoCard 
-              icon={Fingerprint} 
-              iconColor="text-indigo-500 bg-indigo-50 border-indigo-100"
-              label="Patient ID / UHID" 
-              value={patientId} 
-            />
-            <InfoCard 
-              icon={HeartHandshake} 
-              iconColor="text-emerald-500 bg-emerald-50 border-emerald-100"
-              label="Age & Gender" 
-              value={`${age} years • ${gender.charAt(0).toUpperCase() + gender.slice(1)}`} 
-            />
-            <InfoCard 
-              icon={CalendarDays} 
-              iconColor="text-amber-500 bg-amber-50 border-amber-100"
-              label="Date of Birth" 
-              value={formatDate(dob)} 
-            />
-            <InfoCard 
-              icon={Droplets} 
-              iconColor="text-red-500 bg-red-50 border-red-100"
-              label="Blood Group" 
-              value={bloodGroup} 
-            />
-            <InfoCard 
-              icon={Phone} 
-              iconColor="text-teal-500 bg-teal-50 border-teal-100"
-              label="Phone Number" 
-              value={phone} 
-            />
+            {user?.role === 'patient' && (
+              <>
+                <InfoCard 
+                  icon={Fingerprint} 
+                  iconColor="text-indigo-500 bg-indigo-50 border-indigo-100"
+                  label="Patient ID / UHID" 
+                  value={patientId} 
+                />
+                <InfoCard 
+                  icon={HeartHandshake} 
+                  iconColor="text-emerald-500 bg-emerald-50 border-emerald-100"
+                  label="Age & Gender" 
+                  value={`${age} years • ${gender !== 'N/A' ? gender.charAt(0).toUpperCase() + gender.slice(1) : 'N/A'}`} 
+                />
+                <InfoCard 
+                  icon={CalendarDays} 
+                  iconColor="text-amber-500 bg-amber-50 border-amber-100"
+                  label="Date of Birth" 
+                  value={formatDate(dob)} 
+                />
+                <InfoCard 
+                  icon={Droplets} 
+                  iconColor="text-red-500 bg-red-50 border-red-100"
+                  label="Blood Group" 
+                  value={bloodGroup} 
+                />
+              </>
+            )}
             <InfoCard 
               icon={Mail} 
               iconColor="text-violet-500 bg-violet-50 border-violet-100"
               label="Email Address" 
               value={email} 
             />
-            <InfoCard 
-              icon={MapPin} 
-              iconColor="text-rose-500 bg-rose-50 border-rose-100"
-              label="Address" 
-              value={address} 
-              spanTwoCols
-            />
+            {user?.role === 'patient' && (
+              <>
+                <InfoCard 
+                  icon={Phone} 
+                  iconColor="text-teal-500 bg-teal-50 border-teal-100"
+                  label="Phone Number" 
+                  value={phone} 
+                />
+                <InfoCard 
+                  icon={MapPin} 
+                  iconColor="text-rose-500 bg-rose-50 border-rose-100"
+                  label="Address" 
+                  value={address} 
+                  spanTwoCols
+                />
+              </>
+            )}
           </div>
         </div>
       </div>

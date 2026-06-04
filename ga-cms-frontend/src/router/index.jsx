@@ -211,7 +211,7 @@ const AppRouter = () => {
           />
           <Route path="/profile" 
             element={
-              <AuthGuard allowedRoles={['patient']}>
+              <AuthGuard allowedRoles={['patient', 'doctor', 'senior_doctor', 'receptionist', 'technician']}>
                 <PatientProfilePage />
               </AuthGuard>
             } 

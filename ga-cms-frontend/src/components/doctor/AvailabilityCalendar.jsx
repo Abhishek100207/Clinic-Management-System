@@ -211,7 +211,13 @@ const AvailabilityCalendar = ({
       let editIconColor = 'text-slate-400 hover:text-slate-600';
       let statusLabel = null;
 
-      switch (dayStatus.status) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const cellDateObj = new Date(year, month, day);
+      const isPast = cellDateObj < today;
+      const actualStatus = isPast ? 'unavailable' : dayStatus.status;
+
+      switch (actualStatus) {
         case 'available':
           statusStyles = isSelected 
             ? 'bg-emerald-600 border-2 border-emerald-700 text-white ring-4 ring-emerald-300/30 z-10 scale-[1.02] shadow-md'
@@ -248,13 +254,13 @@ const AvailabilityCalendar = ({
       cells.push(
         <div key={dateStr} className="relative w-full aspect-square">
           <div 
-            onClick={() => handleCellClick(dateStr, dayStatus)}
-            className={`absolute inset-0 p-2.5 flex flex-col justify-between group rounded-xl cursor-pointer ${statusStyles}`}
-            title={tooltipText}
+            onClick={() => { if (!isPast) handleCellClick(dateStr, dayStatus); }}
+            className={`absolute inset-0 p-2.5 flex flex-col justify-between group rounded-xl ${isPast ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${statusStyles}`}
+            title={isPast ? 'Past Date (Unavailable)' : tooltipText}
           >
             <div className="flex justify-between items-start w-full">
               <span className="font-mono font-black text-xs">{day}</span>
-              {hasWriteAccess && (
+              {hasWriteAccess && !isPast && (
                 <Edit3 size={11} className={`opacity-0 group-hover:opacity-100 ${editIconColor} transition-opacity`} />
               )}
             </div>
@@ -290,11 +296,18 @@ const AvailabilityCalendar = ({
           
           const dayNameShort = weekdays[dateObj.getDay()].substring(0, 3);
 
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const cellDateObj = new Date(dateObj);
+          cellDateObj.setHours(0, 0, 0, 0);
+          const isPast = cellDateObj < today;
+          const actualStatus = isPast ? 'unavailable' : dayStatus.status;
+
           let statusStyles = '';
           let statusContent = null;
           let tooltipText = '';
 
-          switch (dayStatus.status) {
+          switch (actualStatus) {
             case 'available':
               statusStyles = isSelected
                 ? 'bg-emerald-500/25 border-2 border-emerald-500 text-emerald-950 ring-4 ring-emerald-300/30 scale-[1.02] shadow-md cursor-pointer'
@@ -383,9 +396,9 @@ const AvailabilityCalendar = ({
           return (
             <div key={dateStr} className="relative w-full aspect-square">
               <div 
-                onClick={() => handleCellClick(dateStr, dayStatus)}
-                className={`absolute inset-0 p-2.5 flex flex-col justify-between group rounded-2xl cursor-pointer shadow-sm ${statusStyles}`}
-                title={tooltipText}
+                onClick={() => { if (!isPast) handleCellClick(dateStr, dayStatus); }}
+                className={`absolute inset-0 p-2.5 flex flex-col justify-between group rounded-2xl shadow-sm ${isPast ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${statusStyles}`}
+                title={isPast ? 'Past Date (Unavailable)' : tooltipText}
               >
                 <div className="flex flex-col gap-0.5 w-full text-left">
                   <span className="text-[10px] font-black uppercase tracking-wider opacity-60">{dayNameShort}</span>

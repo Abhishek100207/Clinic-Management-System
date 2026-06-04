@@ -2,6 +2,9 @@
 __pycache__/
 db.sqlite3
 *.sqlite3
+ga_cms/db.sqlite3
+security_audit.log
+ga_cms/security_audit.log
 
 # Credentials and local env
 token.json
