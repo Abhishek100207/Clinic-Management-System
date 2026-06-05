@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from .models import ConsultationNote, LabResult, ScanResult, Drug, Prescription, PrescribedMedication, ScanOrder, ChatMessage
 from .serializers import (
     ConsultationNoteSerializer, LabResultSerializer, ScanResultSerializer, 
@@ -179,6 +180,7 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
     queryset = ChatMessage.objects.all()
     serializer_class = ChatMessageSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_queryset(self):
         queryset = ChatMessage.objects.all()
@@ -252,7 +254,97 @@ class ChatMessageViewSet(viewsets.ModelViewSet):
                 sender_id=sender_id, receiver=request.user, is_read=False
             ).update(is_read=True)
             return Response({'status': 'marked as read'})
-        return Response({'error': 'sender_id required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # If no sender_id, mark ALL as read
+        ChatMessage.objects.filter(
+            receiver=request.user, is_read=False
+        ).update(is_read=True)
+        return Response({'status': 'all marked as read'})
+
+    @action(detail=False, methods=['post'], url_path='upload')
+    def upload_attachment(self, request):
+        receiver_id = request.data.get('receiver_id')
+        message_text = request.data.get('message', '')
+        file_obj = request.FILES.get('file')
+        
+        if not receiver_id or not file_obj:
+            return Response({'error': 'receiver_id and file are required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        from apps.medical_records.models import BlockedUser
+        is_blocked = BlockedUser.objects.filter(
+            (Q(blocker=request.user, blocked_id=receiver_id) |
+             Q(blocker_id=receiver_id, blocked=request.user))
+        ).exists()
+
+        if is_blocked:
+            return Response({'error': 'You cannot send messages to this user.'}, status=status.HTTP_403_FORBIDDEN)
+
+        msg = ChatMessage.objects.create(
+            sender=request.user,
+            receiver_id=receiver_id,
+            message=message_text,
+            attachment=file_obj
+        )
+        
+        # Broadcast via Channels
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        
+        channel_layer = get_channel_layer()
+        min_id = min(request.user.id, int(receiver_id))
+        max_id = max(request.user.id, int(receiver_id))
+        room_group_name = f'chat_{min_id}_{max_id}'
+        
+        async_to_sync(channel_layer.group_send)(
+            room_group_name,
+            {
+                'type': 'chat_message',
+                'message': {
+                    'id': msg.id,
+                    'sender': msg.sender_id,
+                    'receiver': msg.receiver_id,
+                    'message': msg.message,
+                    'attachment_url': msg.attachment.url if msg.attachment else None,
+                    'attachment_name': msg.attachment_name or file_obj.name,
+                    'sent_at': msg.sent_at.isoformat(),
+                    'is_read': msg.is_read
+                }
+            }
+        )
+        
+        return Response({'status': 'success', 'url': msg.attachment.url})
+
+    @action(detail=False, methods=['post'], url_path='delete-chat')
+    def delete_chat(self, request):
+        other_user_id = request.data.get('other_user_id')
+        if not other_user_id:
+            return Response({'error': 'other_user_id required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        ChatMessage.objects.filter(
+            (Q(sender=request.user, receiver_id=other_user_id) | 
+             Q(sender_id=other_user_id, receiver=request.user))
+        ).delete()
+        
+        return Response({'status': 'chat deleted'})
+
+    @action(detail=False, methods=['post'], url_path='clear-history')
+    def clear_history(self, request):
+        ChatMessage.objects.filter(
+            Q(sender=request.user) | Q(receiver=request.user)
+        ).delete()
+        
+        return Response({'status': 'history cleared'})
+
+    @action(detail=False, methods=['post'], url_path='block-user')
+    def block_user(self, request):
+        other_user_id = request.data.get('other_user_id')
+        if not other_user_id:
+            return Response({'error': 'other_user_id required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        from apps.medical_records.models import BlockedUser
+        BlockedUser.objects.get_or_create(blocker=request.user, blocked_id=other_user_id)
+        
+        return Response({'status': 'user blocked'})
 
     @action(detail=False, methods=['get'], url_path='unread-count')
     def unread_count(self, request):

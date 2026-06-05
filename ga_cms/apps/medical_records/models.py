@@ -72,12 +72,25 @@ class ScanOrder(models.Model):
 class ChatMessage(models.Model):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages')
     receiver = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_messages')
-    message = models.TextField()
+    message = models.TextField(blank=True, null=True) # Allow empty message if there's an attachment
+    attachment = models.FileField(upload_to='chat_attachments/', null=True, blank=True)
+    attachment_name = models.CharField(max_length=255, null=True, blank=True)
     sent_at = models.DateTimeField(auto_now_add=True, db_index=True) # PERF: Index for sorting
     is_read = models.BooleanField(default=False)
 
     def __str__(self):
         return f"From {self.sender} to {self.receiver} at {self.sent_at}"
+
+class BlockedUser(models.Model):
+    blocker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='blocked_users')
+    blocked = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='blocked_by')
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('blocker', 'blocked')
+
+    def __str__(self):
+        return f"{self.blocker} blocked {self.blocked}"
 
 
 class Drug(models.Model):

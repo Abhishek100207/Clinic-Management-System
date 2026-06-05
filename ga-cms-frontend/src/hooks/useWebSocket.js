@@ -8,9 +8,12 @@ export default function useWebSocket(otherUserId) {
   const reconnectAttempts = useRef(0);
   const maxRetries = 5;
 
+  const isIntentionalClose = useRef(false);
+
   const connect = useCallback(function doConnect() {
     if (!otherUserId) return;
     
+    isIntentionalClose.current = false;
     const token = useAuthStore.getState().accessToken;
     if (!token) return;
 
@@ -59,6 +62,10 @@ export default function useWebSocket(otherUserId) {
     };
 
     ws.current.onclose = () => {
+      if (isIntentionalClose.current) {
+        setConnectionStatus('closed');
+        return;
+      }
       if (reconnectAttempts.current < maxRetries) {
         setConnectionStatus('reconnecting');
         const timeout = Math.pow(2, reconnectAttempts.current) * 1000;
@@ -77,8 +84,10 @@ export default function useWebSocket(otherUserId) {
   }, [otherUserId]);
 
   useEffect(() => {
+    setMessages([]); // Clear messages immediately when user changes
     connect();
     return () => {
+      isIntentionalClose.current = true;
       if (ws.current) {
         ws.current.close();
       }

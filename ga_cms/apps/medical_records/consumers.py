@@ -7,7 +7,8 @@ from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-from .models import ChatMessage
+from .models import ChatMessage, BlockedUser
+from django.db.models import Q
 
 User = get_user_model()
 
@@ -43,6 +44,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
+        if await self.is_blocked():
+            await self.send(text_data=json.dumps({
+                'type': 'error',
+                'message': 'You cannot chat with this user.'
+            }))
+            await self.close(code=4003)
+            return
+
         history = await self.get_chat_history()
         await self.send(text_data=json.dumps({
             'type': 'history',
@@ -56,12 +65,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
 
-    async def receive(self, text_data):
         try:
             data = json.loads(text_data)
-            message_text = data.get('message')
+            message_text = data.get('message', '')
             
-            if not message_text:
+            if not message_text and not data.get('attachment_url'):
+                return
+
+            if await self.is_blocked():
+                await self.send(text_data=json.dumps({
+                    'type': 'error',
+                    'message': 'You cannot send messages to this user.',
+                    'original_text': message_text
+                }))
                 return
 
             saved_message = await self.save_message(message_text)
@@ -103,6 +119,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return None
 
     @database_sync_to_async
+    def is_blocked(self):
+        return BlockedUser.objects.filter(
+            Q(blocker=self.user, blocked_id=self.other_user_id) |
+            Q(blocker_id=self.other_user_id, blocked=self.user)
+        ).exists()
+
+    @database_sync_to_async
     def get_chat_history(self):
         messages = ChatMessage.objects.filter(
             sender_id__in=[self.user.id, self.other_user_id],
@@ -116,6 +139,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'sender': msg.sender_id,
                 'receiver': msg.receiver_id,
                 'message': msg.message,
+                'attachment_url': msg.attachment.url if msg.attachment else None,
+                'attachment_name': msg.attachment_name,
                 'sent_at': msg.sent_at.isoformat(),
                 'is_read': msg.is_read
             }
@@ -135,6 +160,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'sender': msg.sender_id,
                 'receiver': msg.receiver_id,
                 'message': msg.message,
+                'attachment_url': None,
+                'attachment_name': None,
                 'sent_at': msg.sent_at.isoformat(),
                 'is_read': msg.is_read
             }

@@ -24,7 +24,7 @@ const StaffChatPage = () => {
   const getTabsForRole = (role) => {
     switch (role) {
       case 'senior_doctor':
-        return ['Doctors', 'Technicians', 'Receptionists'];
+        return ['Patients', 'Doctors', 'Technicians', 'Receptionists'];
       case 'doctor':
         return ['Patients', 'Doctors', 'Senior Doctor', 'Technicians', 'Receptionists'];
       case 'technician':
@@ -69,8 +69,10 @@ const StaffChatPage = () => {
       if (activeTab === 'Patients') {
         const res = await api.get('/api/users/patients/');
         const patientsArray = Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []);
-        data = patientsArray.map(p => {
-          const uid = p.user?.id || p.id;
+        data = patientsArray
+          .filter(p => p.user && p.user.id)
+          .map(p => {
+          const uid = p.user.id;
           const conv = conversationsMap[uid] || {};
           return {
             id: uid,
@@ -87,8 +89,10 @@ const StaffChatPage = () => {
       } else if (user?.role === 'patient' && activeTab === 'Doctors') {
         const res = await api.get('/api/users/doctors/');
         const doctorsArray = Array.isArray(res?.data) ? res.data : (res?.data?.results ?? []);
-        data = doctorsArray.map(d => {
-          const uid = d.user?.id || d.id;
+        data = doctorsArray
+          .filter(d => d.user && d.user.id)
+          .map(d => {
+          const uid = d.user.id;
           const conv = conversationsMap[uid] || {};
           return {
             id: uid,

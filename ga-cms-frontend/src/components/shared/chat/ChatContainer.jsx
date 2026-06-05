@@ -21,7 +21,8 @@ import {
   File,
   Download
 } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
+import EmojiPicker from 'emoji-picker-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import useWebSocket from '../../../hooks/useWebSocket';
 import { Spinner } from '../Spinner';
 import ErrorBoundary from '../ErrorBoundary';
@@ -34,23 +35,43 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
   const [selectedChat, setSelectedChat] = useState(null);
   const [message, setMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showMobileSidebar, setShowMobileSidebar] = useState(true);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showChatDropdown, setShowChatDropdown] = useState(false);
+  const [showSidebarDropdown, setShowSidebarDropdown] = useState(false);
+  const [showChatSearch, setShowChatSearch] = useState(false);
+  const [chatSearchTerm, setChatSearchTerm] = useState('');
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
   const { messages: wsMessages, sendMessage } = useWebSocket(selectedChat?.id);
 
   // Format websocket messages to match our UI needs
-  const chatMessages = wsMessages.map(m => ({
-    id: m.id,
-    senderId: m.sender === user?.id ? 'me' : 'other',
-    text: m.message,
-    time: new Date(m.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    status: m.is_read ? 'read' : 'sent',
-    type: 'text',
-    pending: m.pending,
-    failed: m.failed
-  }));
+  const chatMessages = wsMessages.map(m => {
+    let type = 'text';
+    if (m.attachment_url) {
+      const ext = m.attachment_url.split('.').pop().toLowerCase();
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) type = 'image';
+      else if (['mp4', 'webm', 'ogg'].includes(ext)) type = 'video';
+      else if (['mp3', 'wav', 'ogg'].includes(ext)) type = 'audio';
+      else if (ext === 'pdf') type = 'pdf';
+      else type = 'file';
+    }
+
+    return {
+      id: m.id,
+      senderId: m.sender === user?.id ? 'me' : 'other',
+      text: m.message,
+      fileUrl: m.attachment_url ? `http://localhost:8000${m.attachment_url}` : null,
+      fileName: m.attachment_name,
+      fileSize: 'Attachment',
+      time: new Date(m.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: m.is_read ? 'read' : 'sent',
+      type: type,
+      pending: m.pending,
+      failed: m.failed
+    };
+  });
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -59,6 +80,11 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
   useEffect(() => {
     scrollToBottom();
   }, [chatMessages, selectedChat]);
+
+  // Reset selected chat when switching tabs to prevent messages leaking across tabs
+  useEffect(() => {
+    setSelectedChat(null);
+  }, [activeTab]);
 
   const handleSendMessage = async (e, fileData = null) => {
     if (e) e.preventDefault();
@@ -74,25 +100,76 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
     setMessage('');
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    let type = 'file';
-    if (file.type.startsWith('image/')) type = 'image';
-    else if (file.type.startsWith('video/')) type = 'video';
-    else if (file.type.startsWith('audio/')) type = 'audio';
-    else if (file.type === 'application/pdf') type = 'pdf';
-
-    const fileData = {
-      name: file.name,
-      size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
-      type: type,
-      url: URL.createObjectURL(file)
-    };
-
-    handleSendMessage(null, fileData);
+    if (!selectedChat?.id) return;
+    
+    const formData = new FormData();
+    formData.append('receiver_id', selectedChat.id);
+    formData.append('file', file);
+    
+    try {
+      await api.post('/api/chat/messages/upload/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success("File sent");
+    } catch (err) {
+      console.error("Failed to upload file", err);
+      toast.error(err.response?.data?.error || "Failed to upload file");
+    }
+    
     e.target.value = ''; // Reset input
+  };
+
+  const handleDeleteChat = async () => {
+    if (!selectedChat) return;
+    try {
+      await api.post('/api/chat/messages/delete-chat/', { other_user_id: selectedChat.id });
+      toast.success("Chat deleted");
+      setSelectedChat(null);
+      queryClient.invalidateQueries({ queryKey: ['chatContacts'] });
+    } catch (err) {
+      toast.error("Failed to delete chat");
+    }
+    setShowChatDropdown(false);
+  };
+
+  const handleBlockUser = async () => {
+    if (!selectedChat) return;
+    try {
+      await api.post('/api/chat/messages/block-user/', { other_user_id: selectedChat.id });
+      toast.success("User blocked");
+      setSelectedChat(null);
+    } catch (err) {
+      toast.error("Failed to block user");
+    }
+    setShowChatDropdown(false);
+  };
+
+  const handleClearHistory = async () => {
+    try {
+      await api.post('/api/chat/messages/clear-history/');
+      toast.success("Chat history cleared");
+      setSelectedChat(null);
+      queryClient.invalidateQueries({ queryKey: ['chatContacts'] });
+    } catch (err) {
+      toast.error("Failed to clear history");
+    }
+    setShowSidebarDropdown(false);
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.patch('/api/chat/messages/mark-read/', {});
+      toast.success("All messages marked as read");
+      queryClient.invalidateQueries({ queryKey: ['unreadCount'] });
+      queryClient.invalidateQueries({ queryKey: ['chatContacts'] });
+    } catch (err) {
+      toast.error("Failed to mark all as read");
+    }
+    setShowSidebarDropdown(false);
   };
 
   const triggerFileInput = () => {
@@ -216,19 +293,22 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
             )}
           </div>
 
-          {!tabs && (
-            <div className="flex items-center gap-1">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200/50 cursor-pointer transition-all">
-                <Activity size={20} />
-              </div>
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200/50 cursor-pointer transition-all">
-                <MessageSquare size={20} />
-              </div>
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200/50 cursor-pointer transition-all">
+          <div className="flex items-center gap-1">
+            <div className="relative">
+              <div onClick={() => setShowSidebarDropdown(!showSidebarDropdown)} className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200/50 cursor-pointer transition-all">
                 <MoreVertical size={20} />
               </div>
+              {showSidebarDropdown && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowSidebarDropdown(false)}></div>
+                  <div className="absolute right-0 top-10 bg-white shadow-xl border border-slate-100 rounded-xl py-2 w-48 z-50">
+                    <button onClick={handleMarkAllRead} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-slate-700 text-sm font-medium">Mark all as read</button>
+                    <button onClick={handleClearHistory} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-red-500 text-sm font-medium">Clear chats history</button>
+                  </div>
+                </>
+              )}
             </div>
-          )}
+          </div>
         </div>
         
         {/* Search */}
@@ -327,21 +407,46 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
                 </div>
               </div>
               
-              <div className="flex items-center gap-4 text-slate-500">
-                <Search size={20} className="cursor-pointer hover:text-slate-800" />
-                <MoreVertical size={20} className="cursor-pointer hover:text-slate-800" />
+              <div className="flex items-center gap-4 text-slate-500 relative">
+                {showChatSearch && (
+                  <input 
+                    type="text" 
+                    placeholder="Search in chat..."
+                    value={chatSearchTerm}
+                    onChange={(e) => setChatSearchTerm(e.target.value)}
+                    className="absolute right-20 top-1/2 -translate-y-1/2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-sm outline-none shadow-sm w-48 z-10"
+                    autoFocus
+                  />
+                )}
+                <Search onClick={() => setShowChatSearch(!showChatSearch)} size={20} className="cursor-pointer hover:text-slate-800" />
+                
+                <div className="relative">
+                  <MoreVertical onClick={() => setShowChatDropdown(!showChatDropdown)} size={20} className="cursor-pointer hover:text-slate-800" />
+                  {showChatDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowChatDropdown(false)}></div>
+                      <div className="absolute right-0 top-8 bg-white shadow-xl border border-slate-100 rounded-xl py-2 w-40 z-50">
+                        <button onClick={handleDeleteChat} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-red-500 text-sm font-medium">Delete chat</button>
+                        <button onClick={handleBlockUser} className="w-full text-left px-4 py-2 hover:bg-slate-50 text-red-500 text-sm font-medium">Block user</button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4 lg:p-10 space-y-4 custom-scrollbar bg-[url('https://w0.peakpx.com/wallpaper/818/148/HD-wallpaper-whatsapp-background-minimalist-pattern-whatsapp-pattern.jpg')] bg-repeat bg-opacity-5">
+            <div className="flex-1 overflow-y-auto p-4 lg:p-10 space-y-4 custom-scrollbar bg-[url('https://w0.peakpx.com/wallpaper/818/148/HD-wallpaper-whatsapp-background-minimalist-pattern-whatsapp-pattern.jpg')] bg-repeat bg-opacity-5 relative">
               <div className="flex justify-center mb-6">
                 <span className="bg-[#dcf8c6] border border-emerald-100 text-[10px] font-bold text-slate-600 uppercase tracking-wider px-4 py-1 rounded shadow-sm">
                   Messages are end-to-end encrypted
                 </span>
               </div>
               
-              {chatMessages.map((msg) => (
+              {chatMessages.filter(msg => {
+                if (!chatSearchTerm) return true;
+                return msg.text?.toLowerCase().includes(chatSearchTerm.toLowerCase()) || msg.fileName?.toLowerCase().includes(chatSearchTerm.toLowerCase());
+              }).map((msg) => (
 
                 <div key={msg.id} className={`flex ${msg.senderId === 'me' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-300`}>
                   <div className={`max-w-[85%] lg:max-w-[65%] px-3 py-2 rounded-lg shadow-sm text-sm relative ${
@@ -370,8 +475,16 @@ const ChatContainer = ({ role, contacts, tabs, activeTab, onTabChange, tabUnread
 
             {/* Message Input */}
             <div className="px-4 py-3 bg-[#f0f2f5] shrink-0 flex items-center gap-3">
-              <div className="flex items-center gap-2 text-slate-500">
-                <Smile size={24} className="cursor-pointer hover:text-slate-800" />
+              <div className="relative flex items-center gap-2 text-slate-500">
+                <Smile onClick={() => setShowEmojiPicker(!showEmojiPicker)} size={24} className="cursor-pointer hover:text-slate-800" />
+                {showEmojiPicker && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowEmojiPicker(false)}></div>
+                    <div className="absolute bottom-12 left-0 z-50 shadow-2xl rounded-2xl">
+                      <EmojiPicker onEmojiClick={(e) => setMessage(prev => prev + e.emoji)} />
+                    </div>
+                  </>
+                )}
                 <Plus onClick={triggerFileInput} size={24} className="cursor-pointer hover:text-slate-800" />
               </div>
               <form 
