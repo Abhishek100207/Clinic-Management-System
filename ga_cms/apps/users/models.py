@@ -8,6 +8,10 @@ class Doctor(models.Model):
     accepts_inperson = models.BooleanField(default=True)
     accepts_virtual = models.BooleanField(default=False)
     is_visible_to_patients = models.BooleanField(default=True)
+    
+    # Rating fields
+    average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00, help_text="Average consultation rating")
+    total_reviews = models.IntegerField(default=0, help_text="Total number of consultation reviews")
 
     def __str__(self):
         return f"Dr. {self.user.get_full_name()} ({self.specialty})"
@@ -28,6 +32,7 @@ class Technician(models.Model):
 
 
 class Patient(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, null=True, blank=True, related_name='patient_profile')
     patient_id = models.CharField(max_length=20, unique=True)   # auto-gen
     full_name = models.CharField(max_length=200)
     date_of_birth = models.DateField()
@@ -50,3 +55,41 @@ class Patient(models.Model):
 
     def __str__(self):
         return f"{self.full_name} ({self.patient_id})"
+
+
+class DoctorUser(CustomUser):
+    class Meta:
+        proxy = True
+        verbose_name = 'Doctor'
+        verbose_name_plural = 'Doctors'
+
+class ReceptionistUser(CustomUser):
+    class Meta:
+        proxy = True
+        verbose_name = 'Receptionist'
+        verbose_name_plural = 'Receptionists'
+
+class TechnicianUser(CustomUser):
+    class Meta:
+        proxy = True
+        verbose_name = 'Technician'
+        verbose_name_plural = 'Technicians'
+
+class PatientUser(CustomUser):
+    class Meta:
+        proxy = True
+        verbose_name = 'Patient'
+        verbose_name_plural = 'Patients'
+
+class AuditLog(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
+    action = models.CharField(max_length=100)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    details = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True) # PERF: Index for sorting
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.timestamp} - {self.user} - {self.action}"

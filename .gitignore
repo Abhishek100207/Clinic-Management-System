@@ -1,0 +1,18 @@
+*.pyc
+__pycache__/
+db.sqlite3
+*.sqlite3
+ga_cms/db.sqlite3
+security_audit.log
+ga_cms/security_audit.log
+
+# Credentials and local env
+token.json
+credentials.json
+ga_cms/token.json
+ga_cms/credentials.json
+ga_cms/client_secrets.json
+ga-cms-frontend/node_modules/
+.env
+ga_cms/.env
+ga-cms-frontend/.env

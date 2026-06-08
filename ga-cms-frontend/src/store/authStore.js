@@ -6,6 +6,7 @@ export const useAuthStore = create(
     user: null,
     accessToken: null,
     isAuthenticated: false,
+    unreadChatCount: 0,
 
     setAuth: (user, token) =>
       set({ user, accessToken: token, isAuthenticated: true }),
@@ -13,7 +14,13 @@ export const useAuthStore = create(
     setToken: (token) =>
       set({ accessToken: token }),
     
+    setUnreadChatCount: (count) =>
+      set({ unreadChatCount: count }),
+    
+    setUser: (user) =>
+      set({ user }),
+    
     logout: () =>
-      set({ user: null, accessToken: null, isAuthenticated: false }),
+      set({ user: null, accessToken: null, isAuthenticated: false, unreadChatCount: 0 }),
   }))
 );
