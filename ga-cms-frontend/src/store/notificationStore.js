@@ -79,7 +79,7 @@ export const useNotificationStore = create((set, get) => ({
           prescs.forEach(presc => {
             const id = `presc-${presc.id}`;
             const medsBody = (presc.medications || []).map(m => 
-              `- ${m.drug_details?.name || 'Medication'}: ${m.dosage} (${m.frequency}) for ${m.duration}`
+              `- ${m.drug_details?.name || 'Medication'}: ${m.dosage} (${m.frequency}) for ${m.duration}${m.instructions ? ` - Note: ${m.instructions}` : ''}`
             ).join('\n');
             rawNotifications.push({
               id,

@@ -45,7 +45,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
       plan: ''
     },
     recommendedTests: '',
-    prescriptions: [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, food: '' }],
+    prescriptions: [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, duration: '', food: '' }],
     prescriptionNotes: '',
     followUpDate: '',
     referredDoctorId: '',
@@ -97,7 +97,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
             plan: ''
           },
           recommendedTests: '',
-          prescriptions: [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, food: '' }],
+          prescriptions: [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, duration: '', food: '' }],
           prescriptionNotes: '',
           followUpDate: '',
           referredDoctorId: '',
@@ -132,7 +132,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
   const handleAddMedicine = () => {
     setFormData({
       ...formData,
-      prescriptions: [...formData.prescriptions, { medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, food: '' }]
+      prescriptions: [...formData.prescriptions, { medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, duration: '', food: '' }]
     });
   };
 
@@ -140,7 +140,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
     const newPres = formData.prescriptions.filter((_, i) => i !== index);
     setFormData({
       ...formData,
-      prescriptions: newPres.length ? newPres : [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, food: '' }]
+      prescriptions: newPres.length ? newPres : [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, duration: '', food: '' }]
     });
   };
 
@@ -191,6 +191,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
         medicine: med.medicine,
         dosage: dosageStr,
         frequency: times.join(', ') || 'As directed',
+        duration: med.duration || '',
         instructions: med.food || '',
         side_effects: med.side_effects,
         substitutes: med.substitutes
@@ -494,9 +495,9 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                       </div>
                     </div>
 
-                    {/* Row 2: Time & Food & Delete */}
+                    {/* Row 2: Time, Duration, Food & Delete */}
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                      <div className="md:col-span-6 space-y-2">
+                      <div className="md:col-span-5 space-y-2">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Time</label>
                         <div className="flex gap-2">
                           {['morning', 'afternoon', 'night'].map(t => (
@@ -515,7 +516,18 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                         </div>
                       </div>
 
-                      <div className="md:col-span-5 space-y-2">
+                      <div className="md:col-span-3 space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase">Duration</label>
+                        <input
+                          type="text"
+                          value={med.duration || ''}
+                          onChange={(e) => handleMedChange(index, 'duration', e.target.value)}
+                          placeholder="E.g. 5 days"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-all"
+                        />
+                      </div>
+
+                      <div className="md:col-span-3 space-y-2">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Food</label>
                         <select
                           value={med.food}

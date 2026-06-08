@@ -401,6 +401,8 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            print("PRESCRIPTION SERIALIZER ERRORS:", serializer.errors)
         serializer.is_valid(raise_exception=True)
         
         appointment = serializer.validated_data['appointment']

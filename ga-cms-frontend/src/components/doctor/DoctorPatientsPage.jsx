@@ -227,9 +227,10 @@ const DoctorPatientsPage = () => {
           const matchedDrug = availableDrugs.find(d => d.name.toLowerCase() === p.medicine.toLowerCase());
           return {
             drug_id: matchedDrug ? matchedDrug.id : (availableDrugs.length > 0 ? availableDrugs[0].id : 1),
-            dosage: p.dosage,
-            frequency: 'As directed',
-            duration: 'As directed'
+            dosage: p.dosage || 'Not specified',
+            frequency: p.frequency || 'As directed',
+            duration: p.duration || 'As directed',
+            instructions: p.instructions || ''
           };
         });
 
@@ -454,14 +455,6 @@ const DoctorPatientsPage = () => {
                             >
                               <Activity size={12} /> Medical Reports
                             </button>
-                            {isOPCompleted && (
-                              <button 
-                                onClick={() => navigate('/doctor/prescriptions', { state: { patientData: patient } })}
-                                className="bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all border border-emerald-100 shadow-sm flex items-center gap-1.5"
-                              >
-                                <CheckCircle2 size={12} /> Complete
-                              </button>
-                            )}
                           </div>
                         </td>
                       </tr>
@@ -616,9 +609,18 @@ const DoctorPatientsPage = () => {
                                     <div key={prescription.id} className="text-xs text-slate-600 space-y-1">
                                       <p className="font-bold">Notes: {prescription.notes}</p>
                                       {prescription.medications?.map((med) => (
-                                        <p key={med.id} className="ml-2">
-                                          • {med.drug_details?.name} - {med.dosage} ({med.frequency})
-                                        </p>
+                                        <div key={med.id} className="mt-2 bg-slate-50/80 border border-slate-100 rounded-lg p-3">
+                                          <p className="text-[13px] font-bold text-navy flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                            {med.drug_details?.name}
+                                          </p>
+                                          <div className="ml-3.5 mt-1.5 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-slate-500">
+                                            <span><strong className="text-slate-400 font-bold uppercase tracking-wide text-[9px] mr-1">Dosage</strong> {med.dosage}</span>
+                                            <span><strong className="text-slate-400 font-bold uppercase tracking-wide text-[9px] mr-1">Time</strong> {med.frequency}</span>
+                                            {med.duration && <span><strong className="text-slate-400 font-bold uppercase tracking-wide text-[9px] mr-1">Duration</strong> {med.duration}</span>}
+                                            {med.instructions && <span className="text-emerald-600"><strong className="text-emerald-600/70 font-bold uppercase tracking-wide text-[9px] mr-1">Food</strong> {med.instructions}</span>}
+                                          </div>
+                                        </div>
                                       ))}
                                     </div>
                                   ))

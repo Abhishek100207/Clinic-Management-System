@@ -11,6 +11,22 @@ class AppointmentSerializer(serializers.ModelSerializer):
     patient_mobile = serializers.CharField(source='patient.mobile_number', read_only=True)
     doctor_name = serializers.CharField(source='doctor.user.get_full_name', read_only=True)
     doctor_specialty = serializers.CharField(source='doctor.specialty', read_only=True)
+    gender = serializers.CharField(source='patient.gender', read_only=True)
+    blood_group = serializers.CharField(source='patient.blood_group', read_only=True)
+    age = serializers.SerializerMethodField()
+    consultation_time = serializers.SerializerMethodField()
+
+    def get_age(self, obj):
+        from datetime import date
+        if obj.patient.date_of_birth:
+            today = date.today()
+            return today.year - obj.patient.date_of_birth.year - ((today.month, today.day) < (obj.patient.date_of_birth.month, obj.patient.date_of_birth.day))
+        return None
+
+    def get_consultation_time(self, obj):
+        if obj.time:
+            return obj.time.strftime('%I:%M %p')
+        return None
 
     class Meta:
         model = Appointment

@@ -94,9 +94,10 @@ const DoctorConsultationsPage = () => {
           const matchedDrug = availableDrugs.find(d => d.name.toLowerCase() === p.medicine.toLowerCase());
           return {
             drug_id: matchedDrug ? matchedDrug.id : (availableDrugs.length > 0 ? availableDrugs[0].id : 1),
-            dosage: p.dosage,
-            frequency: 'As directed',
-            duration: 'As directed'
+            dosage: p.dosage || 'Not specified',
+            frequency: p.frequency || 'As directed',
+            duration: p.duration || 'As directed',
+            instructions: p.instructions || ''
           };
         });
 

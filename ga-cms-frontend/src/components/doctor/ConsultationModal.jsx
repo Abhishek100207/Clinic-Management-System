@@ -21,18 +21,25 @@ const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
   const [referredDoctorId, setReferredDoctorId] = useState('');
   const [referralNote, setReferralNote] = useState('');
   const [doctors, setDoctors] = useState([]);
+  const [availableDrugs, setAvailableDrugs] = useState([]);
 
   useEffect(() => {
-    const fetchDoctors = async () => {
+    const fetchData = async () => {
       try {
-        const res = await api.get('/api/users/doctors/');
-        setDoctors(res.data || []);
+        const [doctorsRes, drugsRes] = await Promise.all([
+          api.get('/api/users/doctors/'),
+          api.get('/api/medical_records/drugs/')
+        ]);
+        setDoctors(doctorsRes.data || []);
+        
+        const drugsData = Array.isArray(drugsRes?.data) ? drugsRes.data : (drugsRes?.data?.results || []);
+        setAvailableDrugs(drugsData);
       } catch (err) {
-        console.error("Failed to fetch doctors", err);
+        console.error("Failed to fetch initial data", err);
       }
     };
     if (isOpen) {
-      fetchDoctors();
+      fetchData();
       
       // Load draft if it exists
       if (patient?.id) {
@@ -296,11 +303,17 @@ const ConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Medication Name</label>
                     <input 
                       type="text"
+                      list="drug-list"
                       value={med.medication}
                       onChange={(e) => handleMedChange(index, 'medication', e.target.value)}
                       placeholder="E.g. Amoxicillin"
                       className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:border-indigo-500 outline-none transition-colors"
                     />
+                    <datalist id="drug-list">
+                      {availableDrugs.map(d => (
+                        <option key={d.id} value={d.name} />
+                      ))}
+                    </datalist>
                   </div>
                   <div className="md:col-span-2 space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 uppercase">Dosage</label>
