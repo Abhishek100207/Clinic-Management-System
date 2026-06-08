@@ -28,6 +28,25 @@ const ScanReportPage = () => {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
+
+  // Viewer controls state
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const viewerRef = React.useRef(null);
+
+  const handleZoomIn = () => setZoom(z => Math.min(z + 0.25, 4));
+  const handleZoomOut = () => setZoom(z => Math.max(z - 0.25, 0.25));
+  const handleRotate = () => setRotation(r => r - 90);
+  const handleFullscreen = () => {
+    if (!document.fullscreenElement && viewerRef.current) {
+      viewerRef.current.requestFullscreen().catch(err => {
+        console.log(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else if (document.fullscreenElement) {
+      document.exitFullscreen();
+    }
+  };
 
   useEffect(() => {
     console.log('ScanReportPage: reportId =', reportId);
@@ -50,23 +69,42 @@ const ScanReportPage = () => {
         const orderData = orderResponse.data;
         
         let scanData = {};
-        // 2. Fetch Scan Result by matching patient and scan_type
+        // 2. Fetch Scan/Lab Result by matching patient and scan_type
         try {
-          const resultsResponse = await api.get(`/api/medical_records/scan-results/`);
-          const resultsData = Array.isArray(resultsResponse?.data) ? resultsResponse.data : (resultsResponse?.data?.results || []);
+          // First try scan results
+          const scanResponse = await api.get(`/api/medical_records/scan-results/`);
+          const scanDataArr = Array.isArray(scanResponse?.data) ? scanResponse.data : (scanResponse?.data?.results || []);
           
-          const matchingResult = resultsData.find(res => 
+          let matchingResult = scanDataArr.find(res => 
             res.patient === orderData.patient && res.scan_type === orderData.scan_type
           );
           
+          if (!matchingResult) {
+            // Try lab results if not found in scan results
+            const labResponse = await api.get(`/api/medical_records/lab-results/`);
+            const labDataArr = Array.isArray(labResponse?.data) ? labResponse.data : (labResponse?.data?.results || []);
+            
+            const labMatch = labDataArr.find(res => 
+              res.patient === orderData.patient && res.test_name === orderData.scan_type
+            );
+            
+            if (labMatch) {
+              matchingResult = {
+                ...labMatch,
+                scan_type: labMatch.test_name, // normalize for UI
+                findings: labMatch.status || 'Pending review.'
+              };
+            }
+          }
+          
           if (matchingResult) {
             scanData = matchingResult;
-            console.log('ScanReportPage: found matching scan data =', scanData);
+            console.log('ScanReportPage: found matching scan/lab data =', scanData);
           } else {
-            console.log('ScanReportPage: no matching scan data found for patient', orderData.patient, 'and type', orderData.scan_type);
+            console.log('ScanReportPage: no matching record found for patient', orderData.patient, 'and type', orderData.scan_type);
           }
         } catch (err) {
-          console.error('Error fetching scan results:', err);
+          console.error('Error fetching results:', err);
         }
 
         let patientData = passedPatient;
@@ -79,6 +117,8 @@ const ScanReportPage = () => {
             patientData = { full_name: orderData.patientName || `Patient ID: ${orderData.patient}` };
           }
         }
+
+        const isImaging = ['x-ray', 'mri', 'ct ', 'ultrasound', 'scan', 'imaging', 'radiography'].some(t => (orderData.scan_type || scanData.scan_type || '').toLowerCase().includes(t));
 
         setReportData({
           id: reportId,
@@ -94,11 +134,32 @@ const ScanReportPage = () => {
             place: patientData?.address || 'Hyderabad'
           },
           doctor: orderData.doctorName || scanData.requesting_doctor || 'Dr. Radiologist',
-          department: 'Radiology & Imaging',
+          department: isImaging ? 'Radiology & Imaging' : 'Laboratory Services',
           imageUrl: scanData.file || '/medical_xray_scan_1778599392682.png',
+          hasFile: !!scanData.file,
+          isImaging: isImaging,
           findings: Array.isArray(scanData.findings) ? scanData.findings : (scanData.findings ? [scanData.findings] : []),
           impressions: orderData.status === 'completed' ? ['Normal study or check findings.'] : ['Pending review.']
         });
+        
+        // Fetch PDF as blob to avoid iframe cross-origin and X-Frame-Options issues
+        if (scanData.file && scanData.file.toLowerCase().includes('.pdf')) {
+          try {
+             // If absolute url from backend, convert it to relative to use the vite proxy
+             let fileUrl = scanData.file;
+             if (fileUrl.startsWith('http')) {
+                const urlObj = new URL(fileUrl);
+                fileUrl = urlObj.pathname;
+             }
+             
+             const fileRes = await api.get(fileUrl, { responseType: 'blob' });
+             const objectUrl = URL.createObjectURL(fileRes.data);
+             setPdfBlobUrl(objectUrl);
+          } catch (blobErr) {
+             console.error("Failed to fetch PDF blob:", blobErr);
+          }
+        }
+        
       } catch (err) {
         console.error('Error fetching scan report:', err);
         setError('Failed to load scan report.');
@@ -108,6 +169,10 @@ const ScanReportPage = () => {
     };
 
     fetchReport();
+    
+    return () => {
+      if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+    };
   }, [reportId, passedPatient]);
 
   const handleDownload = async () => {
@@ -247,44 +312,78 @@ const ScanReportPage = () => {
 
         {/* MIDDLE COLUMN: Scan Image (50%) */}
         <div className="lg:col-span-6 space-y-6">
-          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden relative flex flex-col items-center justify-center min-h-[600px] group">
-            {/* Image Placeholder - In real app, this would be an actual IMG tag with reportData.imageUrl */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-90 group-hover:opacity-100 transition-opacity overflow-hidden">
-               {/* 
-                  Using a stylized div to represent the scan if the image is not available, 
-                  but we'll include the img tag for the generated image 
-               */}
-               {reportData.imageUrl.endsWith('.pdf') ? (
-                 <iframe 
-                   src={reportData.imageUrl} 
-                   className="w-full h-full border-none"
-                   title="Scan Report PDF"
-                 />
+          <div ref={viewerRef} className="bg-slate-900 rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden relative flex flex-col items-center justify-center min-h-[600px] group">
+            
+            <div 
+              className={`absolute inset-0 flex items-center justify-center transition-transform duration-300 ${reportData.imageUrl.toLowerCase().includes('.pdf') ? 'bg-white' : ''}`}
+              style={{ transform: `scale(${zoom}) rotate(${rotation}deg)` }}
+            >
+               {reportData.hasFile ? (
+                 reportData.imageUrl.toLowerCase().includes('.pdf') ? (
+                   pdfBlobUrl ? (
+                     <iframe 
+                       src={pdfBlobUrl} 
+                       className="w-full h-full border-none"
+                       title="Report Document"
+                     />
+                   ) : (
+                     <div className="flex flex-col items-center justify-center w-full h-full bg-slate-50 text-slate-500">
+                       <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+                       <p className="font-bold text-sm text-slate-600">Loading Document...</p>
+                     </div>
+                   )
+                 ) : (
+                   <img 
+                     src={reportData.imageUrl} 
+                     alt="Scan View" 
+                     className="w-full h-full object-contain pointer-events-none select-none"
+                   />
+                 )
                ) : (
-                 <img 
-                   src={reportData.imageUrl} 
-                   alt="Scan View" 
-                   className="w-full h-full object-contain pointer-events-none select-none"
-                   onError={(e) => {
-                     e.target.onerror = null;
-                     e.target.src = '/medical_xray_scan_1778599392682.png';
-                   }}
-                 />
+                 reportData.isImaging ? (
+                   <img 
+                     src="/medical_xray_scan_1778599392682.png" 
+                     alt="Placeholder Scan" 
+                     className="w-full h-full object-contain pointer-events-none select-none opacity-50"
+                   />
+                 ) : (
+                   <div className="flex flex-col items-center justify-center w-full h-full bg-slate-50 text-slate-500">
+                     <FileText size={64} className="mb-4 text-slate-300" />
+                     <p className="font-bold text-lg text-slate-600">Lab Report Pending</p>
+                     <p className="text-sm mt-1">The results for {reportData.type} have not been uploaded yet.</p>
+                   </div>
+                 )
                )}
             </div>
 
             {/* Scan Controls Overlay */}
-            <div className="absolute top-6 right-6 flex flex-col gap-3 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0 duration-300">
-              <button className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-white/20 transition-all border border-white/10 shadow-lg">
+            <div className="absolute top-6 right-6 flex flex-col gap-3 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0 duration-300 z-10">
+              <button 
+                onClick={handleZoomIn}
+                className="w-12 h-12 bg-slate-800/80 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-slate-700 transition-all border border-slate-600/50 shadow-xl hover:scale-105 active:scale-95"
+                title="Zoom In"
+              >
                 <ZoomIn size={20} />
               </button>
-              <button className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-white/20 transition-all border border-white/10 shadow-lg">
+              <button 
+                onClick={handleZoomOut}
+                className="w-12 h-12 bg-slate-800/80 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-slate-700 transition-all border border-slate-600/50 shadow-xl hover:scale-105 active:scale-95"
+                title="Zoom Out"
+              >
                 <ZoomOut size={20} />
               </button>
-              <button className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-white/20 transition-all border border-white/10 shadow-lg">
+              <button 
+                onClick={handleRotate}
+                className="w-12 h-12 bg-slate-800/80 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-slate-700 transition-all border border-slate-600/50 shadow-xl hover:scale-105 active:scale-95"
+                title="Rotate"
+              >
                 <RotateCcw size={20} />
               </button>
-              <button className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-white/20 transition-all border border-white/10 shadow-lg">
+              <button 
+                onClick={handleFullscreen}
+                className="w-12 h-12 bg-slate-800/80 backdrop-blur-md rounded-2xl flex items-center justify-center text-white hover:bg-slate-700 transition-all border border-slate-600/50 shadow-xl hover:scale-105 active:scale-95"
+                title="Fullscreen"
+              >
                 <Maximize2 size={20} />
               </button>
             </div>
@@ -292,7 +391,7 @@ const ScanReportPage = () => {
             {/* Scan Identity Label */}
             <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
               <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-white text-[10px] font-bold uppercase tracking-widest">
-                {reportData.type} • Digital Imaging
+                {reportData.type} • {reportData.isImaging ? 'Digital Imaging' : 'Laboratory Results'}
               </div>
               <div className="flex items-center gap-2 text-white/50 text-[10px] font-bold uppercase tracking-widest">
                 <Activity size={14} /> Live View System

@@ -67,6 +67,7 @@ const BookAppointment = ({ onBack }) => {
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [availableSlots, setAvailableSlots] = useState([]);
+  const [calendarSyncTrigger, setCalendarSyncTrigger] = useState(0);
   const [fetchingSlots, setFetchingSlots] = useState(false);
   const fixedLocation = 'Main City Clinic';
 
@@ -100,8 +101,14 @@ const BookAppointment = ({ onBack }) => {
     setFees({ consultation, gst, total: consultation + gst });
   }, [formData.appointment_type]);
 
-  // Fetch Slots
+  // Fetch Slots and Sync Calendar
   useEffect(() => {
+    if (formData.doctor_id) {
+      calendarStorage.syncWithBackend(formData.doctor_id).then(() => {
+        setCalendarSyncTrigger(prev => prev + 1);
+      });
+    }
+
     const fetchSlots = async () => {
       if (formData.doctor_id && formData.date) {
         setFetchingSlots(true);
@@ -150,6 +157,17 @@ const BookAppointment = ({ onBack }) => {
     if (!timeStr) return '';
     const match = timeStr.match(/^(\d{2}):(\d{2})/);
     return match ? `${match[1]}:${match[2]}` : timeStr;
+  };
+
+  const formatTime12Hour = (timeStr) => {
+    if (!timeStr) return '';
+    const match = timeStr.match(/^(\d{2}):(\d{2})/);
+    if (!match) return timeStr;
+    let hour = parseInt(match[1], 10);
+    const minute = match[2];
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12 || 12;
+    return `${hour}:${minute} ${ampm}`;
   };
 
   const conflictingTimes = patientAppointments
@@ -805,29 +823,6 @@ For support, email: support@gacms.com
                           const minute = parseInt((s.time || '00:00').substring(3, 5) || '0');
                           const slotTotalMins = hour * 60 + minute;
 
-                          // Find if this slot falls within ANY valid session for this day and appointment type
-                          const validSessions = (dayStatus.sessions || []).filter(
-                            session => session.appointment_type === formData.appointment_type
-                          );
-                          
-                          let inWindow = false;
-                          for (const session of validSessions) {
-                            const startHr = parseInt((session.start_time || '00:00').substring(0, 2));
-                            const startMin = parseInt((session.start_time || '00:00').substring(3, 5));
-                            const endHr = parseInt((session.end_time || '00:00').substring(0, 2));
-                            const endMin = parseInt((session.end_time || '00:00').substring(3, 5));
-                            
-                            const sessionStartMins = startHr * 60 + startMin;
-                            const sessionEndMins = endHr * 60 + endMin;
-                            
-                            // Check if slot falls in this window
-                            if (slotTotalMins >= sessionStartMins && slotTotalMins < sessionEndMins) {
-                                inWindow = true;
-                                break;
-                            }
-                          }
-                          
-                          if (!inWindow) return false;
                           // For today: hide slots that are already past
                           if (isToday && slotTotalMins <= nowMinutes) return false;
                           return true;
@@ -866,7 +861,7 @@ For support, email: support@gacms.com
                                               : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed opacity-50'
                                       }`}
                                     >
-                                      {s.time?.substring(0, 5) || s.time}
+                                      {formatTime12Hour(s.time)}
                                       {isConflicting && (
                                         <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
                                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -961,7 +956,7 @@ For support, email: support@gacms.com
                 <SummaryItem label="Clinic Location" value={fixedLocation} />
                 <SummaryItem label="Consultation" value={formData.appointment_type === 'virtual' ? 'Virtual (Video)' : 'In-Person (Clinic)'} />
                 <SummaryItem label="Patient Location" value={formData.patient_location || 'Not specified'} />
-                <SummaryItem label="Date & Time" value={formData.date && formData.time ? `${formData.date} at ${formData.time}` : 'Not selected'} />
+                <SummaryItem label="Date & Time" value={formData.date && formData.time ? `${formData.date} at ${formatTime12Hour(formData.time)}` : 'Not selected'} />
               </div>
               <div className="mt-8 pt-6 border-t border-gray-800">
                 <p className="text-xs text-gray-400">

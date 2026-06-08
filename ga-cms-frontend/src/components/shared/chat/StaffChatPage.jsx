@@ -28,9 +28,9 @@ const StaffChatPage = () => {
       case 'doctor':
         return ['Patients', 'Doctors', 'Senior Doctor', 'Technicians', 'Receptionists'];
       case 'technician':
-        return ['Doctors', 'Technicians', 'Receptionists'];
+        return ['Doctors', 'Senior Doctor', 'Technicians', 'Receptionists'];
       case 'receptionist':
-        return ['Doctors', 'Technicians', 'Receptionists'];
+        return ['Doctors', 'Senior Doctor', 'Technicians', 'Receptionists'];
       case 'patient':
         return ['Doctors'];
       default:
@@ -124,7 +124,7 @@ const StaffChatPage = () => {
             if (member.id === user?.id || member.email === user?.email) return false;
             if (member.role !== targetRole) return false;
             if (member.role === 'senior_doctor') {
-              return user?.role === 'doctor' || user?.role === 'senior_doctor';
+              return user?.role === 'doctor' || user?.role === 'senior_doctor' || user?.role === 'technician' || user?.role === 'receptionist';
             }
             return true;
           })

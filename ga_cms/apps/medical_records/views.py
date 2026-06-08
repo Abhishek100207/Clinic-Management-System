@@ -442,6 +442,93 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
         response_serializer = self.get_serializer(prescription)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
+    @action(detail=True, methods=['get'])
+    def download(self, request, pk=None):
+        import io
+        from django.http import FileResponse
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib import colors
+        
+        prescription = self.get_object()
+        
+        buffer = io.BytesIO()
+        c = canvas.Canvas(buffer, pagesize=letter)
+        
+        # Header
+        c.setFont("Helvetica-Bold", 24)
+        c.setFillColorRGB(0.12, 0.23, 0.54) # Navy blue
+        c.drawString(50, 750, "GA Clinic")
+        
+        c.setFont("Helvetica", 10)
+        c.setFillColorRGB(0.4, 0.4, 0.4)
+        c.drawString(50, 735, "123 Medical Center Blvd, Healthcare City")
+        c.drawString(50, 720, "Phone: +1 234 567 8900 | Web: www.gaclinic.com")
+        
+        # Prescription Title
+        c.setFont("Helvetica-Bold", 16)
+        c.setFillColorRGB(0, 0, 0)
+        c.drawString(50, 680, f"Prescription #{prescription.id}")
+        
+        # Details
+        c.setFont("Helvetica", 12)
+        c.drawString(50, 650, f"Date: {prescription.created_at.strftime('%d %B %Y')}")
+        c.drawString(50, 630, f"Doctor: {prescription.doctor.user.get_full_name() if prescription.doctor.user.get_full_name() else prescription.doctor.user.username}")
+        c.drawString(50, 610, f"Patient: {prescription.patient.full_name} ({prescription.patient.patient_id})")
+        
+        # Divider
+        c.setStrokeColorRGB(0.8, 0.8, 0.8)
+        c.line(50, 590, 550, 590)
+        
+        # Medications
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(50, 560, "Rx / Medications")
+        
+        y_pos = 530
+        c.setFont("Helvetica", 11)
+        for med in prescription.medications.all():
+            drug_name = med.drug.name if med.drug else med.drug_id
+            c.setFont("Helvetica-Bold", 11)
+            c.drawString(50, y_pos, f"• {drug_name}")
+            c.setFont("Helvetica", 10)
+            c.drawString(70, y_pos - 15, f"Dosage: {med.dosage} | Frequency: {med.frequency} | Duration: {med.duration}")
+            c.drawString(70, y_pos - 30, f"Instructions: {med.instructions}")
+            y_pos -= 50
+            
+            if y_pos < 100:
+                c.showPage()
+                y_pos = 750
+                
+        # Notes
+        if prescription.notes:
+            y_pos -= 20
+            c.setFont("Helvetica-Bold", 12)
+            c.drawString(50, y_pos, "Clinical Notes:")
+            y_pos -= 20
+            c.setFont("Helvetica", 10)
+            
+            # Simple text wrap
+            from textwrap import wrap
+            wrapped_notes = wrap(prescription.notes, width=90)
+            for line in wrapped_notes:
+                c.drawString(50, y_pos, line)
+                y_pos -= 15
+                if y_pos < 100:
+                    c.showPage()
+                    y_pos = 750
+        
+        # Follow up
+        if prescription.follow_up_date:
+            y_pos -= 20
+            c.setFont("Helvetica-Bold", 11)
+            c.drawString(50, y_pos, f"Follow-up Date: {prescription.follow_up_date.strftime('%d %B %Y')}")
+            
+        c.save()
+        buffer.seek(0)
+        
+        response = FileResponse(buffer, as_attachment=True, filename=f'prescription_{prescription.id}.pdf')
+        return response
+
 
 class DrugSearchView(APIView):
     permission_classes = [permissions.IsAuthenticated]

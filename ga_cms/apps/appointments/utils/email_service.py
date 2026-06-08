@@ -293,4 +293,44 @@ def send_appointment_reminder_email(appointment):
     except Exception as e:
         print(f"Failed to send reminder email to {patient_email}: {e}")
 
+def send_patient_welcome_email(patient, raw_password):
+    patient_email = patient.user.email
+    if not patient_email:
+        return
+        
+    subject = "Welcome to GA Clinic - Your Account Details"
+    
+    html_content = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #1e3a8a;">Welcome to GA Clinic!</h2>
+        <p>Dear {patient.full_name},</p>
+        <p>Your patient profile has been successfully created at GA Clinic.</p>
+        
+        <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+            <p style="margin: 5px 0;"><strong>Patient ID:</strong> {patient.patient_id}</p>
+            <p style="margin: 5px 0;"><strong>Username / Email:</strong> {patient.user.email}</p>
+            <p style="margin: 5px 0;"><strong>Temporary Password:</strong> {raw_password}</p>
+        </div>
+        
+        <p style="color: #dc2626; font-weight: bold;">For security reasons, we strongly recommend changing your password after your first login.</p>
+        
+        <p>You can log in to your Patient Dashboard to book appointments, view medical records, and download invoices.</p>
+        
+        <p>Best regards,<br><strong>GA Clinic Team</strong></p>
+      </body>
+    </html>
+    """
+    
+    text_content = strip_tags(html_content)
+    
+    try:
+        msg = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [patient_email])
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
+        print(f"Successfully sent welcome email to {patient_email}")
+    except Exception as e:
+        print(f"Failed to send welcome email to {patient_email}: {e}")
+
+
 

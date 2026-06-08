@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import apiClient from '../../api/axios';
 import { fetchConsultationNotes, fetchPrescriptions, fetchLabResults, fetchScanResults } from '../../api/medicalRecords';
 import { 
   FileText, 
@@ -58,6 +59,25 @@ const MedicalRecordsPage = () => {
     { id: 'scan_results', title: 'Scan Results', icon: <Layers size={28} />, color: 'rose', desc: 'Radiology images and reports' },
   ];
 
+  const handleDownloadPrescription = async (id) => {
+    try {
+      const response = await apiClient.get(`/api/medical_records/prescriptions/${id}/download/`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `prescription_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Failed to download prescription:', error);
+      alert('Failed to download prescription.');
+    }
+  };
+
   const renderModalContent = () => {
     switch (activeModal) {
       case 'prescriptions':
@@ -77,7 +97,11 @@ const MedicalRecordsPage = () => {
                     </p>
                   </div>
                 </div>
-                <button className="p-2 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-lg transition-colors">
+                <button 
+                  onClick={() => handleDownloadPrescription(item.id)}
+                  className="p-2 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-lg transition-colors"
+                  title="Download Prescription PDF"
+                >
                   <Download size={18} />
                 </button>
               </div>

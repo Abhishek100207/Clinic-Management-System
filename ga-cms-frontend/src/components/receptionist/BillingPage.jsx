@@ -318,21 +318,81 @@ const BillingPage = () => {
     e.preventDefault();
     if (!selectedInvoice) return;
 
-    const txnId = collectMode === 'CASH' 
-      ? 'CASH-SETTLE-' + Math.floor(100000 + Math.random() * 900000) 
-      : collectTxnId || 'TXN' + Math.floor(100000000 + Math.random() * 900000000);
+    if (collectMode === 'CASH') {
+      const txnId = 'CASH-SETTLE-' + Math.floor(100000 + Math.random() * 900000);
 
-    await billingStorage.updateInvoiceStatus(
-      selectedInvoice.invoiceId,
-      'PAID',
-      collectMode,
-      txnId
-    );
+      await billingStorage.updateInvoiceStatus(
+        selectedInvoice.invoiceId,
+        'PAID',
+        collectMode,
+        txnId
+      );
 
-    setActiveModal(null);
-    setSelectedInvoice(null);
-    setCollectTxnId('');
-    loadBillingData();
+      setActiveModal(null);
+      setSelectedInvoice(null);
+      setCollectTxnId('');
+      loadBillingData();
+    } else {
+      // Initiate Razorpay for non-cash modes
+      try {
+        const scriptLoaded = await loadRazorpayScript();
+        if (!scriptLoaded) {
+          alert('Razorpay SDK failed to load. Please check your internet connection.');
+          return;
+        }
+
+        const orderRes = await api.post(`/api/appointments/invoices/${selectedInvoice.id}/create-razorpay-order/`);
+        const { razorpay_order_id, amount, razorpay_key_id } = orderRes.data;
+
+        const rzpMode = collectMode === 'CARD' ? 'card' : collectMode === 'UPI' ? 'upi' : 'netbanking';
+
+        const options = {
+          key: razorpay_key_id,
+          amount: amount,
+          currency: "INR",
+          name: "GA Medical Clinic",
+          description: `Settlement for Invoice ${selectedInvoice.invoiceId}`,
+          order_id: razorpay_order_id,
+          prefill: {
+            name: selectedInvoice.patientName || "",
+            method: rzpMode
+          },
+          theme: {
+            color: "#1e3a8a"
+          },
+          handler: async function (response) {
+            try {
+              await api.post(`/api/appointments/invoices/${selectedInvoice.id}/verify-razorpay-payment/`, {
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                payment_method: rzpMode
+              });
+
+              await billingStorage.updateInvoiceStatus(
+                selectedInvoice.invoiceId,
+                'PAID',
+                collectMode,
+                response.razorpay_payment_id
+              );
+
+              setActiveModal(null);
+              setSelectedInvoice(null);
+              loadBillingData();
+            } catch (verifyErr) {
+              console.error("Signature verification failed:", verifyErr);
+              alert(verifyErr.response?.data?.error || 'Signature verification failed. Please try again.');
+            }
+          }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      } catch (err) {
+        console.error("Order creation failed:", err);
+        alert(err.response?.data?.error || 'Failed to start payment transaction. Please try again.');
+      }
+    }
   };
 
   // Patient paying online simulation
@@ -1072,18 +1132,13 @@ For support, email: support@gacms.com
                 </div>
               </div>
 
-              {/* Transaction ID if card/upi */}
+              {/* Transaction Notice if card/upi */}
               {collectMode !== 'CASH' && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Transaction Ref / Reference ID</label>
-                  <input
-                    type="text"
-                    placeholder="Enter bank transaction ref"
-                    value={collectTxnId}
-                    onChange={(e) => setCollectTxnId(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 outline-none text-sm font-medium"
-                    required
-                  />
+                <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                  <p className="text-xs text-blue-700 font-semibold flex items-center gap-2">
+                    <ShieldCheck size={16} />
+                    You will be redirected to the secure Razorpay checkout to process the {collectMode} payment.
+                  </p>
                 </div>
               )}
 
@@ -1099,7 +1154,7 @@ For support, email: support@gacms.com
                   type="submit"
                   className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-emerald-100 transition-all text-center active:scale-95"
                 >
-                  Settle Sessional Bill
+                  {collectMode === 'CASH' ? 'Settle Sessional Bill' : 'Proceed to Razorpay'}
                 </button>
               </div>
 

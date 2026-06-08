@@ -2,20 +2,44 @@ import React, { useState } from 'react';
 import { Button } from '../shared/Button';
 import { Input } from '../shared/Input';
 import { toast } from 'react-toastify';
+import apiClient from '../../api/axios';
 
 const PatientRegistrationForm = () => {
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // Stub for Week 1
-    setTimeout(() => {
-      setLoading(false);
-      const fakeId = 'PAT-' + Math.floor(Math.random() * 100000);
-      toast.success(`Patient registered successfully! ID: ${fakeId}`);
+    
+    const formData = new FormData(e.target);
+    const data = {
+      full_name: formData.get('fullName'),
+      date_of_birth: formData.get('dob'),
+      gender: formData.get('gender'),
+      mobile_number: formData.get('mobile'),
+      email: formData.get('email'),
+      blood_group: formData.get('bloodGroup'),
+      known_allergies: formData.get('allergies'),
+      chronic_conditions: formData.get('conditions'),
+      emergency_contact_name: formData.get('emergencyName'),
+      emergency_contact_number: formData.get('emergencyPhone'),
+      insurance_provider: formData.get('insuranceProvider'),
+      insurance_policy_number: formData.get('insurancePolicy'),
+      street_address: formData.get('street'),
+      city: formData.get('city'),
+      state: formData.get('state'),
+      pincode: formData.get('pincode'),
+    };
+
+    try {
+      const response = await apiClient.post('/api/users/patients/', data);
+      toast.success(`Patient registered successfully! ID: ${response.data.patient_id}`);
       e.target.reset();
-    }, 1000);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to register patient');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,7 +54,7 @@ const PatientRegistrationForm = () => {
             <Input label="Date of Birth" name="dob" type="date" required />
             <div className="flex flex-col gap-1 w-full">
               <label className="text-sm font-medium text-slate-700">Gender</label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-[6px] text-sm focus:outline-none focus:ring-1 focus:border-blue-500 text-navy" required>
+              <select name="gender" className="w-full px-3 py-2 border border-gray-300 rounded-[6px] text-sm focus:outline-none focus:ring-1 focus:border-blue-500 text-navy" required>
                 <option value="">Select Gender</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
@@ -38,7 +62,7 @@ const PatientRegistrationForm = () => {
               </select>
             </div>
             <Input label="Mobile Number" name="mobile" required placeholder="+91 9876543210" />
-            <Input label="Email Address" type="email" name="email" placeholder="john@example.com" />
+            <Input label="Email Address" type="email" name="email" required placeholder="john@example.com" />
           </div>
         </div>
 
@@ -47,7 +71,7 @@ const PatientRegistrationForm = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1 w-full">
               <label className="text-sm font-medium text-slate-700">Blood Group</label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-[6px] text-sm focus:outline-none focus:ring-1 focus:border-blue-500 text-navy">
+              <select name="bloodGroup" className="w-full px-3 py-2 border border-gray-300 rounded-[6px] text-sm focus:outline-none focus:ring-1 focus:border-blue-500 text-navy">
                 <option value="">Select Blood Group</option>
                 <option value="A+">A+</option><option value="A-">A-</option>
                 <option value="B+">B+</option><option value="B-">B-</option>
@@ -57,11 +81,11 @@ const PatientRegistrationForm = () => {
             </div>
             <div className="flex flex-col gap-1 w-full row-span-2">
               <label className="text-sm font-medium text-slate-700">Known Allergies</label>
-              <textarea className="w-full px-3 py-2 border border-gray-300 rounded-[6px] text-sm focus:outline-none focus:border-blue-500 h-[104px] text-navy" placeholder="List any known allergies..."></textarea>
+              <textarea name="allergies" className="w-full px-3 py-2 border border-gray-300 rounded-[6px] text-sm focus:outline-none focus:border-blue-500 h-[104px] text-navy" placeholder="List any known allergies..."></textarea>
             </div>
             <div className="flex flex-col gap-1 w-full row-span-2">
               <label className="text-sm font-medium text-slate-700">Chronic Conditions</label>
-              <textarea className="w-full px-3 py-2 border border-gray-300 rounded-[6px] text-sm focus:outline-none focus:border-blue-500 h-[104px] text-navy" placeholder="List chronic conditions..."></textarea>
+              <textarea name="conditions" className="w-full px-3 py-2 border border-gray-300 rounded-[6px] text-sm focus:outline-none focus:border-blue-500 h-[104px] text-navy" placeholder="List chronic conditions..."></textarea>
             </div>
           </div>
         </div>
@@ -69,16 +93,16 @@ const PatientRegistrationForm = () => {
         <div className="mb-8">
           <h2 className="text-lg font-bold text-navy border-b pb-2 mb-4">Emergency Contact</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input label="Contact Name" placeholder="Jane Doe" />
-            <Input label="Contact Number" placeholder="+91 9876543211" />
+            <Input label="Contact Name" name="emergencyName" placeholder="Jane Doe" />
+            <Input label="Contact Number" name="emergencyPhone" placeholder="+91 9876543211" />
           </div>
         </div>
 
         <div className="mb-8">
           <h2 className="text-lg font-bold text-navy border-b pb-2 mb-4">Insurance Details (Optional)</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input label="Provider Name" placeholder="Star Health" />
-            <Input label="Policy Number" placeholder="POL12345678" />
+            <Input label="Provider Name" name="insuranceProvider" placeholder="Star Health" />
+            <Input label="Policy Number" name="insurancePolicy" placeholder="POL12345678" />
           </div>
         </div>
 
@@ -86,11 +110,11 @@ const PatientRegistrationForm = () => {
           <h2 className="text-lg font-bold text-navy border-b pb-2 mb-4">Address Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-               <Input label="Street Address" placeholder="123 Example Street, Locality" />
+               <Input label="Street Address" name="street" placeholder="123 Example Street, Locality" />
             </div>
-            <Input label="City" placeholder="Mumbai" />
-            <Input label="State" placeholder="Maharashtra" />
-            <Input label="Pincode" placeholder="400001" />
+            <Input label="City" name="city" placeholder="Mumbai" />
+            <Input label="State" name="state" placeholder="Maharashtra" />
+            <Input label="Pincode" name="pincode" placeholder="400001" />
           </div>
         </div>
 

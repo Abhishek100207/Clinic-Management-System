@@ -97,6 +97,103 @@ class PatientListView(APIView):
         serializer = PatientSerializer(patients, many=True)
         return Response(serializer.data)
 
+    def post(self, request):
+        if request.user.role not in ['receptionist', 'admin', 'senior_doctor', 'doctor']:
+            return Response({'error': 'Not authorized to register patients.'}, status=status.HTTP_403_FORBIDDEN)
+            
+        data = request.data
+        full_name = data.get('full_name')
+        email = data.get('email')
+        mobile_number = data.get('mobile_number')
+        gender = data.get('gender')
+        
+        if not all([full_name, email, mobile_number, gender]):
+            return Response({'error': 'Full Name, Email, Mobile Number, and Gender are required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if User.objects.filter(email=email).exists():
+            return Response({'error': 'User with this email already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if Patient.objects.filter(mobile_number=mobile_number).exists():
+            return Response({'error': 'Patient with this mobile number already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        from django.contrib.auth.hashers import make_password
+        import string
+        import random
+        
+        try:
+            # Generate username
+            base_username = full_name.lower().replace(" ", "")
+            username = base_username
+            counter = 1
+            while User.objects.filter(username=username).exists():
+                username = f"{base_username}{counter}"
+                counter += 1
+                
+            # Generate password
+            raw_password = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+            
+            # Create User
+            user = User.objects.create(
+                username=username,
+                email=email,
+                password=make_password(raw_password),
+                role='patient',
+                first_name=full_name.split()[0],
+                last_name=" ".join(full_name.split()[1:]) if len(full_name.split()) > 1 else ""
+            )
+            
+            # Generate Patient ID
+            last_patient = Patient.objects.all().order_by('-id').first()
+            if last_patient:
+                try:
+                    last_id = int(last_patient.patient_id.split('-')[1])
+                    new_id = f"PAT-{last_id + 1}"
+                except:
+                    new_id = f"PAT-{random.randint(100000, 999999)}"
+            else:
+                new_id = f"PAT-1000"
+                
+            # Create Patient Profile
+            dob = data.get('date_of_birth')
+            if not dob:
+                dob = '2000-01-01'
+                
+            patient = Patient.objects.create(
+                user=user,
+                patient_id=new_id,
+                full_name=full_name,
+                email=email,
+                mobile_number=mobile_number,
+                gender=gender,
+                date_of_birth=dob,
+                blood_group=data.get('blood_group') or '',
+                known_allergies=data.get('known_allergies') or '',
+                chronic_conditions=data.get('chronic_conditions') or '',
+                emergency_contact_name=data.get('emergency_contact_name') or '',
+                emergency_contact_number=data.get('emergency_contact_number') or '',
+                insurance_provider=data.get('insurance_provider') or '',
+                insurance_policy_number=data.get('insurance_policy_number') or '',
+                street_address=data.get('street_address') or '',
+                city=data.get('city') or '',
+                state=data.get('state') or '',
+                pincode=data.get('pincode') or '',
+                created_by=request.user
+            )
+            
+            # Trigger Welcome Email
+            import threading
+            from apps.appointments.utils.email_service import send_patient_welcome_email
+            threading.Thread(target=send_patient_welcome_email, args=(patient, raw_password)).start()
+            
+            return Response({
+                'message': 'Patient registered successfully.',
+                'patient_id': patient.patient_id,
+                'id': patient.id
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
     def patch(self, request):
         if request.user.role != 'patient':
             return Response({'error': 'Only patients can update their own profile.'}, status=status.HTTP_403_FORBIDDEN)
@@ -122,6 +219,17 @@ class PatientListView(APIView):
                 names = request.data['full_name'].strip().split(' ', 1)
                 user.first_name = names[0]
                 user.last_name = names[1] if len(names) > 1 else ''
+                
+                # Automatically sync full_name to username
+                base_username = request.data['full_name'].strip().lower().replace(" ", "")
+                if base_username and base_username != user.username:
+                    new_username = base_username
+                    counter = 1
+                    while User.objects.exclude(pk=user.pk).filter(username__iexact=new_username).exists():
+                        new_username = f"{base_username}{counter}"
+                        counter += 1
+                    user.username = new_username
+                
                 user_updated = True
             
             if 'avatar_url' in request.data:

@@ -73,7 +73,7 @@ class GoogleLoginView(APIView):
                 user = User.objects.create_user(
                     username=username,
                     email=email,
-                    password=User.objects.make_random_password(),
+                    password=None,
                     role='patient',
                 )
                 if 'picture' in idinfo:

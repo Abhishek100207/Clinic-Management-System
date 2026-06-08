@@ -65,6 +65,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 self.channel_name
             )
 
+    async def receive(self, text_data=None, bytes_data=None):
         try:
             data = json.loads(text_data)
             message_text = data.get('message', '')
