@@ -77,6 +77,7 @@ const DoctorPatientsPage = () => {
     }
   }, [currentUser, doctors]);
 
+  const [myDoctorId, setMyDoctorId] = useState(1);
   const [selectedPatientForHistory, setSelectedPatientForHistory] = useState(null);
   const [historyData, setHistoryData] = useState({});
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -85,7 +86,6 @@ const DoctorPatientsPage = () => {
 
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [myDoctorId, setMyDoctorId] = useState(1);
 
   const togglePatientExpanded = (patientId) => {
     setExpandedPatients(prev => ({
@@ -217,21 +217,29 @@ const DoctorPatientsPage = () => {
         plan: data.soap.plan,
       });
 
-      let availableDrugs = [];
-      try {
-        availableDrugs = await fetchDrugs();
-      } catch(e) { /* eslint-disable-line no-unused-vars */ }
-
       if (data.prescriptions && data.prescriptions.length > 0 && data.prescriptions[0].medicine) {
-        const meds = data.prescriptions.filter(p => p.medicine).map(p => {
-          const matchedDrug = availableDrugs.find(d => d.name.toLowerCase() === p.medicine.toLowerCase());
+        const meds = await Promise.all(data.prescriptions.filter(p => p.medicine).map(async p => {
+          let finalDrugId = p.drug_id;
+          if (!finalDrugId) {
+            try {
+              const res = await api.get(`/api/medical_records/drugs/search/?q=${encodeURIComponent(p.medicine)}&limit=1`);
+              if (res.data && res.data.length > 0) {
+                finalDrugId = res.data[0].id;
+              } else {
+                finalDrugId = 1;
+              }
+            } catch (e) {
+              finalDrugId = 1;
+            }
+          }
           return {
-            drug_id: matchedDrug ? matchedDrug.id : (availableDrugs.length > 0 ? availableDrugs[0].id : 1),
-            dosage: p.dosage,
-            frequency: 'As directed',
-            duration: 'As directed'
+            drug_id: finalDrugId,
+            dosage: p.dosage || 'Not specified',
+            frequency: p.frequency || 'As directed',
+            duration: p.duration || 'As directed',
+            instructions: p.instructions || ''
           };
-        });
+        }));
 
         if (meds.length > 1) {
           try {
@@ -454,14 +462,6 @@ const DoctorPatientsPage = () => {
                             >
                               <Activity size={12} /> Medical Reports
                             </button>
-                            {isOPCompleted && (
-                              <button 
-                                onClick={() => navigate('/doctor/prescriptions', { state: { patientData: patient } })}
-                                className="bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all border border-emerald-100 shadow-sm flex items-center gap-1.5"
-                              >
-                                <CheckCircle2 size={12} /> Complete
-                              </button>
-                            )}
                           </div>
                         </td>
                       </tr>
@@ -616,9 +616,43 @@ const DoctorPatientsPage = () => {
                                     <div key={prescription.id} className="text-xs text-slate-600 space-y-1">
                                       <p className="font-bold">Notes: {prescription.notes}</p>
                                       {prescription.medications?.map((med) => (
-                                        <p key={med.id} className="ml-2">
-                                          • {med.drug_details?.name} - {med.dosage} ({med.frequency})
-                                        </p>
+                                        <div key={med.id} className="mt-2 bg-slate-50/80 border border-slate-100 rounded-lg p-3">
+                                          <p className="text-[13px] font-bold text-navy flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                            {(() => {
+                                              const fullName = med.drug_details?.name || '';
+                                              if (!fullName) return '';
+                                              let cleanedName = fullName;
+                                              const prefixes = ['davaindia ', 'genericart ', 'dr best ', 'dava india '];
+                                              const lowerName = cleanedName.toLowerCase();
+                                              for (const prefix of prefixes) {
+                                                if (lowerName.startsWith(prefix)) {
+                                                  cleanedName = cleanedName.substring(prefix.length).trim();
+                                                  break;
+                                                }
+                                              }
+                                              const match = cleanedName.match(/(\d.*)/);
+                                              let parsedName = cleanedName;
+                                              let parsedDosage = '';
+                                              if (match) {
+                                                parsedDosage = match[0];
+                                                const namePart = cleanedName.substring(0, match.index).trim();
+                                                if (namePart) {
+                                                  parsedName = namePart;
+                                                } else {
+                                                  parsedDosage = '';
+                                                }
+                                              }
+                                              return `${parsedName} ${parsedDosage}`.trim();
+                                            })()}
+                                          </p>
+                                          <div className="ml-3.5 mt-1.5 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-slate-500">
+                                            <span><strong className="text-slate-400 font-bold uppercase tracking-wide text-[9px] mr-1">Dosage</strong> {med.dosage}</span>
+                                            <span><strong className="text-slate-400 font-bold uppercase tracking-wide text-[9px] mr-1">Time</strong> {med.frequency}</span>
+                                            {med.duration && <span><strong className="text-slate-400 font-bold uppercase tracking-wide text-[9px] mr-1">Duration</strong> {med.duration}</span>}
+                                            {med.instructions && <span className="text-emerald-600"><strong className="text-emerald-600/70 font-bold uppercase tracking-wide text-[9px] mr-1">Food</strong> {med.instructions}</span>}
+                                          </div>
+                                        </div>
                                       ))}
                                     </div>
                                   ))

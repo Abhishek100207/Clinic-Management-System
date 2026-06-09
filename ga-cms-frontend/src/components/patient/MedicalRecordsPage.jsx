@@ -93,7 +93,7 @@ const MedicalRecordsPage = () => {
                     <h4 className="font-bold text-navy text-sm">Prescription #{item.id}</h4>
                     <p className="text-[11px] text-slate-500">Dr. {item.doctor} • {new Date(item.created_at).toLocaleDateString()}</p>
                     <p className="text-[10px] text-blue-600 font-medium mt-1">
-                      {item.medications?.map(m => m.drug_details?.name || m.drug_id).join(', ')}
+                      {item.medications?.map(m => `${m.drug_details?.name || m.drug_id} (${m.dosage}, ${m.frequency}${m.duration ? `, ${m.duration}` : ''})`).join(' • ')}
                     </p>
                   </div>
                 </div>

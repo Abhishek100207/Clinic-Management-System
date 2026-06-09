@@ -14,7 +14,6 @@ export const ROLE_CONFIG = {
       { name: 'Patient Reviews', path: '/reviews',          icon: 'Star' },
       { name: 'Add Staff',       path: '/staff/add',        icon: 'UserPlus' },
       { name: 'Audit Logs',      path: '/logs',             icon: 'ClipboardList' },
-      { name: 'Settings', path: '/settings', icon: 'Settings' },
       { name: 'Chat',            path: '/chat',             icon: 'MessageSquare' },
     ],
     badgeColor: 'bg-purple-100 text-purple-800'

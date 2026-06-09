@@ -308,7 +308,7 @@ const AvailabilityCalendar = ({
           let tooltipText = '';
 
           switch (actualStatus) {
-            case 'available':
+            case 'available': {
               statusStyles = isSelected
                 ? 'bg-emerald-500/25 border-2 border-emerald-500 text-emerald-950 ring-4 ring-emerald-300/30 scale-[1.02] shadow-md cursor-pointer'
                 : 'bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-800 hover:-translate-y-0.5 hover:shadow-sm cursor-pointer transition-all duration-150 backdrop-blur-md';
@@ -350,6 +350,7 @@ const AvailabilityCalendar = ({
                 </div>
               );
               break;
+            }
 
             case 'leave':
               statusStyles = isSelected
