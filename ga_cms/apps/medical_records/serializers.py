@@ -1,0 +1,122 @@
+from rest_framework import serializers
+from .models import ConsultationNote, LabResult, ScanResult, Drug, Prescription, PrescribedMedication, ScanOrder, ChatMessage
+
+class ConsultationNoteSerializer(serializers.ModelSerializer):
+    is_locked = serializers.ReadOnlyField()
+
+    class Meta:
+        model = ConsultationNote
+        fields = '__all__'
+        read_only_fields = ('doctor', 'patient', 'created_at', 'updated_at')
+        extra_kwargs = {
+            'appointment': {
+                'validators': [] # Remove UniqueValidator to allow update_or_create in view
+            }
+        }
+
+    def update(self, instance, validated_data):
+        if instance.is_locked:
+            raise serializers.ValidationError("This consultation note is locked and cannot be edited after 24 hours.")
+        return super().update(instance, validated_data)
+
+
+class ScanOrderSerializer(serializers.ModelSerializer):
+    patientName = serializers.StringRelatedField(source='patient', read_only=True)
+    doctorName = serializers.StringRelatedField(source='doctor', read_only=True)
+    result_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ScanOrder
+        fields = '__all__'
+
+    def get_result_id(self, obj):
+        from .models import ScanResult
+        result = ScanResult.objects.filter(patient=obj.patient, scan_type=obj.scan_type).last()
+        return result.id if result else None
+
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    sender_name = serializers.StringRelatedField(source='sender', read_only=True)
+    receiver_name = serializers.StringRelatedField(source='receiver', read_only=True)
+
+    class Meta:
+        model = ChatMessage
+        fields = '__all__'
+        read_only_fields = ('sender',)
+
+
+class LabResultSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LabResult
+        fields = '__all__'
+        read_only_fields = ('uploaded_at', 'status')
+
+
+class ScanResultSerializer(serializers.ModelSerializer):
+    requesting_doctor = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ScanResult
+        fields = '__all__'
+        read_only_fields = ('uploaded_at',)
+
+    def get_requesting_doctor(self, obj):
+        from .models import ScanOrder
+        order = ScanOrder.objects.filter(patient=obj.patient, scan_type=obj.scan_type).last()
+        if order and order.doctor and order.doctor.user:
+            return f"Dr. {order.doctor.user.first_name} {order.doctor.user.last_name}"
+        return "Dr. Radiologist"
+
+
+class DrugSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Drug
+        fields = '__all__'
+
+
+class PrescribedMedicationSerializer(serializers.ModelSerializer):
+    drug_details = DrugSerializer(source='drug', read_only=True)
+    drug_id = serializers.PrimaryKeyRelatedField(queryset=Drug.objects.all(), source='drug', write_only=True)
+
+    class Meta:
+        model = PrescribedMedication
+        fields = ['id', 'drug_id', 'drug_details', 'dosage', 'frequency', 'duration', 'instructions']
+
+
+class PrescriptionSerializer(serializers.ModelSerializer):
+    medications = PrescribedMedicationSerializer(many=True, required=False)
+    doctor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Prescription
+        fields = ['id', 'appointment', 'patient', 'doctor', 'doctor_name', 'notes', 'follow_up_date', 'created_at', 'medications']
+        read_only_fields = ('doctor', 'patient', 'created_at')
+        extra_kwargs = {
+            'appointment': {
+                'validators': [] # Remove UniqueValidator to allow update_or_create in view
+            }
+        }
+
+    def get_doctor_name(self, obj):
+        if obj.doctor and obj.doctor.user:
+            return f"Dr. {obj.doctor.user.get_full_name()}"
+        return "Doctor"
+
+
+    def create(self, validated_data):
+        medications_data = validated_data.pop('medications', [])
+        prescription = Prescription.objects.create(**validated_data)
+        for med_data in medications_data:
+            PrescribedMedication.objects.create(prescription=prescription, **med_data)
+        return prescription
+    
+    def update(self, instance, validated_data):
+        medications_data = validated_data.pop('medications', None)
+        if medications_data is not None:
+            instance.medications.all().delete()
+            for med_data in medications_data:
+                PrescribedMedication.objects.create(prescription=instance, **med_data)
+        
+        instance.notes = validated_data.get('notes', instance.notes)
+        instance.save()
+        return instance
