@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-toastify';
 import useWebSocket from '../../../hooks/useWebSocket';
 import { Spinner } from '../Spinner';
 import ErrorBoundary from '../ErrorBoundary';

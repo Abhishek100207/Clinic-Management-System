@@ -25,7 +25,6 @@ const AdminPatientsPage = lazy(() => import('../components/admin/AdminPatientsPa
 const AdminRevenuePage = lazy(() => import('../components/admin/AdminRevenuePage'));
 const AdminStaffPerformancePage = lazy(() => import('../components/admin/AdminStaffPerformancePage'));
 const AdminDoctorsPage = lazy(() => import('../components/admin/AdminDoctorsPage'));
-const AdminSettingsPage = lazy(() => import('../components/admin/AdminSettingsPage'));
 const AdminReviewsPage = lazy(() => import('../components/admin/AdminReviewsPage'));
 const ComingSoonPage = lazy(() => import('../components/shared/ComingSoonPage'));
 const BookAppointment = lazy(() => import('../components/patient/BookAppointment'));
@@ -127,7 +126,6 @@ const AppRouter = () => {
           <Route path="/performance/staff" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminStaffPerformancePage /></AuthGuard>} />
           <Route path="/doctors" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminDoctorsPage /></AuthGuard>} />
           <Route path="/reviews" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminReviewsPage /></AuthGuard>} />
-          <Route path="/settings" element={<AuthGuard allowedRoles={['senior_doctor']}><AdminSettingsPage /></AuthGuard>} />
           <Route path="/my-appointments" 
             element={
               <AuthGuard allowedRoles={['doctor', 'senior_doctor', 'patient']}>

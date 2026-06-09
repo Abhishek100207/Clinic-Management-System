@@ -31,32 +31,40 @@ class ConsultationNoteViewSet(viewsets.ModelViewSet):
         return queryset
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        appointment = serializer.validated_data['appointment']
-        
-        # Check if note exists and update or create
-        note, created = ConsultationNote.objects.update_or_create(
-            appointment=appointment,
-            defaults={
-                'doctor': appointment.doctor,
-                'patient': appointment.patient,
-                'subjective': serializer.validated_data.get('subjective', ''),
-                'objective': serializer.validated_data.get('objective', ''),
-                'assessment': serializer.validated_data.get('assessment', ''),
-                'plan': serializer.validated_data.get('plan', '')
-            }
-        )
-        
-        AuditLog.objects.create(
-            user=self.request.user,
-            action='Created Consultation Note' if created else 'Updated Consultation Note',
-            details=f"For Patient: {appointment.patient.full_name}, Appointment: {appointment.id}"
-        )
-        
-        response_serializer = self.get_serializer(note)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            appointment = serializer.validated_data['appointment']
+            
+            # Check if note exists and update or create
+            note, created = ConsultationNote.objects.update_or_create(
+                appointment=appointment,
+                defaults={
+                    'doctor': appointment.doctor,
+                    'patient': appointment.patient,
+                    'subjective': serializer.validated_data.get('subjective', ''),
+                    'objective': serializer.validated_data.get('objective', ''),
+                    'assessment': serializer.validated_data.get('assessment', ''),
+                    'plan': serializer.validated_data.get('plan', '')
+                }
+            )
+            
+            AuditLog.objects.create(
+                user=self.request.user,
+                action='Created Consultation Note' if created else 'Updated Consultation Note',
+                details=f"For Patient: {appointment.patient.full_name}, Appointment: {appointment.id}"
+            )
+            
+            response_serializer = self.get_serializer(note)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+        except Exception as e:
+            import traceback
+            with open('error_log.txt', 'a') as f:
+                f.write("500 ERROR IN ConsultationNoteViewSet.create:\n")
+                f.write(traceback.format_exc())
+                f.write("\n")
+            raise e
 
 class LabResultViewSet(viewsets.ModelViewSet):
     serializer_class = LabResultSerializer
@@ -552,6 +560,7 @@ class DrugSearchView(APIView):
         results = []
         for drug in drugs:
             results.append({
+                'id': drug.id,
                 'drug_name': drug.name,
                 'use_case': drug.use_case,
                 'side_effects': drug.side_effects,

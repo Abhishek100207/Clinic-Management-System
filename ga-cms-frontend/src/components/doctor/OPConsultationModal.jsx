@@ -45,7 +45,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
       plan: ''
     },
     recommendedTests: '',
-    prescriptions: [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, duration: '', food: '' }],
+    prescriptions: [{ drug_id: null, medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, duration_value: '', duration_unit: 'days', food: '' }],
     prescriptionNotes: '',
     followUpDate: '',
     referredDoctorId: '',
@@ -97,7 +97,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
             plan: ''
           },
           recommendedTests: '',
-          prescriptions: [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, duration: '', food: '' }],
+          prescriptions: [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, duration_value: '', duration_unit: 'days', food: '' }],
           prescriptionNotes: '',
           followUpDate: '',
           referredDoctorId: '',
@@ -132,7 +132,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
   const handleAddMedicine = () => {
     setFormData({
       ...formData,
-      prescriptions: [...formData.prescriptions, { medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, duration: '', food: '' }]
+      prescriptions: [...formData.prescriptions, { drug_id: null, medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, duration_value: '', duration_unit: 'days', food: '' }]
     });
   };
 
@@ -140,7 +140,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
     const newPres = formData.prescriptions.filter((_, i) => i !== index);
     setFormData({
       ...formData,
-      prescriptions: newPres.length ? newPres : [{ medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, duration: '', food: '' }]
+      prescriptions: newPres.length ? newPres : [{ drug_id: null, medicine: '', use_case: '', dosage_form: '', dosage_value: '', dosage_unit: '', time: { morning: false, afternoon: false, night: false }, duration_value: '', duration_unit: 'days', food: '' }]
     });
   };
 
@@ -189,9 +189,10 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
       
       return {
         medicine: med.medicine,
+        drug_id: med.drug_id,
         dosage: dosageStr,
         frequency: times.join(', ') || 'As directed',
-        duration: med.duration || '',
+        duration: med.duration_value ? `${med.duration_value} ${med.duration_unit || 'days'}` : '',
         instructions: med.food || '',
         side_effects: med.side_effects,
         substitutes: med.substitutes
@@ -409,24 +410,42 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                 </div>
                 
                 {formData.prescriptions.map((med, index) => (
-                  <div key={index} className="space-y-4 bg-slate-50 p-6 rounded-[2rem] border border-slate-100 animate-in slide-in-from-left duration-200">
+                  <div key={index} className="space-y-4 bg-slate-50 p-6 rounded-[2rem] border border-slate-100 animate-in slide-in-from-left duration-200 relative">
                     
+                    {/* Delete Button */}
+                    <button 
+                      onClick={() => handleRemoveMedicine(index)}
+                      className="absolute top-6 right-6 p-2 text-slate-300 hover:text-rose-500 transition-colors bg-white rounded-full shadow-sm border border-slate-100 z-10"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+
                     {/* Row 1: Medicine & Dosage */}
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
-                      <div className="md:col-span-7 space-y-2 relative" ref={activeMedIndex === index ? dropdownRef : null}>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start pr-12">
+                      <div className="md:col-span-8 space-y-2 relative" ref={activeMedIndex === index ? dropdownRef : null}>
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Name of the Medicine</label>
                         <div className="relative">
                           <input 
                             type="text"
                             value={med.medicine}
-                            onChange={(e) => handleMedChange(index, 'medicine', e.target.value)}
+                            onChange={(e) => {
+                              handleMedChange(index, 'medicine', e.target.value);
+                              if (med.dosage_form) {
+                                handleMedChange(index, 'dosage_form', '');
+                              }
+                            }}
                             onFocus={() => {
                               setActiveMedIndex(index);
                               setShowDropdown(true);
                             }}
                             placeholder="E.g. Paracetamol"
-                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-all pr-10"
+                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-all pr-24"
                           />
+                          {med.dosage_form && (
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded whitespace-nowrap pointer-events-none">
+                              {med.dosage_form}
+                            </span>
+                          )}
                           {loading && activeMedIndex === index && (
                             <div className="absolute right-3 top-1/2 -translate-y-1/2">
                               <Loader2 size={16} className="animate-spin text-blue-500" />
@@ -444,25 +463,60 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                         {showDropdown && activeMedIndex === index && (suggestions.length > 0 || !loading) && (
                           <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
                             {suggestions.length > 0 ? (
-                              suggestions.map((drug, i) => (
+                              suggestions.map((drug, i) => {
+                                const parseDrugName = (fullName) => {
+                                  if (!fullName) return { parsedName: '', parsedDosage: '' };
+                                  let cleanedName = fullName;
+                                  const prefixes = ['davaindia ', 'genericart ', 'dr best ', 'dava india '];
+                                  const lowerName = cleanedName.toLowerCase();
+                                  for (const prefix of prefixes) {
+                                    if (lowerName.startsWith(prefix)) {
+                                      cleanedName = cleanedName.substring(prefix.length).trim();
+                                      break;
+                                    }
+                                  }
+                                  const match = cleanedName.match(/(\d.*)/);
+                                  if (match) {
+                                    const dosage = match[0];
+                                    const name = cleanedName.substring(0, match.index).trim();
+                                    return { parsedName: name || cleanedName, parsedDosage: name ? dosage : '' };
+                                  }
+                                  return { parsedName: cleanedName, parsedDosage: '' };
+                                };
+                                const { parsedName, parsedDosage } = parseDrugName(drug.drug_name);
+                                
+                                return (
                                 <div 
                                   key={i}
-                                  className="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm"
+                                  className="px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0"
                                   onClick={() => {
                                     const newPres = [...formData.prescriptions];
-                                    newPres[index]['medicine'] = drug.drug_name;
+                                    newPres[index]['medicine'] = parsedName;
+                                    newPres[index]['drug_id'] = drug.id;
                                     newPres[index]['side_effects'] = drug.side_effects;
                                     newPres[index]['substitutes'] = drug.substitutes;
                                     newPres[index]['use_case'] = drug.use_case;
-                                    newPres[index]['dosage_form'] = drug.dosage_form;
+                                    newPres[index]['dosage_form'] = parsedDosage || drug.dosage_form;
                                     setFormData({ ...formData, prescriptions: newPres });
                                     setShowDropdown(false);
                                   }}
                                 >
-                                  <div className="font-bold">{drug.drug_name}</div>
-                                  {drug.dosage_form && <div className="text-xs text-slate-400">{drug.dosage_form}</div>}
+                                  <div className="font-bold text-slate-800 text-sm flex justify-between items-start gap-2">
+                                    <span className="flex-1 capitalize">{parsedName}</span>
+                                    {(parsedDosage || drug.dosage_form) && <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded whitespace-nowrap">{parsedDosage || drug.dosage_form}</span>}
+                                  </div>
+                                  {drug.use_case && (
+                                    <div className="text-[11px] text-blue-600 mt-1.5 line-clamp-1">
+                                      <span className="font-semibold">Used for:</span> {drug.use_case}
+                                    </div>
+                                  )}
+                                  {drug.substitutes && drug.substitutes.length > 0 && (
+                                    <div className="text-[11px] text-emerald-600 mt-0.5 line-clamp-1">
+                                      <span className="font-semibold">Alternatives:</span> {Array.isArray(drug.substitutes) ? drug.substitutes.join(', ') : drug.substitutes}
+                                    </div>
+                                  )}
                                 </div>
-                              ))
+                              )})
                             ) : (
                               !loading && <div className="px-4 py-2 text-sm text-slate-400">No medicines found</div>
                             )}
@@ -470,20 +524,20 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                         )}
                       </div>
 
-                      <div className="md:col-span-5 space-y-2">
+                      <div className="md:col-span-4 space-y-2">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Dosage</label>
-                        <div className="flex gap-2">
+                        <div className="relative flex items-center">
                           <input 
-                            type="text"
+                            type="number"
                             value={med.dosage_value}
                             onChange={(e) => handleMedChange(index, 'dosage_value', e.target.value)}
-                            placeholder="E.g. 5, 500"
-                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-all"
+                            placeholder="E.g. 5"
+                            className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-24 py-2.5 text-sm focus:border-blue-500 outline-none transition-all"
                           />
                           <select
                             value={med.dosage_unit}
                             onChange={(e) => handleMedChange(index, 'dosage_unit', e.target.value)}
-                            className="bg-white border border-slate-200 rounded-xl px-2 py-2.5 text-sm focus:border-blue-500 outline-none transition-all"
+                            className="absolute right-1 top-1 bottom-1 bg-slate-50 border-0 border-l border-slate-200 rounded-r-lg px-2 text-sm focus:ring-0 outline-none cursor-pointer text-slate-600"
                           >
                             <option value="">Unit</option>
                             <option value="mg">mg</option>
@@ -495,9 +549,9 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                       </div>
                     </div>
 
-                    {/* Row 2: Time, Duration, Food & Delete */}
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                      <div className="md:col-span-5 space-y-2">
+                    {/* Row 2: Time, Duration, Food */}
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center pr-12">
+                      <div className="md:col-span-4 space-y-2">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Time</label>
                         <div className="flex gap-2">
                           {['morning', 'afternoon', 'night'].map(t => (
@@ -508,7 +562,7 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                                 newPres[index]['time'][t] = !newPres[index]['time'][t];
                                 setFormData({ ...formData, prescriptions: newPres });
                               }}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${med.time?.[t] ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                              className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-bold transition-all ${med.time?.[t] ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
                             >
                               {t.charAt(0).toUpperCase() + t.slice(1)}
                             </button>
@@ -516,18 +570,28 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                         </div>
                       </div>
 
-                      <div className="md:col-span-3 space-y-2">
+                      <div className="md:col-span-4 space-y-2">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Duration</label>
-                        <input
-                          type="text"
-                          value={med.duration || ''}
-                          onChange={(e) => handleMedChange(index, 'duration', e.target.value)}
-                          placeholder="E.g. 5 days"
-                          className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none transition-all"
-                        />
+                        <div className="relative flex items-center">
+                          <input
+                            type="number"
+                            value={med.duration_value || ''}
+                            onChange={(e) => handleMedChange(index, 'duration_value', e.target.value)}
+                            placeholder="E.g. 5"
+                            className="w-full bg-white border border-slate-200 rounded-xl pl-4 pr-24 py-2.5 text-sm focus:border-blue-500 outline-none transition-all"
+                          />
+                          <select
+                            value={med.duration_unit || 'days'}
+                            onChange={(e) => handleMedChange(index, 'duration_unit', e.target.value)}
+                            className="absolute right-1 top-1 bottom-1 bg-slate-50 border-0 border-l border-slate-200 rounded-r-lg px-2 text-sm focus:ring-0 outline-none cursor-pointer text-slate-600"
+                          >
+                            <option value="days">days</option>
+                            <option value="months">months</option>
+                          </select>
+                        </div>
                       </div>
 
-                      <div className="md:col-span-3 space-y-2">
+                      <div className="md:col-span-4 space-y-2">
                         <label className="text-[10px] font-bold text-slate-400 uppercase">Food</label>
                         <select
                           value={med.food}
@@ -538,15 +602,6 @@ const OPConsultationModal = ({ isOpen, onClose, patient, onSave }) => {
                           <option value="Before Food">Before Food</option>
                           <option value="After Food">After Food</option>
                         </select>
-                      </div>
-
-                      <div className="md:col-span-1 flex justify-center pt-4">
-                        <button 
-                          onClick={() => handleRemoveMedicine(index)}
-                          className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
-                        >
-                          <Trash2 size={20} />
-                        </button>
                       </div>
                     </div>
 

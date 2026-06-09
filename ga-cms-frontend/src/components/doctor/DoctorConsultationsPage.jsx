@@ -84,22 +84,29 @@ const DoctorConsultationsPage = () => {
         plan: data.soap.plan,
       });
 
-      let availableDrugs = [];
-      try {
-        availableDrugs = await fetchDrugs();
-      } catch(e) { /* eslint-disable-line no-unused-vars */ }
-
       if (data.prescriptions && data.prescriptions.length > 0 && data.prescriptions[0].medicine) {
-        const meds = data.prescriptions.filter(p => p.medicine).map(p => {
-          const matchedDrug = availableDrugs.find(d => d.name.toLowerCase() === p.medicine.toLowerCase());
+        const meds = await Promise.all(data.prescriptions.filter(p => p.medicine).map(async p => {
+          let finalDrugId = p.drug_id;
+          if (!finalDrugId) {
+            try {
+              const res = await api.get(`/api/medical_records/drugs/search/?q=${encodeURIComponent(p.medicine)}&limit=1`);
+              if (res.data && res.data.length > 0) {
+                finalDrugId = res.data[0].id;
+              } else {
+                finalDrugId = 1;
+              }
+            } catch (e) {
+              finalDrugId = 1;
+            }
+          }
           return {
-            drug_id: matchedDrug ? matchedDrug.id : (availableDrugs.length > 0 ? availableDrugs[0].id : 1),
+            drug_id: finalDrugId,
             dosage: p.dosage || 'Not specified',
             frequency: p.frequency || 'As directed',
             duration: p.duration || 'As directed',
             instructions: p.instructions || ''
           };
-        });
+        }));
 
         if (meds.length > 1) {
           try {
