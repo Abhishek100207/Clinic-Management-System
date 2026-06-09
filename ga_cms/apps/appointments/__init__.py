@@ -1,1 +1,0 @@
-# Initialize appointments app
